@@ -319,14 +319,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 })();
 </script>
 
-  <!-- Supabase JS — chargé via CDN (nécessite HTTPS, fonctionne sur GitHub Pages) -->
+  <!-- Supabase JS — via CDN (fonctionne sur GitHub Pages HTTPS) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script>
-    // Rend Supabase accessible via window.supabaseJs
-    window.supabaseJs = window.supabase;
-  </script>
+  <script>window.supabaseJs = window.supabase;</script>
 
-  <!-- Forge Coaching App — pré-compilée -->
+  <!-- Forge Coaching — app + espace coach (pré-compilé) -->
   <script>
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -444,7 +441,7 @@ const muscleColors = {
   "Adducteurs": { bg: "#E0FFE8", text: "#1A7030" }
 };
 let _supabase = null;
-function getSupabase() {
+async function getSupabase() {
   if (!isSupabaseConfigured) return null;
   if (_supabase) return _supabase;
   _supabase = window.supabaseJs.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
@@ -714,7 +711,7 @@ function SetLog({ weight, actualReps, onWeightChange, onRepsChange, weightCmp, r
 function QuickCard({ icon, title, subtitle, onClick }) {
   return /* @__PURE__ */ React.createElement("div", { onClick, className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 40, borderRadius: 10, background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20, color: T.accent })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, subtitle)), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 20, color: T.borderStrong }));
 }
-function LoginScreen({ onAuthSuccess }) {
+function LoginScreen({ onAuthSuccess, onCoachClick }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -784,7 +781,7 @@ function LoginScreen({ onAuthSuccess }) {
       }
     },
     loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 15, color: T.textMuted }), " CONNEXION...") : "ACC\xC9DER \xC0 MON ESPACE"
-  )), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 28, fontSize: 11, color: T.textMuted, textAlign: "center", animation: "fadeUp .5s ease .3s both", lineHeight: 1.6 } }, "Pas encore de code ?", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { color: T.accent, fontWeight: 700 } }, "Contacte ton coach.")));
+  )), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 28, fontSize: 11, color: T.textMuted, textAlign: "center", animation: "fadeUp .5s ease .3s both", lineHeight: 1.6 } }, "Pas encore de code ?", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { color: T.accent, fontWeight: 700 } }, "Contacte ton coach.")), /* @__PURE__ */ React.createElement("button", { onClick: onCoachClick, style: { marginTop: 20, background: "transparent", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, cursor: "pointer", textDecoration: "underline", animation: "fadeUp .5s ease .4s both" } }, "Espace coach"));
 }
 function LoadingScreen({ text = "Chargement..." }) {
   return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", gap: 18 } }, /* @__PURE__ */ React.createElement("div", { style: { animation: "pulse 1.4s ease-in-out infinite" } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 62 })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, letterSpacing: 1.5, fontWeight: 700 } }, text));
@@ -1235,10 +1232,601 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     }
   ), /* @__PURE__ */ React.createElement(FloatingBanner, { timers }), /* @__PURE__ */ React.createElement(BottomTabBar, { activePage: page, onNavigate: navigate }));
 }
+const MUSCLE_OPTIONS = [
+  "Triceps",
+  "Pectoraux",
+  "Delto\xEFde post",
+  "Delto\xEFde lat",
+  "Quadriceps",
+  "Ischios",
+  "Mollets",
+  "Grand dorsal",
+  "Haut du dos",
+  "Biceps",
+  "Fessier/Ischios",
+  "Adducteurs"
+];
+const OFFER_OPTIONS = ["essentiel", "premium"];
+const GOAL_OPTIONS = ["Prise de masse", "S\xE8che", "Recomposition", "Maintien"];
+const TECHNIQUE_OPTIONS = [
+  { value: null, label: "Aucune" },
+  { value: "RP", label: "Rest-Pause (RP)" },
+  { value: "DS", label: "Drop Set (DS)" },
+  { value: "Superset", label: "Superset" }
+];
+const DAYS_ORDER = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"];
+function generateAccessCode(name) {
+  const clean = (name || "").trim().toUpperCase().split(/\s+/)[0].replace(/[^A-Z0-9]/g, "");
+  const year = (/* @__PURE__ */ new Date()).getFullYear();
+  return clean ? `${clean}-${year}` : "";
+}
+async function loadCoachees(supabase, coachId) {
+  const { data, error } = await supabase.from("profiles").select("*").eq("coach_id", coachId).order("created_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+async function loadExerciseLibrary(supabase, coachId) {
+  const { data, error } = await supabase.from("exercises_library").select("*").eq("coach_id", coachId).order("name", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+async function loadActiveProgram(supabase, coacheeId) {
+  const { data, error } = await supabase.from("programs").select("*").eq("coachee_id", coacheeId).eq("is_active", true).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+async function createCoacheeViaFunction(supabase, payload) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Session expir\xE9e");
+  const url = `${SUPABASE_CONFIG.url}/functions/v1/create-coachee`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": SUPABASE_CONFIG.anonKey
+    },
+    body: JSON.stringify(payload)
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || "Cr\xE9ation \xE9chou\xE9e");
+  return json.coachee;
+}
+async function activateProgram(supabase, coacheeId, weekStructure, sessionsStructure, programName) {
+  const { data: existing } = await supabase.from("programs").select("program_order").eq("coachee_id", coacheeId).order("program_order", { ascending: false }).limit(1).maybeSingle();
+  const nextOrder = ((existing == null ? void 0 : existing.program_order) || 0) + 1;
+  await supabase.from("programs").update({ is_active: false }).eq("coachee_id", coacheeId).eq("is_active", true);
+  const { data, error } = await supabase.from("programs").insert({
+    coachee_id: coacheeId,
+    name: programName || `Programme ${nextOrder}`,
+    week_structure: weekStructure,
+    sessions_structure: sessionsStructure,
+    is_active: true,
+    program_order: nextOrder
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+async function saveProgramDraft(supabase, coacheeId, weekStructure, sessionsStructure, programName, draftId) {
+  if (draftId) {
+    const { data: data2, error: error2 } = await supabase.from("programs").update({
+      name: programName,
+      week_structure: weekStructure,
+      sessions_structure: sessionsStructure
+    }).eq("id", draftId).select().single();
+    if (error2) throw error2;
+    return data2;
+  }
+  const { data, error } = await supabase.from("programs").insert({
+    coachee_id: coacheeId,
+    name: programName || "Brouillon",
+    week_structure: weekStructure,
+    sessions_structure: sessionsStructure,
+    is_active: false,
+    program_order: 0
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+function Field({ label, children }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("label", { style: { display: "block", fontSize: 10, fontWeight: 800, color: T.textMuted, letterSpacing: 1.2, marginBottom: 6 } }, label), children);
+}
+const inputStyle = {
+  width: "100%",
+  padding: "12px 14px",
+  background: T.bg,
+  border: `1.5px solid ${T.borderStrong}`,
+  borderRadius: 10,
+  fontSize: 15,
+  color: T.text,
+  outline: "none",
+  fontFamily: "inherit"
+};
+function OfferBadge({ offer }) {
+  const isPrem = offer === "premium";
+  return /* @__PURE__ */ React.createElement("span", { style: { background: isPrem ? "#FEF3DC" : T.accentLight, color: isPrem ? "#A06000" : T.accent, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: 0.5 } }, isPrem ? "PREMIUM" : "ESSENTIEL");
+}
+function CoachLoginScreen({ onBack, onAuthSuccess }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  async function handleSubmit() {
+    if (!email.trim() || !password || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const supabase = await getSupabase();
+      if (!supabase) throw new Error("Configuration Supabase manquante");
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password
+      });
+      if (authError) throw new Error("Email ou mot de passe incorrect");
+      onAuthSuccess();
+    } catch (e) {
+      setError(e.message || "Erreur de connexion");
+      setLoading(false);
+    }
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: `radial-gradient(ellipse at top, ${T.surface2} 0%, ${T.bg} 60%)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px", fontFamily: "'DM Sans', sans-serif" } }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 20, animation: "fadeUp .5s ease both" } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 72 })), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginBottom: 30, animation: "fadeUp .5s ease .1s both" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, letterSpacing: 4, color: T.text, lineHeight: 1 } }, "ESPACE COACH"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textSub, marginTop: 8 } }, "Connexion \xE0 ton poste de pilotage")), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "26px 22px", width: "100%", maxWidth: 380, boxShadow: `0 14px 50px ${T.shadow}`, animation: "fadeUp .5s ease .2s both" } }, /* @__PURE__ */ React.createElement(Field, { label: "EMAIL" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "email",
+      value: email,
+      onChange: (e) => {
+        setEmail(e.target.value);
+        setError("");
+      },
+      placeholder: "coach@forge.app",
+      autoCapitalize: "none",
+      autoComplete: "email",
+      spellCheck: false,
+      style: __spreadProps(__spreadValues({}, inputStyle), { borderColor: error ? T.danger : T.borderStrong })
+    }
+  )), /* @__PURE__ */ React.createElement(Field, { label: "MOT DE PASSE" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "password",
+      value: password,
+      onChange: (e) => {
+        setPassword(e.target.value);
+        setError("");
+      },
+      onKeyDown: (e) => {
+        if (e.key === "Enter") handleSubmit();
+      },
+      placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+      autoComplete: "current-password",
+      style: __spreadProps(__spreadValues({}, inputStyle), { borderColor: error ? T.danger : T.borderStrong })
+    }
+  )), /* @__PURE__ */ React.createElement("div", { style: { minHeight: 20, textAlign: "center" } }, error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600 } }, error)), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleSubmit,
+      disabled: loading || !email.trim() || !password,
+      style: {
+        width: "100%",
+        marginTop: 6,
+        padding: "14px 20px",
+        background: loading || !email.trim() || !password ? T.surface2 : `linear-gradient(135deg, #064E3B 0%, #0D9488 100%)`,
+        color: loading || !email.trim() || !password ? T.textMuted : "white",
+        border: "none",
+        borderRadius: 14,
+        fontSize: 13,
+        fontWeight: 800,
+        letterSpacing: 1.2,
+        cursor: loading || !email.trim() || !password ? "default" : "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10
+      }
+    },
+    loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 15, color: T.textMuted }), " CONNEXION...") : "SE CONNECTER"
+  )), /* @__PURE__ */ React.createElement("button", { onClick: onBack, style: { marginTop: 24, background: "transparent", border: "none", color: T.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, animation: "fadeUp .5s ease .3s both" } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 14 }), " Retour \xE0 l'espace coach\xE9"));
+}
+function NewCoacheeModal({ supabase, onClose, onCreated }) {
+  const [name, setName] = useState("");
+  const [goal, setGoal] = useState(GOAL_OPTIONS[0]);
+  const [startDate, setStartDate] = useState((/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+  const [offer, setOffer] = useState("essentiel");
+  const [code, setCode] = useState("");
+  const [codeEdited, setCodeEdited] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+  useEffect(() => {
+    if (!codeEdited) setCode(generateAccessCode(name));
+  }, [name, codeEdited]);
+  async function handleCreate() {
+    if (!name.trim() || !code.trim() || loading) return;
+    setLoading(true);
+    setError("");
+    try {
+      const coachee = await createCoacheeViaFunction(supabase, {
+        name: name.trim(),
+        accessCode: code.trim().toUpperCase(),
+        goal,
+        startDate,
+        offer
+      });
+      setResult(coachee);
+      onCreated();
+    } catch (e) {
+      setError(e.message || "Erreur lors de la cr\xE9ation");
+      setLoading(false);
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "92vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), result ? (
+    // Écran de succès : affiche le code à communiquer
+    /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "10px 0 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" } }, /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 28, color: T.accent, stroke: 3 })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2 } }, "COACH\xC9 CR\xC9\xC9"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, marginTop: 6, marginBottom: 20 } }, "Communique ce code d'acc\xE8s \xE0 ", result.name, " :"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `2px dashed ${T.accent}`, borderRadius: 14, padding: "18px", marginBottom: 20 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 32, color: T.accent, letterSpacing: 4 } }, result.accessCode)), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" } }, "TERMIN\xC9"))
+  ) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, marginBottom: 18 } }, "NOUVEAU COACH\xC9"), /* @__PURE__ */ React.createElement(Field, { label: "NOM" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => {
+    setName(e.target.value);
+    setError("");
+  }, placeholder: "Ex : Marie Dupont", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "OBJECTIF" }, /* @__PURE__ */ React.createElement("select", { value: goal, onChange: (e) => setGoal(e.target.value), style: inputStyle }, GOAL_OPTIONS.map((g) => /* @__PURE__ */ React.createElement("option", { key: g, value: g }, g)))), /* @__PURE__ */ React.createElement(Field, { label: "DATE DE D\xC9BUT" }, /* @__PURE__ */ React.createElement("input", { type: "date", value: startDate, onChange: (e) => setStartDate(e.target.value), style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "OFFRE" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, OFFER_OPTIONS.map((o) => /* @__PURE__ */ React.createElement("button", { key: o, onClick: () => setOffer(o), style: { flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", textTransform: "uppercase" } }, o)))), /* @__PURE__ */ React.createElement(Field, { label: "CODE D'ACC\xC8S (g\xE9n\xE9r\xE9 automatiquement)" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: code, onChange: (e) => {
+    setCode(e.target.value.toUpperCase());
+    setCodeEdited(true);
+    setError("");
+  }, style: __spreadProps(__spreadValues({}, inputStyle), { fontWeight: 700, letterSpacing: 1 }) }), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setCodeEdited(false);
+    setCode(generateAccessCode(name));
+  }, title: "R\xE9g\xE9n\xE9rer", style: { flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 10, cursor: "pointer", fontSize: 16 } }, "\u21BB"))), /* @__PURE__ */ React.createElement("div", { style: { minHeight: 20, textAlign: "center" } }, error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 8 } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleCreate,
+      disabled: loading || !name.trim() || !code.trim(),
+      style: { flex: 2, padding: "14px", background: loading || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: loading || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: loading || !name.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }
+    },
+    loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " CR\xC9ATION...") : "CR\xC9ER LE COACH\xC9"
+  )))));
+}
+function CoachListPage({ ctx }) {
+  const { coachees, openCoachee, setShowNewModal } = ctx;
+  const [filter, setFilter] = useState("actifs");
+  const filtered = coachees.filter((c) => filter === "actifs" ? c.is_active !== false : c.is_active === false);
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "MES COACH\xC9S"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, filtered.length, " ", filter === "actifs" ? "actif" : "inactif", filtered.length > 1 ? "s" : "")), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowNewModal(true), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ NOUVEAU")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 8 } }, ["actifs", "inactifs"].map((f) => /* @__PURE__ */ React.createElement("button", { key: f, onClick: () => setFilter(f), style: { padding: "6px 14px", background: filter === f ? T.accent : T.surface, color: filter === f ? "white" : T.textSub, border: `1px solid ${filter === f ? T.accent : T.border}`, borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", textTransform: "capitalize" } }, f))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, filter === "actifs" ? "Aucun coach\xE9 actif. Cr\xE9e ton premier coach\xE9 avec le bouton + Nouveau." : "Aucun coach\xE9 inactif.") : filtered.map((c, i) => /* @__PURE__ */ React.createElement("div", { key: c.id, onClick: () => openCoachee(c), className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 20, color: "white" } }, (c.name || "?")[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(OfferBadge, { offer: c.offer }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, fontWeight: 600 } }, c.access_code))), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 20, color: T.borderStrong })))));
+}
+function CoachLibraryPage({ ctx }) {
+  const { supabase, coachId, library, reloadLibrary } = ctx;
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [name, setName] = useState("");
+  const [muscle, setMuscle] = useState(MUSCLE_OPTIONS[0]);
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  function openEditor(ex) {
+    setEditing(ex || {});
+    setName((ex == null ? void 0 : ex.name) || "");
+    setMuscle((ex == null ? void 0 : ex.muscle) || MUSCLE_OPTIONS[0]);
+    setNotes((ex == null ? void 0 : ex.notes) || "");
+    setError("");
+  }
+  async function handleSave() {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      if (editing.id) {
+        const { error: error2 } = await supabase.from("exercises_library").update({ name: name.trim(), muscle, notes: notes.trim() || null }).eq("id", editing.id);
+        if (error2) throw error2;
+      } else {
+        const { error: error2 } = await supabase.from("exercises_library").insert({ coach_id: coachId, name: name.trim(), muscle, notes: notes.trim() || null });
+        if (error2) throw error2.code === "23505" ? new Error("Un exercice avec ce nom existe d\xE9j\xE0") : error2;
+      }
+      await reloadLibrary();
+      setEditing(null);
+    } catch (e) {
+      setError(e.message || "Erreur");
+      setSaving(false);
+    }
+  }
+  async function handleDelete(ex) {
+    if (!window.confirm(`Supprimer "${ex.name}" de la biblioth\xE8que ?`)) return;
+    await supabase.from("exercises_library").delete().eq("id", ex.id);
+    await reloadLibrary();
+  }
+  const filtered = library.filter((e) => e.name.toLowerCase().includes(search.toLowerCase()));
+  const grouped = {};
+  filtered.forEach((e) => {
+    (grouped[e.muscle] = grouped[e.muscle] || []).push(e);
+  });
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "BIBLIOTH\xC8QUE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, library.length, " exercices")), /* @__PURE__ */ React.createElement("button", { onClick: () => openEditor(null), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ AJOUTER")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: search, onChange: (e) => setSearch(e.target.value), placeholder: "Rechercher un exercice...", style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 14 } }, Object.keys(grouped).length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, "Aucun exercice trouv\xE9.") : Object.entries(grouped).map(([m, exs]) => {
+    const mStyle = muscleColors[m] || { bg: T.surface2, text: T.textSub };
+    return /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "3px 10px", borderRadius: 20, fontWeight: 800 } }, m)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, exs.map((ex) => /* @__PURE__ */ React.createElement("div", { key: ex.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.name), ex.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, ex.notes)), /* @__PURE__ */ React.createElement("button", { onClick: () => openEditor(ex), style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 } }, "Modifier"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleDelete(ex), style: { background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 } }, "\xD7")))));
+  })), editing && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setEditing(null), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 18 } }, editing.id ? "MODIFIER L'EXERCICE" : "NOUVEL EXERCICE"), /* @__PURE__ */ React.createElement(Field, { label: "NOM DE L'EXERCICE" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => {
+    setName(e.target.value);
+    setError("");
+  }, placeholder: "Ex : D\xE9velopp\xE9 couch\xE9", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "MUSCLE" }, /* @__PURE__ */ React.createElement("select", { value: muscle, onChange: (e) => setMuscle(e.target.value), style: inputStyle }, MUSCLE_OPTIONS.map((m) => /* @__PURE__ */ React.createElement("option", { key: m, value: m }, m)))), /* @__PURE__ */ React.createElement(Field, { label: "NOTES (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: notes, onChange: (e) => setNotes(e.target.value), placeholder: "Ex : CUFF, sangle de tirage...", style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { minHeight: 20, textAlign: "center" } }, error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 8 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setEditing(null), style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving || !name.trim(), style: { flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: saving || !name.trim() ? "default" : "pointer" } }, saving ? "..." : "ENREGISTRER")))));
+}
+function ProgramBuilder({ ctx, coachee, onClose }) {
+  const { supabase, library } = ctx;
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState([]);
+  const [week, setWeek] = useState(DAYS_ORDER.map((d) => ({ day: d, sessionId: null })));
+  const [programName, setProgramName] = useState("");
+  const [draftId, setDraftId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [picker, setPicker] = useState(null);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [editingSession, setEditingSession] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const prog = await loadActiveProgram(supabase, coachee.id);
+        if (prog) {
+          setSessions(prog.sessions_structure || []);
+          setWeek(prog.week_structure || DAYS_ORDER.map((d) => ({ day: d, sessionId: null })));
+          setProgramName(prog.name || "");
+        }
+      } catch (e) {
+      }
+      setLoading(false);
+    })();
+  }, [coachee.id, supabase]);
+  function addSession() {
+    const newId = sessions.length ? Math.max(...sessions.map((s) => s.id)) + 1 : 1;
+    setSessions([...sessions, { id: newId, name: `S\xC9ANCE ${newId}`, exercises: [], abdosCardio: [] }]);
+  }
+  function removeSession(sid) {
+    setSessions(sessions.filter((s) => s.id !== sid));
+    setWeek(week.map((w) => w.sessionId === sid ? __spreadProps(__spreadValues({}, w), { sessionId: null }) : w));
+  }
+  function updateSessionName(sid, name) {
+    setSessions(sessions.map((s) => s.id === sid ? __spreadProps(__spreadValues({}, s), { name }) : s));
+  }
+  function addExerciseToSession(sessionIdx, libEx) {
+    const next = [...sessions];
+    const ex = {
+      ordre: next[sessionIdx].exercises.length + 1,
+      library_exercise_id: libEx.id,
+      exercice: libEx.name,
+      muscle: libEx.muscle,
+      series: 3,
+      reps: ["8/10", "8/10", "8/10"],
+      repos: "2'00",
+      commentaire: libEx.notes || "",
+      technique: null
+    };
+    next[sessionIdx].exercises.push(ex);
+    setSessions(next);
+    setPicker(null);
+    setPickerSearch("");
+  }
+  function updateExercise(sessionIdx, exIdx, field, value) {
+    const next = [...sessions];
+    const ex = next[sessionIdx].exercises[exIdx];
+    if (field === "series") {
+      const n = Math.max(1, Math.min(10, parseInt(value) || 1));
+      ex.series = n;
+      const cur = ex.reps[0] || "8/10";
+      ex.reps = Array.from({ length: n }, (_, i) => ex.reps[i] || cur);
+    } else if (field === "repsUniform") {
+      ex.reps = ex.reps.map(() => value);
+    } else {
+      ex[field] = value;
+    }
+    setSessions(next);
+  }
+  function moveExercise(sessionIdx, exIdx, dir) {
+    const next = [...sessions];
+    const arr = next[sessionIdx].exercises;
+    const j = exIdx + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[exIdx], arr[j]] = [arr[j], arr[exIdx]];
+    arr.forEach((e, i) => e.ordre = i + 1);
+    setSessions(next);
+  }
+  function removeExercise(sessionIdx, exIdx) {
+    const next = [...sessions];
+    next[sessionIdx].exercises.splice(exIdx, 1);
+    next[sessionIdx].exercises.forEach((e, i) => e.ordre = i + 1);
+    setSessions(next);
+  }
+  function updateAbdos(sessionIdx, value) {
+    const next = [...sessions];
+    next[sessionIdx].abdosCardio = value.split("\n").filter((l) => l.trim());
+    setSessions(next);
+  }
+  async function doSaveDraft() {
+    setSaving(true);
+    setMsg("");
+    try {
+      const saved = await saveProgramDraft(supabase, coachee.id, week, sessions, programName || "Brouillon", draftId);
+      setDraftId(saved.id);
+      setMsg("Brouillon enregistr\xE9 \u2713");
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+    setSaving(false);
+  }
+  async function doActivate() {
+    if (!sessions.length) {
+      setMsg("Ajoute au moins une s\xE9ance");
+      return;
+    }
+    if (!window.confirm("Activer ce programme pour le coach\xE9 ? L'ancien programme actif sera archiv\xE9.")) return;
+    setSaving(true);
+    setMsg("");
+    try {
+      await activateProgram(supabase, coachee.id, week, sessions, programName || "Programme");
+      setMsg("Programme activ\xE9 \u2713");
+      setTimeout(onClose, 800);
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+    setSaving(false);
+  }
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  const activeSessionsForWeek = sessions;
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 120 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 18px 14px" } }, /* @__PURE__ */ React.createElement(Field, { label: "NOM DU PROGRAMME" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: programName, onChange: (e) => setProgramName(e.target.value), placeholder: "Ex : Prise de masse - Bloc 1", style: inputStyle }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "PLANNING HEBDOMADAIRE"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, week.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: w.day, style: { display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 70, fontSize: 11, fontWeight: 800, color: T.textSub } }, w.day), /* @__PURE__ */ React.createElement("select", { value: w.sessionId || "", onChange: (e) => {
+    const v = e.target.value ? parseInt(e.target.value) : null;
+    setWeek(week.map((x, j) => j === i ? __spreadProps(__spreadValues({}, x), { sessionId: v }) : x));
+  }, style: __spreadProps(__spreadValues({}, inputStyle), { padding: "8px 10px", flex: 1 }) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Repos \u2014"), activeSessionsForWeek.map((s) => /* @__PURE__ */ React.createElement("option", { key: s.id, value: s.id }, s.name))))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub } }, "S\xC9ANCES"), /* @__PURE__ */ React.createElement("button", { onClick: addSession, style: { background: T.accentLight, color: T.accent, border: `1px solid ${T.accent}40`, borderRadius: 10, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ S\xE9ance")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, sessions.map((s, sIdx) => /* @__PURE__ */ React.createElement("div", { key: s.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: s.name, onChange: (e) => updateSessionName(s.id, e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { fontWeight: 700, fontFamily: "'Bebas Neue'", letterSpacing: 1, fontSize: 18, padding: "8px 10px" }) }), /* @__PURE__ */ React.createElement("button", { onClick: () => removeSession(s.id), style: { flexShrink: 0, background: "transparent", border: "none", color: T.danger, fontSize: 20, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, s.exercises.map((ex, exIdx) => {
+    const mStyle = muscleColors[ex.muscle] || { bg: T.surface2, text: T.textSub };
+    return /* @__PURE__ */ React.createElement("div", { key: exIdx, style: { background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 2 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, -1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25B2"), /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, 1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.exercice), /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 8, padding: "1px 6px", borderRadius: 10, fontWeight: 700 } }, ex.muscle)), /* @__PURE__ */ React.createElement("button", { onClick: () => removeExercise(sIdx, exIdx), style: { background: "transparent", border: "none", color: T.danger, fontSize: 16, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "S\xC9RIES"), /* @__PURE__ */ React.createElement("input", { type: "number", min: "1", max: "10", value: ex.series, onChange: (e) => updateExercise(sIdx, exIdx, "series", e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPS (toutes s\xE9ries)"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.reps[0] || "", onChange: (e) => updateExercise(sIdx, exIdx, "repsUniform", e.target.value), placeholder: "8/10", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPOS"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.repos, onChange: (e) => updateExercise(sIdx, exIdx, "repos", e.target.value), placeholder: "2'00", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "TECHNIQUE"), /* @__PURE__ */ React.createElement("select", { value: ex.technique || "", onChange: (e) => updateExercise(sIdx, exIdx, "technique", e.target.value || null), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) }, TECHNIQUE_OPTIONS.map((t) => /* @__PURE__ */ React.createElement("option", { key: t.label, value: t.value || "" }, t.label))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 6 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "COMMENTAIRE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.commentaire, onChange: (e) => updateExercise(sIdx, exIdx, "commentaire", e.target.value), placeholder: "Optionnel", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })));
+  })), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    setPicker({ sessionIdx: sIdx });
+    setPickerSearch("");
+  }, style: { width: "100%", marginTop: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "10px", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "+ Ajouter un exercice depuis la biblioth\xE8que"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1 } }, "ABDOS / CARDIO (une ligne par item)"), /* @__PURE__ */ React.createElement("textarea", { value: (s.abdosCardio || []).join("\n"), onChange: (e) => updateAbdos(sIdx, e.target.value), placeholder: "3x1 min gainage\n3x \xE9chec relev\xE9 de jambes", rows: 2, style: __spreadProps(__spreadValues({}, inputStyle), { padding: "8px 10px", fontSize: 12, resize: "vertical", marginTop: 4 }) })))))), /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.95)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 } }, msg && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, marginBottom: 8 } }, msg), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: doSaveDraft, disabled: saving, style: { flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "Brouillon"), /* @__PURE__ */ React.createElement("button", { onClick: doActivate, disabled: saving, style: { flex: 2, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: "white" }), " ...") : "ACTIVER LE PROGRAMME"))), picker && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setPicker(null), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, color: T.text, letterSpacing: 2, marginBottom: 12 } }, "CHOISIR UN EXERCICE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: pickerSearch, onChange: (e) => setPickerSearch(e.target.value), placeholder: "Rechercher...", style: __spreadProps(__spreadValues({}, inputStyle), { marginBottom: 12 }), autoFocus: true }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, library.filter((e) => e.name.toLowerCase().includes(pickerSearch.toLowerCase())).map((libEx) => {
+    const mStyle = muscleColors[libEx.muscle] || { bg: T.surface2, text: T.textSub };
+    return /* @__PURE__ */ React.createElement("button", { key: libEx.id, onClick: () => addExerciseToSession(picker.sessionIdx, libEx), style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, libEx.name)), /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 } }, libEx.muscle));
+  }), library.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textMuted, fontSize: 12, padding: 20 } }, "Ta biblioth\xE8que est vide. Ajoute des exercices dans l'onglet Biblioth\xE8que.")))));
+}
+function CoachProgressView({ ctx, coachee }) {
+  const { supabase } = ctx;
+  const [loading, setLoading] = useState(true);
+  const [program, setProgram] = useState(null);
+  const [allCompletedSets, setAllCompletedSets] = useState({});
+  const [allSetLogs, setAllSetLogs] = useState({});
+  const [sheetExercise, setSheetExercise] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const prog = await loadActiveProgram(supabase, coachee.id);
+        setProgram(prog);
+        const { allCompletedSets: rcs, allSetLogs: rls } = await loadAllSetsFromSupabase(supabase, coachee.id);
+        setAllCompletedSets(rcs);
+        setAllSetLogs(rls);
+      } catch (e) {
+      }
+      setLoading(false);
+    })();
+  }, [coachee.id, supabase]);
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  if (!program) return /* @__PURE__ */ React.createElement("div", { style: { padding: 30, textAlign: "center", color: T.textMuted, fontSize: 13 } }, "Aucun programme actif pour ce coach\xE9.");
+  const sessions = program.sessions_structure || [];
+  const muscleMap = /* @__PURE__ */ new Map();
+  sessions.forEach((s) => s.exercises.forEach((ex) => {
+    if (!muscleMap.has(ex.muscle)) muscleMap.set(ex.muscle, []);
+    const list = muscleMap.get(ex.muscle);
+    if (!list.find((e) => e.name === ex.exercice)) list.push({ name: ex.exercice, muscle: ex.muscle });
+  }));
+  function getProgress(exName) {
+    const weeks = /* @__PURE__ */ new Set();
+    let best = 0;
+    Object.entries(allSetLogs).forEach(([k, log]) => {
+      if ((log == null ? void 0 : log.exerciseName) === exName && allCompletedSets[k] && log.weight) {
+        weeks.add(parseInt(k.split("-")[0]));
+        const w = parseFloat(log.weight);
+        if (!isNaN(w) && w > best) best = w;
+      }
+    });
+    return { weeksLogged: weeks.size, bestWeight: best };
+  }
+  const totalLogged = Object.values(allCompletedSets).filter(Boolean).length;
+  return /* @__PURE__ */ React.createElement("div", { className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "0 0 14px", display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent } }, totalLogged), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700 } }, "S\xC9RIES LOG")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent } }, muscleMap.size), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700 } }, "MUSCLES"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, Array.from(muscleMap.entries()).map(([muscle, exercises]) => {
+    const mStyle = muscleColors[muscle] || { bg: T.surface2, text: T.textSub };
+    return /* @__PURE__ */ React.createElement("div", { key: muscle, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "2px 9px", borderRadius: 20, fontWeight: 800 } }, muscle), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8, display: "flex", flexDirection: "column", gap: 4 } }, exercises.map((ex) => {
+      const prog = getProgress(ex.name);
+      return /* @__PURE__ */ React.createElement("div", { key: ex.name, onClick: () => setSheetExercise({ exercice: ex.name, muscle: ex.muscle }), style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 0", cursor: "pointer", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, fontSize: 12, color: T.text } }, ex.name), prog.bestWeight > 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, color: T.accent } }, prog.bestWeight, " ", /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9 } }, "KG")) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted } }, "\u2014"), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 14, color: T.borderStrong }));
+    })));
+  })), sheetExercise && /* @__PURE__ */ React.createElement(ExerciseSheet, { exercise: sheetExercise, allSetLogs, allCompletedSets, onClose: () => setSheetExercise(null) }));
+}
+function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
+  const { supabase } = ctx;
+  const [tab, setTab] = useState("infos");
+  const [busy, setBusy] = useState(false);
+  async function toggleActive() {
+    const newState = coachee.is_active === false;
+    if (!window.confirm(newState ? "R\xE9activer ce coach\xE9 ?" : "D\xE9sactiver ce coach\xE9 ? Son historique sera conserv\xE9.")) return;
+    setBusy(true);
+    await supabase.from("profiles").update({ is_active: newState }).eq("id", coachee.id);
+    await onChanged();
+    setBusy(false);
+    onBack();
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6 } }, [["infos", "Infos"], ["programme", "Programme"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flex: 1, padding: "9px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
+}
+function CoachTabBar({ activePage, onNavigate }) {
+  const tabs = [
+    { id: "coachees", label: "Coach\xE9s", icon: "profile" },
+    { id: "library", label: "Exercices", icon: "workout" }
+  ];
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
+    const isActive = activePage === tab.id;
+    return /* @__PURE__ */ React.createElement("button", { key: tab.id, onClick: () => onNavigate(tab.id), className: "tab-bar-btn", style: { background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? T.accent : T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: tab.icon, size: 22, color: isActive ? T.accent : T.textMuted, filled: isActive }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: isActive ? 800 : 600 } }, tab.label));
+  }));
+}
+function CoachApp({ session, supabase, coachProfile, onLogout }) {
+  const coachId = session.user.id;
+  const [page, setPage] = useState("coachees");
+  const [coachees, setCoachees] = useState([]);
+  const [library, setLibrary] = useState([]);
+  const [selectedCoachee, setSelectedCoachee] = useState(null);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const reloadCoachees = useCallback(async () => {
+    try {
+      setCoachees(await loadCoachees(supabase, coachId));
+    } catch (e) {
+    }
+  }, [supabase, coachId]);
+  const reloadLibrary = useCallback(async () => {
+    try {
+      setLibrary(await loadExerciseLibrary(supabase, coachId));
+    } catch (e) {
+    }
+  }, [supabase, coachId]);
+  useEffect(() => {
+    (async () => {
+      await Promise.all([reloadCoachees(), reloadLibrary()]);
+      setLoading(false);
+    })();
+  }, [reloadCoachees, reloadLibrary]);
+  const ctx = {
+    supabase,
+    coachId,
+    coachees,
+    library,
+    reloadCoachees,
+    reloadLibrary,
+    openCoachee: setSelectedCoachee,
+    setShowNewModal
+  };
+  if (loading) return /* @__PURE__ */ React.createElement(LoadingScreen, { text: "Chargement de l'espace coach..." });
+  return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", color: T.text, overflowX: "hidden" } }, /* @__PURE__ */ React.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        input,select,textarea{font-family:inherit}
+        ::-webkit-scrollbar{width:4px;height:4px}
+        ::-webkit-scrollbar-thumb{background:${T.borderStrong};border-radius:2px}
+        @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes sheetFadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes growUp{from{height:0;opacity:0}to{opacity:1}}
+        .fade-in{animation:fadeIn .3s ease forwards}
+        .pressable{transition:transform .12s cubic-bezier(0.34,1.56,0.64,1)}
+        .pressable:active{transform:scale(.96)}
+        .quick-card{transition:transform .15s}
+        .quick-card:active{transform:scale(.985)}
+        .sheet-backdrop{animation:sheetFadeIn .25s ease both}
+        .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
+      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 } }, "FORGE \xB7 COACH")), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, title: "D\xE9connexion", style: { background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "logout", size: 18, color: T.textMuted }))), selectedCoachee ? /* @__PURE__ */ React.createElement(CoacheeDetailPage, { ctx, coachee: selectedCoachee, onBack: () => {
+    setSelectedCoachee(null);
+    reloadCoachees();
+  }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
+}
 function ForgeCoachingApp() {
   const [bootState, setBootState] = useState("loading");
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const supabaseRef = useRef(null);
+  const resolveSession = useCallback(async (supabase, sess) => {
+    try {
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", sess.user.id).single();
+      setProfile(prof || null);
+    } catch (e) {
+      setProfile(null);
+    }
+    setSession(sess);
+    setBootState("ready");
+  }, []);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1252,18 +1840,17 @@ function ForgeCoachingApp() {
         const { data } = await supabase.auth.getSession();
         if (cancelled) return;
         if (data == null ? void 0 : data.session) {
-          setSession(data.session);
-          setBootState("ready");
+          await resolveSession(supabase, data.session);
         } else {
           setBootState("login");
         }
         supabase.auth.onAuthStateChange((_event, newSession) => {
           if (cancelled) return;
           if (newSession) {
-            setSession(newSession);
-            setBootState("ready");
+            resolveSession(supabase, newSession);
           } else {
             setSession(null);
+            setProfile(null);
             setBootState("login");
           }
         });
@@ -1274,26 +1861,26 @@ function ForgeCoachingApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resolveSession]);
   const handleAuthSuccess = useCallback(async () => {
     const supabase = supabaseRef.current;
     if (!supabase) return;
     const { data } = await supabase.auth.getSession();
-    if (data == null ? void 0 : data.session) {
-      setSession(data.session);
-      setBootState("ready");
-    }
-  }, []);
+    if (data == null ? void 0 : data.session) await resolveSession(supabase, data.session);
+  }, [resolveSession]);
   const handleLogout = useCallback(async () => {
     const supabase = supabaseRef.current;
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    if (supabase) await supabase.auth.signOut();
     setSession(null);
+    setProfile(null);
     setBootState("login");
   }, []);
   if (bootState === "loading") return /* @__PURE__ */ React.createElement(LoadingScreen, { text: "Initialisation..." });
-  if (bootState === "login") return /* @__PURE__ */ React.createElement(LoginScreen, { onAuthSuccess: handleAuthSuccess });
+  if (bootState === "login") return /* @__PURE__ */ React.createElement(LoginScreen, { onAuthSuccess: handleAuthSuccess, onCoachClick: () => setBootState("coachLogin") });
+  if (bootState === "coachLogin") return /* @__PURE__ */ React.createElement(CoachLoginScreen, { onBack: () => setBootState("login"), onAuthSuccess: handleAuthSuccess });
+  if (bootState === "ready" && (profile == null ? void 0 : profile.role) === "coach") {
+    return /* @__PURE__ */ React.createElement(CoachApp, { session, supabase: supabaseRef.current, coachProfile: profile, onLogout: handleLogout });
+  }
   return /* @__PURE__ */ React.createElement(
     AuthenticatedApp,
     {
@@ -1306,7 +1893,6 @@ function ForgeCoachingApp() {
 }
 
 
-// Point d'entrée React
 const _root = ReactDOM.createRoot(document.getElementById("root"));
 _root.render(React.createElement(ForgeCoachingApp));
   </script>
