@@ -7,11 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'><stop offset='0%25' stop-color='%23064E3B'/><stop offset='100%25' stop-color='%232DD4BF'/></linearGradient></defs><path d='M32 3 L58 12 L58 37 C58 51 32 62 32 62 C32 62 6 51 6 37 L6 12 Z' fill='url(%23g)'/></svg>"/>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #F5F1EB; }
-    #root { min-height: 100vh; }
-  </style>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #F5F1EB; } #root { min-height: 100vh; }</style>
 </head>
 <body>
   <div id="root"></div>
@@ -1644,15 +1640,43 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     const next = [...sessions];
     const ex = next[sessionIdx].exercises[exIdx];
     if (field === "series") {
+      if (value === "") {
+        ex.series = "";
+        setSessions(next);
+        return;
+      }
       const n = Math.max(1, Math.min(10, parseInt(value) || 1));
       ex.series = n;
-      const cur = ex.reps[0] || "8/10";
-      ex.reps = Array.from({ length: n }, (_, i) => ex.reps[i] || cur);
-    } else if (field === "repsUniform") {
-      ex.reps = ex.reps.map(() => value);
+      if (n > ex.reps.length) {
+        const last = ex.reps[ex.reps.length - 1] || "8/10";
+        while (ex.reps.length < n) ex.reps.push(last);
+      } else if (n < ex.reps.length) {
+        ex.reps = ex.reps.slice(0, n);
+      }
     } else {
       ex[field] = value;
     }
+    setSessions(next);
+  }
+  function finalizeSeries(sessionIdx, exIdx) {
+    const next = [...sessions];
+    const ex = next[sessionIdx].exercises[exIdx];
+    if (ex.series === "" || isNaN(parseInt(ex.series))) {
+      ex.series = 1;
+    }
+    const n = Math.max(1, Math.min(10, parseInt(ex.series)));
+    ex.series = n;
+    if (n > ex.reps.length) {
+      const last = ex.reps[ex.reps.length - 1] || "8/10";
+      while (ex.reps.length < n) ex.reps.push(last);
+    } else if (n < ex.reps.length) {
+      ex.reps = ex.reps.slice(0, n);
+    }
+    setSessions(next);
+  }
+  function updateRep(sessionIdx, exIdx, repIdx, value) {
+    const next = [...sessions];
+    next[sessionIdx].exercises[exIdx].reps[repIdx] = value;
     setSessions(next);
   }
   function moveExercise(sessionIdx, exIdx, dir) {
@@ -1675,11 +1699,27 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     next[sessionIdx].abdosCardio = value.split("\n").filter((l) => l.trim());
     setSessions(next);
   }
+  function sanitizeSessions(srcSessions) {
+    return srcSessions.map((s) => __spreadProps(__spreadValues({}, s), {
+      exercises: (s.exercises || []).map((ex) => {
+        let n = parseInt(ex.series);
+        if (isNaN(n) || n < 1) n = 1;
+        if (n > 10) n = 10;
+        let reps = Array.isArray(ex.reps) ? [...ex.reps] : [];
+        const last = reps[reps.length - 1] || "8/10";
+        while (reps.length < n) reps.push(last);
+        if (reps.length > n) reps = reps.slice(0, n);
+        return __spreadProps(__spreadValues({}, ex), { series: n, reps });
+      })
+    }));
+  }
   async function doSaveDraft() {
     setSaving(true);
     setMsg("");
     try {
-      const saved = await saveProgramDraft(supabase, coachee.id, week, sessions, programName || "Brouillon", draftId);
+      const clean = sanitizeSessions(sessions);
+      setSessions(clean);
+      const saved = await saveProgramDraft(supabase, coachee.id, week, clean, programName || "Brouillon", draftId);
       setDraftId(saved.id);
       setMsg("Brouillon enregistr\xE9 \u2713");
     } catch (e) {
@@ -1696,7 +1736,9 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     setSaving(true);
     setMsg("");
     try {
-      await activateProgram(supabase, coachee.id, week, sessions, programName || "Programme");
+      const clean = sanitizeSessions(sessions);
+      setSessions(clean);
+      await activateProgram(supabase, coachee.id, week, clean, programName || "Programme");
       setMsg("Programme activ\xE9 \u2713");
       setTimeout(onClose, 800);
     } catch (e) {
@@ -1714,7 +1756,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     setWeek(week.map((x, j) => j === i ? __spreadProps(__spreadValues({}, x), { sessionId: v }) : x));
   }, style: __spreadProps(__spreadValues({}, inputStyle), { padding: "8px 10px", flex: 1 }) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014 Repos \u2014"), activeSessionsForWeek.map((s) => /* @__PURE__ */ React.createElement("option", { key: s.id, value: s.id }, s.name))))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub } }, "S\xC9ANCES"), /* @__PURE__ */ React.createElement("button", { onClick: addSession, style: { background: T.accentLight, color: T.accent, border: `1px solid ${T.accent}40`, borderRadius: 10, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ S\xE9ance")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, sessions.map((s, sIdx) => /* @__PURE__ */ React.createElement("div", { key: s.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: s.name, onChange: (e) => updateSessionName(s.id, e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { fontWeight: 700, fontFamily: "'Bebas Neue'", letterSpacing: 1, fontSize: 18, padding: "8px 10px" }) }), /* @__PURE__ */ React.createElement("button", { onClick: () => removeSession(s.id), style: { flexShrink: 0, background: "transparent", border: "none", color: T.danger, fontSize: 20, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, s.exercises.map((ex, exIdx) => {
     const mStyle = muscleColors[ex.muscle] || { bg: T.surface2, text: T.textSub };
-    return /* @__PURE__ */ React.createElement("div", { key: exIdx, style: { background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 2 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, -1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25B2"), /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, 1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.exercice), /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 8, padding: "1px 6px", borderRadius: 10, fontWeight: 700 } }, ex.muscle)), /* @__PURE__ */ React.createElement("button", { onClick: () => removeExercise(sIdx, exIdx), style: { background: "transparent", border: "none", color: T.danger, fontSize: 16, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "S\xC9RIES"), /* @__PURE__ */ React.createElement("input", { type: "number", min: "1", max: "10", value: ex.series, onChange: (e) => updateExercise(sIdx, exIdx, "series", e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPS (toutes s\xE9ries)"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.reps[0] || "", onChange: (e) => updateExercise(sIdx, exIdx, "repsUniform", e.target.value), placeholder: "8/10", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPOS"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.repos, onChange: (e) => updateExercise(sIdx, exIdx, "repos", e.target.value), placeholder: "2'00", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "TECHNIQUE"), /* @__PURE__ */ React.createElement("select", { value: ex.technique || "", onChange: (e) => updateExercise(sIdx, exIdx, "technique", e.target.value || null), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) }, TECHNIQUE_OPTIONS.map((t) => /* @__PURE__ */ React.createElement("option", { key: t.label, value: t.value || "" }, t.label))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 6 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "COMMENTAIRE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.commentaire, onChange: (e) => updateExercise(sIdx, exIdx, "commentaire", e.target.value), placeholder: "Optionnel", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })));
+    return /* @__PURE__ */ React.createElement("div", { key: exIdx, style: { background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 2 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, -1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25B2"), /* @__PURE__ */ React.createElement("button", { onClick: () => moveExercise(sIdx, exIdx, 1), style: { background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 } }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.exercice), /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 8, padding: "1px 6px", borderRadius: 10, fontWeight: 700 } }, ex.muscle)), /* @__PURE__ */ React.createElement("button", { onClick: () => removeExercise(sIdx, exIdx), style: { background: "transparent", border: "none", color: T.danger, fontSize: 16, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "0.8fr 1fr 1.2fr", gap: 6 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "S\xC9RIES"), /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "numeric", min: "1", max: "10", value: ex.series, onChange: (e) => updateExercise(sIdx, exIdx, "series", e.target.value), onBlur: () => finalizeSeries(sIdx, exIdx), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPOS"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.repos, onChange: (e) => updateExercise(sIdx, exIdx, "repos", e.target.value), placeholder: "2'00", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "TECHNIQUE"), /* @__PURE__ */ React.createElement("select", { value: ex.technique || "", onChange: (e) => updateExercise(sIdx, exIdx, "technique", e.target.value || null), style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) }, TECHNIQUE_OPTIONS.map((t) => /* @__PURE__ */ React.createElement("option", { key: t.label, value: t.value || "" }, t.label))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 6 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "REPS"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 } }, (typeof ex.series === "number" ? ex.reps.slice(0, ex.series) : ex.reps).map((rep, repIdx) => /* @__PURE__ */ React.createElement("div", { key: repIdx, style: { display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 56px", minWidth: 56 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 8, color: T.accent, fontWeight: 800, marginBottom: 2 } }, "S", repIdx + 1), /* @__PURE__ */ React.createElement("input", { type: "text", value: rep, onChange: (e) => updateRep(sIdx, exIdx, repIdx, e.target.value), placeholder: "8/10", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 4px", fontSize: 13, textAlign: "center", width: "100%" }) }))))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 6 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "COMMENTAIRE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: ex.commentaire, onChange: (e) => updateExercise(sIdx, exIdx, "commentaire", e.target.value), placeholder: "Optionnel", style: __spreadProps(__spreadValues({}, inputStyle), { padding: "6px 8px", fontSize: 13 }) })));
   })), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     setPicker({ sessionIdx: sIdx });
     setPickerSearch("");
@@ -1939,7 +1981,6 @@ function ForgeCoachingApp() {
     }
   );
 }
-
 
 const _root = ReactDOM.createRoot(document.getElementById("root"));
 _root.render(React.createElement(ForgeCoachingApp));
