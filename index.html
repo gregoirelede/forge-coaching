@@ -333,6 +333,18 @@ var __spreadValues = (a, b) => {
   return a;
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const SUPABASE_CONFIG = {
   url: "https://xlquzhwmdyyiugtezasg.supabase.co",
@@ -971,10 +983,11 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
     return /* @__PURE__ */ React.createElement("div", { key: w, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", position: "relative" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.text, fontWeight: 700, marginBottom: 3 } }, v), /* @__PURE__ */ React.createElement("div", { style: { width: "70%", height: `${h}%`, minHeight: 4, background: `linear-gradient(180deg, #2DD4BF, #064E3B)`, borderRadius: "4px 4px 0 0", animation: `growUp .6s ease ${i * 0.06}s both`, transformOrigin: "bottom" } }), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", bottom: -14, fontSize: 8, color: T.textMuted, fontWeight: 700 } }, "S", w));
   }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 1, marginBottom: 8 } }, "HISTORIQUE D\xC9TAILL\xC9"), history.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12 } }, "Aucune s\xE9rie logu\xE9e pour cet exercice.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5 } }, history.slice(0, 30).map((h, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px", display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.accentLight, color: T.accent, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 6, letterSpacing: 0.5 } }, "S", h.week), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textSub, flex: 1 } }, "S\xE9rie ", h.si + 1), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1 } }, h.weight, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, marginLeft: 2 } }, "KG"), /* @__PURE__ */ React.createElement("span", { style: { color: T.textMuted, margin: "0 4px" } }, "\xD7"), h.reps, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, marginLeft: 2 } }, "R")))))));
 }
-function BottomTabBar({ activePage, onNavigate }) {
+function BottomTabBar({ activePage, onNavigate, showNutrition }) {
   const tabs = [
     { id: "home", label: "Accueil", icon: "home" },
     { id: "workout", label: "S\xE9ances", icon: "workout" },
+    ...showNutrition ? [{ id: "nutrition", label: "Nutrition", icon: "clock" }] : [],
     { id: "progress", label: "Progr\xE8s", icon: "progress" },
     { id: "profile", label: "Profil", icon: "profile" }
   ];
@@ -1031,7 +1044,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
             name: profile.name,
             id: profile.access_code || userId,
             startDate: profile.start_date || "",
-            goal: profile.goal || ""
+            goal: profile.goal || "",
+            offer: profile.offer || "essentiel"
           },
           week: program.week_structure,
           sessions: program.sessions_structure,
@@ -1166,6 +1180,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const todaySession = todayWeekEntry ? appData.sessions.find((s) => s.id === todayWeekEntry.sessionId) : null;
   const ctx = {
     appData,
+    supabase,
+    userId,
     todaySession,
     todayDay,
     activeSessions,
@@ -1225,7 +1241,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         .page-backward{animation:pageInBackward .35s cubic-bezier(0.32,0.72,0.34,1) both}
         .sheet-backdrop{animation:sheetFadeIn .25s ease both}
         .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
-      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
+      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx }), page === "nutrition" && /* @__PURE__ */ React.createElement(NutritionPage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
     ExerciseSheet,
     {
       exercise: sheetExercise,
@@ -1233,7 +1249,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
       allCompletedSets,
       onClose: () => setSheetExercise(null)
     }
-  ), /* @__PURE__ */ React.createElement(FloatingBanner, { timers }), /* @__PURE__ */ React.createElement(BottomTabBar, { activePage: page, onNavigate: navigate }));
+  ), /* @__PURE__ */ React.createElement(FloatingBanner, { timers }), /* @__PURE__ */ React.createElement(BottomTabBar, { activePage: page, onNavigate: navigate, showNutrition: !isDemo && appData.client.offer === "premium" }));
 }
 const MUSCLE_OPTIONS = [
   "Triceps",
@@ -1828,12 +1844,13 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
     setBusy(false);
     onBack();
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6 } }, [["infos", "Infos"], ["programme", "Programme"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flex: 1, padding: "9px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6 } }, [["infos", "Infos"], ["programme", "Programme"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flex: 1, padding: "9px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
 }
 function CoachTabBar({ activePage, onNavigate }) {
   const tabs = [
     { id: "coachees", label: "Coach\xE9s", icon: "profile" },
-    { id: "library", label: "Exercices", icon: "workout" }
+    { id: "library", label: "Exercices", icon: "workout" },
+    { id: "recipes", label: "Recettes", icon: "clock" }
   ];
   return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
     const isActive = activePage === tab.id;
@@ -1900,7 +1917,661 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
       `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 } }, "FORGE \xB7 COACH")), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, title: "D\xE9connexion", style: { background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "logout", size: 18, color: T.textMuted }))), selectedCoachee ? /* @__PURE__ */ React.createElement(CoacheeDetailPage, { ctx, coachee: selectedCoachee, onBack: () => {
     setSelectedCoachee(null);
     reloadCoachees();
-  }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
+  }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), page === "recipes" && /* @__PURE__ */ React.createElement(CoachRecipesPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
+}
+const ACTIVITY_FACTORS = [
+  { value: 1.2, label: "S\xE9dentaire (bureau, peu de pas)" },
+  { value: 1.35, label: "L\xE9g\xE8rement actif" },
+  { value: 1.5, label: "Actif (debout / beaucoup de marche)" },
+  { value: 1.65, label: "Tr\xE8s actif (m\xE9tier physique)" }
+];
+const MEAL_TYPES = [
+  { id: "petit_dejeuner", label: "Petit-d\xE9jeuner" },
+  { id: "dejeuner", label: "D\xE9jeuner" },
+  { id: "collation", label: "Collation" },
+  { id: "diner", label: "D\xEEner" }
+];
+const mealLabel = (id) => (MEAL_TYPES.find((m) => m.id === id) || {}).label || id;
+const MEAL_SPLITS = {
+  3: [["petit_dejeuner", 0.3], ["dejeuner", 0.4], ["diner", 0.3]],
+  4: [["petit_dejeuner", 0.25], ["dejeuner", 0.35], ["collation", 0.1], ["diner", 0.3]]
+};
+const KCAL_FLOOR = { homme: 1500, femme: 1200 };
+const NUTRITION_DISCLAIMER = "Les recommandations nutritionnelles fournies sont des suggestions \xE0 vis\xE9e \xE9ducative dans le cadre d'un accompagnement sportif. Elles ne constituent pas une prescription ni un avis m\xE9dical, et ne remplacent pas la consultation d'un m\xE9decin ou d'un di\xE9t\xE9ticien, en particulier en cas de pathologie, de traitement, de grossesse ou d'ant\xE9c\xE9dent de trouble du comportement alimentaire.";
+function calcAge(birthDate) {
+  if (!birthDate) return null;
+  const b = new Date(birthDate), now = /* @__PURE__ */ new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  if (now.getMonth() < b.getMonth() || now.getMonth() === b.getMonth() && now.getDate() < b.getDate()) age--;
+  return age;
+}
+function calcBMR(sex, weightKg, heightCm, age) {
+  if (!sex || !weightKg || !heightCm || age == null) return null;
+  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  return Math.round(sex === "homme" ? base + 5 : base - 161);
+}
+function estimateSessionCalories(session, weightKg, intensityMult) {
+  if (!session || !weightKg) return 0;
+  let totalSec = 300;
+  (session.exercises || []).forEach((ex) => {
+    const reposSec = parseRepos(ex.repos || "2'00");
+    const n = parseInt(ex.series) || 0;
+    totalSec += n * (35 + reposSec);
+  });
+  const hours = totalSec / 3600;
+  const met = 6 * (intensityMult || 1);
+  return Math.round(met * weightKg * hours);
+}
+function computeNutritionTargets({ clientProfile, nutriProfile, lastWeight, sessions, week }) {
+  if (!clientProfile || !nutriProfile || !lastWeight) return { ready: false, missing: "Pes\xE9e ou profil manquant" };
+  const { sex, birth_date, height_cm } = clientProfile;
+  const age = calcAge(birth_date);
+  if (!sex || !height_cm || age == null) return { ready: false, missing: "Sexe, taille ou date de naissance manquants" };
+  const bmr = calcBMR(sex, lastWeight, height_cm, age);
+  const daily = bmr * (parseFloat(nutriProfile.activity_factor) || 1.2);
+  const intensity = nutriProfile.session_intensity || {};
+  let weekKcal = 0;
+  const perSession = [];
+  (week || []).forEach((w) => {
+    if (w.sessionId == null) return;
+    const s = (sessions || []).find((x) => x.id === w.sessionId);
+    if (!s) return;
+    const mult = parseFloat(intensity[String(s.id)]) || 1;
+    const kcal = estimateSessionCalories(s, lastWeight, mult);
+    weekKcal += kcal;
+    perSession.push({ id: s.id, name: s.name, day: w.day, kcal, mult });
+  });
+  const sportDaily = Math.round(weekKcal / 7);
+  const tdee = Math.round(daily + sportDaily);
+  let pct = parseInt(nutriProfile.goal_adjustment_pct) || 0;
+  if (pct < -25) pct = -25;
+  if (pct > 25) pct = 25;
+  let target = Math.round(tdee * (1 + pct / 100));
+  const floor = Math.max(bmr, KCAL_FLOOR[sex] || 1200);
+  let floored = false;
+  if (target < floor) {
+    target = floor;
+    floored = true;
+  }
+  let pPerKg = parseFloat(nutriProfile.protein_g_per_kg) || 2;
+  if (pPerKg > 2.4) pPerKg = 2.4;
+  const fPerKg = parseFloat(nutriProfile.fat_g_per_kg) || 0.9;
+  const protein = Math.round(pPerKg * lastWeight);
+  const fat = Math.round(fPerKg * lastWeight);
+  let carbs = Math.round((target - protein * 4 - fat * 9) / 4);
+  if (carbs < 0) carbs = 0;
+  return { ready: true, age, bmr, dailyActivity: Math.round(daily), sportDaily, perSession, tdee, pct, target, floored, floor, protein, fat, carbs };
+}
+async function loadNutritionProfile(supabase, coacheeId) {
+  const { data } = await supabase.from("nutrition_profiles").select("*").eq("coachee_id", coacheeId).maybeSingle();
+  return data;
+}
+async function upsertNutritionProfile(supabase, coacheeId, fields) {
+  const { data, error } = await supabase.from("nutrition_profiles").upsert(__spreadProps(__spreadValues({ coachee_id: coacheeId }, fields), { updated_at: (/* @__PURE__ */ new Date()).toISOString() }), { onConflict: "coachee_id" }).select().single();
+  if (error) throw error;
+  return data;
+}
+async function loadWeightLogs(supabase, coacheeId) {
+  const { data } = await supabase.from("weight_logs").select("*").eq("coachee_id", coacheeId).order("logged_date", { ascending: true });
+  return data || [];
+}
+async function addWeightLog(supabase, coacheeId, weightKg, dateStr) {
+  const { error } = await supabase.from("weight_logs").upsert({ coachee_id: coacheeId, weight_kg: weightKg, logged_date: dateStr }, { onConflict: "coachee_id,logged_date" });
+  if (error) throw error;
+}
+async function loadRecipes(supabase, coachId) {
+  const q = supabase.from("recipes_library").select("*").order("name");
+  const { data } = coachId ? await q.eq("coach_id", coachId) : await q;
+  return data || [];
+}
+async function loadMealPlan(supabase, coacheeId, weekId) {
+  const { data } = await supabase.from("meal_plans").select("*").eq("coachee_id", coacheeId).eq("week_id", weekId);
+  return data || [];
+}
+function weightTrend(logs) {
+  if (!logs || logs.length < 2) return null;
+  const last = logs.slice(-3);
+  const delta = parseFloat(last[last.length - 1].weight_kg) - parseFloat(last[0].weight_kg);
+  return { delta: Math.round(delta * 10) / 10, points: last.length };
+}
+function trendAlert(trend, goalPct) {
+  if (!trend || trend.points < 3) return null;
+  if (goalPct < -3 && trend.delta >= 0) return "Tendance contraire \xE0 la s\xE8che : le poids ne baisse pas. Envisage d'ajuster le d\xE9ficit.";
+  if (goalPct > 3 && trend.delta <= 0) return "Stagnation en prise de masse : le poids ne monte pas. Envisage d'augmenter le surplus.";
+  return null;
+}
+function buildWeekPlanRows({ coacheeId, weekId, targets, nutriProfile, recipes }) {
+  const split = MEAL_SPLITS[parseInt(nutriProfile.meals_per_day) === 3 ? 3 : 4];
+  const allergies = (nutriProfile.allergies || []).map((a) => a.toLowerCase());
+  const disliked = (nutriProfile.disliked_foods || []).map((a) => a.toLowerCase());
+  const prefs = (nutriProfile.dietary_preferences || []).map((a) => a.toLowerCase());
+  function recipeOk(r) {
+    const ingNames = (r.ingredients || []).map((i) => (i.name || "").toLowerCase()).join(" ");
+    if (allergies.some((a) => a && ingNames.includes(a))) return false;
+    if (disliked.some((d) => d && ingNames.includes(d))) return false;
+    return true;
+  }
+  function matchPrefs(r) {
+    if (!prefs.length) return true;
+    const tags = (r.tags || []).map((t) => t.toLowerCase());
+    return prefs.every((p) => tags.includes(p));
+  }
+  const usage = {};
+  const rows = [];
+  for (let day = 0; day < 7; day++) {
+    for (const [mealType, share] of split) {
+      let pool = recipes.filter((r) => r.meal_type === mealType && recipeOk(r));
+      const preferred = pool.filter(matchPrefs);
+      if (preferred.length) pool = preferred;
+      if (!pool.length) continue;
+      pool.sort((a, b) => (usage[a.id] || 0) - (usage[b.id] || 0) || Math.random() - 0.5);
+      const recipe = pool[0];
+      usage[recipe.id] = (usage[recipe.id] || 0) + 1;
+      const mealKcal = targets.target * share;
+      let servings = recipe.total_kcal > 0 ? mealKcal / recipe.total_kcal : 1;
+      servings = Math.round(servings * 4) / 4;
+      if (servings < 0.5) servings = 0.5;
+      if (servings > 3) servings = 3;
+      rows.push({ coachee_id: coacheeId, week_id: weekId, day_index: day, meal_type: mealType, recipe_id: recipe.id, servings });
+    }
+  }
+  return rows;
+}
+async function saveWeekPlan(supabase, coacheeId, weekId, rows) {
+  await supabase.from("meal_plans").delete().eq("coachee_id", coacheeId).eq("week_id", weekId);
+  if (rows.length) {
+    const { error } = await supabase.from("meal_plans").insert(rows);
+    if (error) throw error;
+  }
+}
+async function getOrCreateCurrentWeek(supabase, coacheeId, programId) {
+  const { data: existing } = await supabase.from("weeks").select("id, week_number").eq("coachee_id", coacheeId).order("week_number", { ascending: false }).limit(1).maybeSingle();
+  if (existing) return existing;
+  const { data: created, error } = await supabase.from("weeks").insert({ coachee_id: coacheeId, program_id: programId, week_number: 1 }).select("id, week_number").single();
+  if (error) throw error;
+  return created;
+}
+function MacroRing({ label, value, unit, color, size = 84 }) {
+  const R = size / 2 - 7, circ = 2 * Math.PI * R;
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "relative", width: size, height: size } }, /* @__PURE__ */ React.createElement("svg", { width: size, height: size, style: { transform: "rotate(-90deg)" } }, /* @__PURE__ */ React.createElement("circle", { cx: size / 2, cy: size / 2, r: R, fill: "none", stroke: T.surface2, strokeWidth: "7" }), /* @__PURE__ */ React.createElement(
+    "circle",
+    {
+      cx: size / 2,
+      cy: size / 2,
+      r: R,
+      fill: "none",
+      stroke: color,
+      strokeWidth: "7",
+      strokeLinecap: "round",
+      strokeDasharray: circ,
+      strokeDashoffset: circ * 0.25,
+      style: { transition: "stroke-dashoffset .6s ease" }
+    }
+  )), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: size * 0.26, color: T.text, lineHeight: 1 } }, value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, fontWeight: 700 } }, unit))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textSub, fontWeight: 800, letterSpacing: 1 } }, label));
+}
+function WeightChart({ logs }) {
+  if (!logs || logs.length < 2) return /* @__PURE__ */ React.createElement("div", { style: { padding: 20, textAlign: "center", color: T.textMuted, fontSize: 12 } }, logs && logs.length === 1 ? "Une seule pes\xE9e enregistr\xE9e \u2014 la courbe appara\xEEtra d\xE8s la prochaine." : "Aucune pes\xE9e enregistr\xE9e pour le moment.");
+  const data = logs.slice(-12);
+  const W = 300, H = 110, PAD = 22;
+  const vals = data.map((l) => parseFloat(l.weight_kg));
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = Math.max(max - min, 1);
+  const pts = data.map((l, i) => {
+    const x = PAD + i / (data.length - 1) * (W - PAD * 2);
+    const y = H - PAD - (parseFloat(l.weight_kg) - min) / range * (H - PAD * 2);
+    return { x, y, v: parseFloat(l.weight_kg) };
+  });
+  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: `0 0 ${W} ${H}`, style: { width: "100%", height: "auto" } }, /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: T.accent, strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" }), pts.map((p, i) => /* @__PURE__ */ React.createElement("g", { key: i }, /* @__PURE__ */ React.createElement("circle", { cx: p.x, cy: p.y, r: "3.5", fill: T.accent }), /* @__PURE__ */ React.createElement("text", { x: p.x, y: p.y - 8, textAnchor: "middle", fontSize: "8", fill: T.textSub, fontWeight: "700" }, p.v))));
+}
+function MealVisual({ mealType, imageUrl, size = 44 }) {
+  if (imageUrl) return /* @__PURE__ */ React.createElement("img", { src: imageUrl, alt: "", style: { width: size, height: size, borderRadius: 12, objectFit: "cover", flexShrink: 0 } });
+  const map = {
+    petit_dejeuner: { bg: "#FEF3DC", icon: "clock", color: "#A06000" },
+    dejeuner: { bg: "#E0F5EC", icon: "home", color: "#1A6640" },
+    collation: { bg: "#EDE8FF", icon: "info", color: "#5B35B0" },
+    diner: { bg: "#DDEEFF", icon: "calendar", color: "#1A4A80" }
+  };
+  const v = map[mealType] || map.dejeuner;
+  return /* @__PURE__ */ React.createElement("div", { style: { width: size, height: size, borderRadius: 12, background: v.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: v.icon, size: size * 0.45, color: v.color }));
+}
+function RecipeSheet({ recipe, servings = 1, onClose }) {
+  if (!recipe) return null;
+  const mult = parseFloat(servings) || 1;
+  const fmtQty = (q) => {
+    const v = (parseFloat(q) || 0) * mult;
+    return Math.round(v * 10) / 10;
+  };
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "88vh", overflowY: "auto", padding: "10px 18px calc(26px + env(safe-area-inset-bottom))" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 } }, /* @__PURE__ */ React.createElement(MealVisual, { mealType: recipe.meal_type, imageUrl: recipe.image_url, size: 52 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 1.5, lineHeight: 1.1 } }, recipe.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 4 } }, mealLabel(recipe.meal_type), mult !== 1 ? ` \xB7 ${mult} portion${mult > 1 ? "s" : ""}` : "")), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 16 } }, [["KCAL", Math.round(recipe.total_kcal * mult), T.accent], ["PROT", Math.round(recipe.protein_g * mult) + "g", "#1A6640"], ["GLUC", Math.round(recipe.carbs_g * mult) + "g", "#A06000"], ["LIP", Math.round(recipe.fat_g * mult) + "g", "#1A4A80"]].map(([l, v, c]) => /* @__PURE__ */ React.createElement("div", { key: l, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 4px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: c } }, v), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 7, color: T.textMuted, fontWeight: 800, letterSpacing: 1 } }, l)))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 } }, "INGR\xC9DIENTS"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "4px 14px", marginBottom: 16 } }, (recipe.ingredients || []).map((ing, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { color: T.text } }, ing.name), /* @__PURE__ */ React.createElement("span", { style: { color: T.textSub, fontWeight: 700 } }, fmtQty(ing.qty), " ", ing.unit || "")))), (recipe.steps || []).length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 } }, "PR\xC9PARATION"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, recipe.steps.map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 22, height: 22, borderRadius: 7, background: T.accentLight, color: T.accent, fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, i + 1), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.text, lineHeight: 1.5 } }, s)))))));
+}
+function CoachRecipesPage({ ctx }) {
+  const { supabase, coachId } = ctx;
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [viewing, setViewing] = useState(null);
+  const reload = useCallback(async () => {
+    setRecipes(await loadRecipes(supabase, coachId));
+    setLoading(false);
+  }, [supabase, coachId]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
+  async function handleDelete(r) {
+    if (!window.confirm(`Supprimer la recette "${r.name}" ?`)) return;
+    await supabase.from("recipes_library").delete().eq("id", r.id);
+    reload();
+  }
+  const filtered = recipes.filter(
+    (r) => r.name.toLowerCase().includes(search.toLowerCase()) && (!typeFilter || r.meal_type === typeFilter)
+  );
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "RECETTES"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, recipes.length, " recettes")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setAiOpen(true), className: "pressable", style: { background: T.surface, color: T.accent, border: `1.5px solid ${T.accent}50`, borderRadius: 12, padding: "10px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" } }, "IA"), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditing({}), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, cursor: "pointer", boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ AJOUTER"))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 10px" } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: search, onChange: (e) => setSearch(e.target.value), placeholder: "Rechercher une recette...", style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setTypeFilter(""), style: { padding: "6px 12px", background: !typeFilter ? T.accent : T.surface, color: !typeFilter ? "white" : T.textSub, border: `1px solid ${!typeFilter ? T.accent : T.border}`, borderRadius: 16, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 } }, "Tous"), MEAL_TYPES.map((m) => /* @__PURE__ */ React.createElement("button", { key: m.id, onClick: () => setTypeFilter(typeFilter === m.id ? "" : m.id), style: { padding: "6px 12px", background: typeFilter === m.id ? T.accent : T.surface, color: typeFilter === m.id ? "white" : T.textSub, border: `1px solid ${typeFilter === m.id ? T.accent : T.border}`, borderRadius: 16, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 } }, m.label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 } }, 'Aucune recette. Ajoute-en manuellement avec "+ Ajouter" ou g\xE9n\xE8re-en avec le bouton "IA".') : filtered.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: r.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, animation: `fadeUp .3s ease ${i * 0.03}s both` } }, /* @__PURE__ */ React.createElement(MealVisual, { mealType: r.meal_type, imageUrl: r.image_url }), /* @__PURE__ */ React.createElement("div", { onClick: () => setViewing(r), style: { flex: 1, minWidth: 0, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3 } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 3 } }, mealLabel(r.meal_type), " \xB7 ", r.total_kcal, " kcal \xB7 P", r.protein_g, " G", r.carbs_g, " L", r.fat_g)), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditing(r), style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: T.textSub, cursor: "pointer", fontWeight: 700 } }, "Modifier"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleDelete(r), style: { background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 } }, "\xD7"))))), viewing && /* @__PURE__ */ React.createElement(RecipeSheet, { recipe: viewing, servings: 1, onClose: () => setViewing(null) }), editing && /* @__PURE__ */ React.createElement(RecipeEditorModal, { supabase, coachId, recipe: editing.id ? editing : null, onClose: () => setEditing(null), onSaved: () => {
+    setEditing(null);
+    reload();
+  } }), aiOpen && /* @__PURE__ */ React.createElement(AiRecipesModal, { supabase, coachId, onClose: () => setAiOpen(false), onAdded: () => {
+    setAiOpen(false);
+    reload();
+  } }));
+}
+function RecipeEditorModal({ supabase, coachId, recipe, onClose, onSaved }) {
+  var _a;
+  const [name, setName] = useState((recipe == null ? void 0 : recipe.name) || "");
+  const [mealType, setMealType] = useState((recipe == null ? void 0 : recipe.meal_type) || "dejeuner");
+  const [ingredients, setIngredients] = useState(((_a = recipe == null ? void 0 : recipe.ingredients) == null ? void 0 : _a.length) ? recipe.ingredients : [{ name: "", qty: "", unit: "g", kcal: "", protein: "", carbs: "", fat: "" }]);
+  const [steps, setSteps] = useState(((recipe == null ? void 0 : recipe.steps) || []).join("\n"));
+  const [tags, setTags] = useState(((recipe == null ? void 0 : recipe.tags) || []).join(", "));
+  const [imageUrl, setImageUrl] = useState((recipe == null ? void 0 : recipe.image_url) || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const totals = useMemo(() => {
+    let k = 0, p = 0, c = 0, f = 0;
+    ingredients.forEach((i) => {
+      k += parseFloat(i.kcal) || 0;
+      p += parseFloat(i.protein) || 0;
+      c += parseFloat(i.carbs) || 0;
+      f += parseFloat(i.fat) || 0;
+    });
+    return { kcal: Math.round(k), protein: Math.round(p), carbs: Math.round(c), fat: Math.round(f) };
+  }, [ingredients]);
+  function updIng(i, field, val) {
+    const n = [...ingredients];
+    n[i] = __spreadProps(__spreadValues({}, n[i]), { [field]: val });
+    setIngredients(n);
+  }
+  function addIng() {
+    setIngredients([...ingredients, { name: "", qty: "", unit: "g", kcal: "", protein: "", carbs: "", fat: "" }]);
+  }
+  function rmIng(i) {
+    setIngredients(ingredients.filter((_, j) => j !== i));
+  }
+  async function handleSave() {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const cleanIngs = ingredients.filter((i) => i.name.trim()).map((i) => ({
+        name: i.name.trim(),
+        qty: parseFloat(i.qty) || 0,
+        unit: i.unit || "",
+        kcal: parseFloat(i.kcal) || 0,
+        protein: parseFloat(i.protein) || 0,
+        carbs: parseFloat(i.carbs) || 0,
+        fat: parseFloat(i.fat) || 0
+      }));
+      const payload = {
+        coach_id: coachId,
+        name: name.trim(),
+        meal_type: mealType,
+        ingredients: cleanIngs,
+        steps: steps.split("\n").map((s) => s.trim()).filter(Boolean),
+        tags: tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
+        image_url: imageUrl.trim() || null,
+        total_kcal: totals.kcal,
+        protein_g: totals.protein,
+        carbs_g: totals.carbs,
+        fat_g: totals.fat,
+        base_servings: 1
+      };
+      if (recipe == null ? void 0 : recipe.id) {
+        const { error: error2 } = await supabase.from("recipes_library").update(payload).eq("id", recipe.id);
+        if (error2) throw error2;
+      } else {
+        const { error: error2 } = await supabase.from("recipes_library").insert(payload);
+        if (error2) throw error2;
+      }
+      onSaved();
+    } catch (e) {
+      setError(e.message || "Erreur");
+      setSaving(false);
+    }
+  }
+  const smallInput = __spreadProps(__spreadValues({}, inputStyle), { padding: "7px 8px", fontSize: 12 });
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 } }, recipe ? "MODIFIER LA RECETTE" : "NOUVELLE RECETTE"), /* @__PURE__ */ React.createElement(Field, { label: "NOM" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => setName(e.target.value), placeholder: "Ex : Bowl poulet riz brocoli", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "TYPE DE REPAS" }, /* @__PURE__ */ React.createElement("select", { value: mealType, onChange: (e) => setMealType(e.target.value), style: inputStyle }, MEAL_TYPES.map((m) => /* @__PURE__ */ React.createElement("option", { key: m.id, value: m.id }, m.label)))), /* @__PURE__ */ React.createElement(Field, { label: "INGR\xC9DIENTS (valeurs nutritionnelles pour la quantit\xE9 indiqu\xE9e)" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, ingredients.map((ing, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 6 } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: ing.name, onChange: (e) => updIng(i, "name", e.target.value), placeholder: "Ingr\xE9dient", style: __spreadProps(__spreadValues({}, smallInput), { flex: 2 }) }), /* @__PURE__ */ React.createElement("input", { type: "number", value: ing.qty, onChange: (e) => updIng(i, "qty", e.target.value), placeholder: "Qt\xE9", style: __spreadProps(__spreadValues({}, smallInput), { flex: 1, minWidth: 0 }) }), /* @__PURE__ */ React.createElement("input", { type: "text", value: ing.unit, onChange: (e) => updIng(i, "unit", e.target.value), placeholder: "g", style: __spreadProps(__spreadValues({}, smallInput), { width: 44, flexShrink: 0 }) }), /* @__PURE__ */ React.createElement("button", { onClick: () => rmIng(i), style: { background: "transparent", border: "none", color: T.danger, fontSize: 15, cursor: "pointer", flexShrink: 0 } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 } }, [["kcal", "Kcal"], ["protein", "Prot"], ["carbs", "Gluc"], ["fat", "Lip"]].map(([f, l]) => /* @__PURE__ */ React.createElement("div", { key: f }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 7, color: T.textMuted, fontWeight: 700 } }, l.toUpperCase()), /* @__PURE__ */ React.createElement("input", { type: "number", value: ing[f], onChange: (e) => updIng(i, f, e.target.value), placeholder: "0", style: __spreadProps(__spreadValues({}, smallInput), { width: "100%" }) })))))), /* @__PURE__ */ React.createElement("button", { onClick: addIng, style: { background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "9px", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ Ingr\xE9dient"))), /* @__PURE__ */ React.createElement("div", { style: { background: T.accentLight, border: `1px solid ${T.accent}30`, borderRadius: 10, padding: "9px 12px", marginBottom: 14, fontSize: 11, color: T.accentDark, fontWeight: 700, textAlign: "center" } }, "Totaux : ", totals.kcal, " kcal \xB7 P ", totals.protein, "g \xB7 G ", totals.carbs, "g \xB7 L ", totals.fat, "g"), /* @__PURE__ */ React.createElement(Field, { label: "\xC9TAPES (une par ligne)" }, /* @__PURE__ */ React.createElement("textarea", { value: steps, onChange: (e) => setSteps(e.target.value), rows: 3, placeholder: "Cuire le riz...\nGriller le poulet...", style: __spreadProps(__spreadValues({}, inputStyle), { resize: "vertical" }) })), /* @__PURE__ */ React.createElement(Field, { label: "TAGS (s\xE9par\xE9s par des virgules)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: tags, onChange: (e) => setTags(e.target.value), placeholder: "rapide, vegetarien, batch-cooking", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "IMAGE (URL optionnelle)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: imageUrl, onChange: (e) => setImageUrl(e.target.value), placeholder: "https://...", style: inputStyle })), error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving || !name.trim(), style: { flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" } }, saving ? "..." : "ENREGISTRER"))));
+}
+function AiRecipesModal({ supabase, coachId, onClose, onAdded }) {
+  const [apiKey, setApiKey] = useState(localStorage.getItem("forge_coach_anthropic_key") || "");
+  const [mealType, setMealType] = useState("dejeuner");
+  const [count, setCount] = useState(3);
+  const [constraints, setConstraints] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [proposals, setProposals] = useState(null);
+  const [selected, setSelected] = useState({});
+  const [adding, setAdding] = useState(false);
+  async function generate() {
+    if (!apiKey.trim()) {
+      setError("Colle ta cl\xE9 API Anthropic (voir guide)");
+      return;
+    }
+    localStorage.setItem("forge_coach_anthropic_key", apiKey.trim());
+    setLoading(true);
+    setError("");
+    setProposals(null);
+    try {
+      const prompt = `Tu es un assistant nutrition pour coach sportif. G\xE9n\xE8re ${count} recettes de type "${mealLabel(mealType)}" en fran\xE7ais.
+Contraintes du coach : ${constraints || "aucune"}.
+R\xE9ponds UNIQUEMENT avec un tableau JSON valide, sans pr\xE9ambule, sans backticks, sans Markdown. Format exact :
+[{"name":"...","ingredients":[{"name":"...","qty":100,"unit":"g","kcal":120,"protein":20,"carbs":5,"fat":3}],"steps":["...","..."],"tags":["rapide"]}]
+Les valeurs nutritionnelles de chaque ingr\xE9dient correspondent \xE0 la quantit\xE9 indiqu\xE9e. Sois r\xE9aliste et pr\xE9cis.`;
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey.trim(),
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4e3, messages: [{ role: "user", content: prompt }] })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || "Erreur API");
+      const text = (data.content || []).map((c) => c.text || "").join("");
+      const clean = text.replace(/```json|```/g, "").trim();
+      const arr = JSON.parse(clean);
+      if (!Array.isArray(arr) || !arr.length) throw new Error("R\xE9ponse IA invalide");
+      setProposals(arr);
+      const sel = {};
+      arr.forEach((_, i) => sel[i] = true);
+      setSelected(sel);
+    } catch (e) {
+      setError(e.message || "Erreur lors de la g\xE9n\xE9ration");
+    }
+    setLoading(false);
+  }
+  function recipeTotals(r) {
+    let k = 0, p = 0, c = 0, f = 0;
+    (r.ingredients || []).forEach((i) => {
+      k += parseFloat(i.kcal) || 0;
+      p += parseFloat(i.protein) || 0;
+      c += parseFloat(i.carbs) || 0;
+      f += parseFloat(i.fat) || 0;
+    });
+    return { kcal: Math.round(k), protein: Math.round(p), carbs: Math.round(c), fat: Math.round(f) };
+  }
+  async function addSelected() {
+    const toAdd = (proposals || []).filter((_, i) => selected[i]);
+    if (!toAdd.length) return;
+    setAdding(true);
+    setError("");
+    try {
+      const rows = toAdd.map((r) => {
+        const t = recipeTotals(r);
+        return {
+          coach_id: coachId,
+          name: r.name,
+          meal_type: mealType,
+          ingredients: r.ingredients || [],
+          steps: r.steps || [],
+          tags: (r.tags || []).map((x) => String(x).toLowerCase()),
+          total_kcal: t.kcal,
+          protein_g: t.protein,
+          carbs_g: t.carbs,
+          fat_g: t.fat,
+          base_servings: 1
+        };
+      });
+      const { error: error2 } = await supabase.from("recipes_library").insert(rows);
+      if (error2) throw error2;
+      onAdded();
+    } catch (e) {
+      setError(e.message || "Erreur");
+      setAdding(false);
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 } }, "G\xC9N\xC9RER AVEC L'IA"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 } }, "L'IA propose des recettes, tu passes en revue et tu ajoutes celles qui te plaisent \xE0 ta biblioth\xE8que."), !proposals ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Field, { label: "CL\xC9 API ANTHROPIC (stock\xE9e sur cet appareil uniquement)" }, /* @__PURE__ */ React.createElement("input", { type: "password", value: apiKey, onChange: (e) => setApiKey(e.target.value), placeholder: "sk-ant-...", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "TYPE DE REPAS" }, /* @__PURE__ */ React.createElement("select", { value: mealType, onChange: (e) => setMealType(e.target.value), style: inputStyle }, MEAL_TYPES.map((m) => /* @__PURE__ */ React.createElement("option", { key: m.id, value: m.id }, m.label)))), /* @__PURE__ */ React.createElement(Field, { label: "NOMBRE DE RECETTES" }, /* @__PURE__ */ React.createElement("select", { value: count, onChange: (e) => setCount(parseInt(e.target.value)), style: inputStyle }, [2, 3, 4, 5].map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n)))), /* @__PURE__ */ React.createElement(Field, { label: "CONTRAINTES (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: constraints, onChange: (e) => setConstraints(e.target.value), placeholder: "Ex : riche en prot\xE9ines, ~600 kcal, sans lactose", style: inputStyle }))) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 } }, proposals.map((r, i) => {
+    const t = recipeTotals(r);
+    return /* @__PURE__ */ React.createElement("div", { key: i, onClick: () => setSelected(__spreadProps(__spreadValues({}, selected), { [i]: !selected[i] })), style: { background: selected[i] ? T.accentLight : T.surface, border: `1.5px solid ${selected[i] ? T.accent : T.border}`, borderRadius: 12, padding: "11px 13px", cursor: "pointer", display: "flex", gap: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: selected[i] ? T.accent : T.surface2, border: `1.5px solid ${selected[i] ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center" } }, selected[i] && /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 13, stroke: 3, color: "#FFF" })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, t.kcal, " kcal \xB7 P", t.protein, " G", t.carbs, " L", t.fat, " \xB7 ", (r.ingredients || []).length, " ingr\xE9dients")));
+  })), error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: proposals ? () => setProposals(null) : onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, proposals ? "Retour" : "Annuler"), proposals ? /* @__PURE__ */ React.createElement("button", { onClick: addSelected, disabled: adding, style: { flex: 2, padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, adding ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: "white" }), " ...") : "AJOUTER LA S\xC9LECTION") : /* @__PURE__ */ React.createElement("button", { onClick: generate, disabled: loading, style: { flex: 2, padding: "14px", background: loading ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: loading ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " G\xC9N\xC9RATION...") : "G\xC9N\xC9RER"))));
+}
+function CoachNutritionView({ ctx, coachee }) {
+  const { supabase, coachId } = ctx;
+  const [loading, setLoading] = useState(true);
+  const [nutri, setNutri] = useState(null);
+  const [clientProfile, setClientProfile] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [program, setProgram] = useState(null);
+  const [recipes, setRecipes] = useState([]);
+  const [plan, setPlan] = useState([]);
+  const [weekInfo, setWeekInfo] = useState(null);
+  const [section, setSection] = useState("parametres");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [viewRecipe, setViewRecipe] = useState(null);
+  const reload = useCallback(async () => {
+    const [{ data: prof }, np, wl, prog, recs] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", coachee.id).single(),
+      loadNutritionProfile(supabase, coachee.id),
+      loadWeightLogs(supabase, coachee.id),
+      loadActiveProgram(supabase, coachee.id),
+      loadRecipes(supabase, coachId)
+    ]);
+    setClientProfile(prof);
+    setNutri(np || { coachee_id: coachee.id, allergies: [], dietary_preferences: [], disliked_foods: [], medical_flag: false, ed_screening_flag: false, consent_disclaimer: false, activity_factor: 1.2, goal_adjustment_pct: 0, meals_per_day: 4, protein_g_per_kg: 2, fat_g_per_kg: 0.9, session_intensity: {} });
+    setLogs(wl);
+    setProgram(prog);
+    setRecipes(recs);
+    if (prog) {
+      const wk = await getOrCreateCurrentWeek(supabase, coachee.id, prog.id);
+      setWeekInfo(wk);
+      setPlan(await loadMealPlan(supabase, coachee.id, wk.id));
+    }
+    setLoading(false);
+  }, [supabase, coachee.id, coachId]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
+  const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
+  const targets = useMemo(() => computeNutritionTargets({
+    clientProfile,
+    nutriProfile: nutri,
+    lastWeight,
+    sessions: program == null ? void 0 : program.sessions_structure,
+    week: program == null ? void 0 : program.week_structure
+  }), [clientProfile, nutri, lastWeight, program]);
+  const trend = weightTrend(logs);
+  const alert = trendAlert(trend, parseInt(nutri == null ? void 0 : nutri.goal_adjustment_pct) || 0);
+  async function saveParams(extraProfileFields, extraNutriFields) {
+    setBusy(true);
+    setMsg("");
+    try {
+      if (extraProfileFields) {
+        const { error } = await supabase.from("profiles").update(extraProfileFields).eq("id", coachee.id);
+        if (error) throw error;
+        setClientProfile(__spreadValues(__spreadValues({}, clientProfile), extraProfileFields));
+      }
+      if (extraNutriFields) {
+        const saved = await upsertNutritionProfile(supabase, coachee.id, __spreadValues(__spreadValues({}, stripNutri(nutri)), extraNutriFields));
+        setNutri(saved);
+      }
+      setMsg("Enregistr\xE9 \u2713");
+      setTimeout(() => setMsg(""), 2e3);
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+    setBusy(false);
+  }
+  function stripNutri(n) {
+    const _a = n || {}, { id, coachee_id, updated_at } = _a, rest = __objRest(_a, ["id", "coachee_id", "updated_at"]);
+    return rest;
+  }
+  function updNutri(field, val) {
+    setNutri(__spreadProps(__spreadValues({}, nutri), { [field]: val }));
+  }
+  async function generatePlan() {
+    if (!targets.ready) {
+      setMsg("Compl\xE8te d'abord les param\xE8tres et une pes\xE9e");
+      return;
+    }
+    if (!nutri.consent_disclaimer) {
+      setMsg("Le consentement au disclaimer est requis avant de g\xE9n\xE9rer un plan");
+      return;
+    }
+    if (nutri.ed_screening_flag && targets.pct < 0) {
+      setMsg("Profil sensible (ant\xE9c\xE9dent TCA) : pas de plan en d\xE9ficit automatique. Accompagnement professionnel recommand\xE9 \u2014 gestion manuelle uniquement.");
+      return;
+    }
+    if (!recipes.length) {
+      setMsg("Ta biblioth\xE8que de recettes est vide (onglet Recettes)");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const rows = buildWeekPlanRows({ coacheeId: coachee.id, weekId: weekInfo.id, targets, nutriProfile: nutri, recipes });
+      if (!rows.length) throw new Error("Aucune recette compatible avec le profil (allergies/pr\xE9f\xE9rences)");
+      await saveWeekPlan(supabase, coachee.id, weekInfo.id, rows);
+      setPlan(await loadMealPlan(supabase, coachee.id, weekInfo.id));
+      setMsg("Plan de la semaine g\xE9n\xE9r\xE9 \u2713");
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+    setBusy(false);
+  }
+  async function swapMeal(row) {
+    const pool = recipes.filter((r) => r.meal_type === row.meal_type && r.id !== row.recipe_id);
+    if (!pool.length) {
+      setMsg("Aucune autre recette de ce type");
+      return;
+    }
+    const next = pool[Math.floor(Math.random() * pool.length)];
+    const share = (MEAL_SPLITS[parseInt(nutri.meals_per_day) === 3 ? 3 : 4].find(([m]) => m === row.meal_type) || [null, 0.25])[1];
+    let servings = next.total_kcal > 0 && targets.ready ? targets.target * share / next.total_kcal : 1;
+    servings = Math.max(0.5, Math.min(3, Math.round(servings * 4) / 4));
+    await supabase.from("meal_plans").update({ recipe_id: next.id, servings }).eq("id", row.id);
+    setPlan(await loadMealPlan(supabase, coachee.id, weekInfo.id));
+  }
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  if ((coachee.offer || "essentiel") !== "premium") return /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "26px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 } }, "Ce coach\xE9 est en offre Essentiel.", /* @__PURE__ */ React.createElement("br", null), "Le module di\xE8te est r\xE9serv\xE9 \xE0 l'offre ", /* @__PURE__ */ React.createElement("b", { style: { color: "#A06000" } }, "Premium"), ".");
+  const sectionBtn = (id, label) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setSection(id), style: { padding: "7px 11px", background: section === id ? T.accent : T.surface, color: section === id ? "white" : T.textSub, border: `1px solid ${section === id ? T.accent : T.border}`, borderRadius: 14, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 } }, label);
+  const DAYS_SHORT = ["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"];
+  const recipeById = (id) => recipes.find((r) => r.id === id);
+  return /* @__PURE__ */ React.createElement("div", { className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12 } }, sectionBtn("parametres", "Param\xE8tres"), sectionBtn("sante", "Sant\xE9"), sectionBtn("cibles", "Cibles"), sectionBtn("plan", "Plan repas"), sectionBtn("poids", "Poids")), msg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: msg.includes("Erreur") || msg.includes("requis") || msg.includes("sensible") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 10, lineHeight: 1.5 } }, msg), nutri.medical_flag && /* @__PURE__ */ React.createElement("div", { style: { background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", lineHeight: 1.5, fontWeight: 600 } }, "Pathologie d\xE9clar\xE9e : l'avis d'un m\xE9decin ou di\xE9t\xE9ticien est recommand\xE9 avant toute mise en place."), section === "parametres" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, /* @__PURE__ */ React.createElement(Field, { label: "SEXE" }, /* @__PURE__ */ React.createElement("select", { value: (clientProfile == null ? void 0 : clientProfile.sex) || "", onChange: (e) => setClientProfile(__spreadProps(__spreadValues({}, clientProfile), { sex: e.target.value })), style: inputStyle }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u2014"), /* @__PURE__ */ React.createElement("option", { value: "homme" }, "Homme"), /* @__PURE__ */ React.createElement("option", { value: "femme" }, "Femme"))), /* @__PURE__ */ React.createElement(Field, { label: "TAILLE (CM)" }, /* @__PURE__ */ React.createElement("input", { type: "number", value: (clientProfile == null ? void 0 : clientProfile.height_cm) || "", onChange: (e) => setClientProfile(__spreadProps(__spreadValues({}, clientProfile), { height_cm: e.target.value ? parseInt(e.target.value) : null })), placeholder: "178", style: inputStyle }))), /* @__PURE__ */ React.createElement(Field, { label: "DATE DE NAISSANCE" }, /* @__PURE__ */ React.createElement("input", { type: "date", value: (clientProfile == null ? void 0 : clientProfile.birth_date) || "", onChange: (e) => setClientProfile(__spreadProps(__spreadValues({}, clientProfile), { birth_date: e.target.value })), style: __spreadProps(__spreadValues({}, inputStyle), { WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }) })), /* @__PURE__ */ React.createElement(Field, { label: "ACTIVIT\xC9 QUOTIDIENNE (HORS SPORT)" }, /* @__PURE__ */ React.createElement("select", { value: nutri.activity_factor, onChange: (e) => updNutri("activity_factor", parseFloat(e.target.value)), style: inputStyle }, ACTIVITY_FACTORS.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.value, value: a.value }, a.label)))), /* @__PURE__ */ React.createElement(Field, { label: `OBJECTIF : ${nutri.goal_adjustment_pct > 0 ? "+" : ""}${nutri.goal_adjustment_pct}% (surplus / d\xE9ficit)` }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "-25", max: "25", step: "1", value: nutri.goal_adjustment_pct, onChange: (e) => updNutri("goal_adjustment_pct", parseInt(e.target.value)), style: { width: "100%", accentColor: T.accent } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 9, color: T.textMuted, fontWeight: 700 } }, /* @__PURE__ */ React.createElement("span", null, "\u221225% (s\xE8che)"), /* @__PURE__ */ React.createElement("span", null, "0"), /* @__PURE__ */ React.createElement("span", null, "+25% (masse)"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } }, /* @__PURE__ */ React.createElement(Field, { label: "REPAS / JOUR" }, /* @__PURE__ */ React.createElement("select", { value: nutri.meals_per_day, onChange: (e) => updNutri("meals_per_day", parseInt(e.target.value)), style: inputStyle }, /* @__PURE__ */ React.createElement("option", { value: 3 }, "3"), /* @__PURE__ */ React.createElement("option", { value: 4 }, "4"))), /* @__PURE__ */ React.createElement(Field, { label: "PROT (G/KG)" }, /* @__PURE__ */ React.createElement("input", { type: "number", step: "0.1", min: "1", max: "2.4", value: nutri.protein_g_per_kg, onChange: (e) => updNutri("protein_g_per_kg", e.target.value), style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "LIP (G/KG)" }, /* @__PURE__ */ React.createElement("input", { type: "number", step: "0.1", min: "0.5", max: "1.5", value: nutri.fat_g_per_kg, onChange: (e) => updNutri("fat_g_per_kg", e.target.value), style: inputStyle }))), program && /* @__PURE__ */ React.createElement(Field, { label: "INTENSIT\xC9 PAR S\xC9ANCE (estimation calorique)" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, (program.sessions_structure || []).map((s) => {
+    const v = parseFloat((nutri.session_intensity || {})[String(s.id)]) || 1;
+    return /* @__PURE__ */ React.createElement("div", { key: s.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: T.text, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", null, s.name), /* @__PURE__ */ React.createElement("span", { style: { color: T.accent } }, "\xD7", v.toFixed(2))), /* @__PURE__ */ React.createElement("input", { type: "range", min: "0.8", max: "1.3", step: "0.05", value: v, onChange: (e) => updNutri("session_intensity", __spreadProps(__spreadValues({}, nutri.session_intensity || {}), { [String(s.id)]: parseFloat(e.target.value) })), style: { width: "100%", accentColor: T.accent } }));
+  }))), /* @__PURE__ */ React.createElement("button", { onClick: () => saveParams({ sex: (clientProfile == null ? void 0 : clientProfile.sex) || null, birth_date: (clientProfile == null ? void 0 : clientProfile.birth_date) || null, height_cm: (clientProfile == null ? void 0 : clientProfile.height_cm) || null }, stripNutri(nutri)), disabled: busy, style: { width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" } }, busy ? "..." : "ENREGISTRER LES PARAM\xC8TRES")), section === "sante" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(Field, { label: "ALLERGIES (s\xE9par\xE9es par des virgules)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: (nutri.allergies || []).join(", "), onChange: (e) => updNutri("allergies", e.target.value.split(",").map((x) => x.trim()).filter(Boolean)), placeholder: "arachide, lactose", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "PR\xC9F\xC9RENCES / RESTRICTIONS (tags de recettes)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: (nutri.dietary_preferences || []).join(", "), onChange: (e) => updNutri("dietary_preferences", e.target.value.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean)), placeholder: "vegetarien, halal, sans porc", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "ALIMENTS D\xC9TEST\xC9S" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: (nutri.disliked_foods || []).join(", "), onChange: (e) => updNutri("disliked_foods", e.target.value.split(",").map((x) => x.trim()).filter(Boolean)), placeholder: "brocoli, thon", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "SITUATION M\xC9DICALE" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => updNutri("medical_flag", !nutri.medical_flag), style: { flex: 1, padding: "11px", background: nutri.medical_flag ? "#FEF3DC" : T.surface, color: nutri.medical_flag ? "#A06000" : T.textSub, border: `1.5px solid ${nutri.medical_flag ? "#C27A00" : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, nutri.medical_flag ? "Pathologie d\xE9clar\xE9e" : "Aucune pathologie d\xE9clar\xE9e")), nutri.medical_flag && /* @__PURE__ */ React.createElement("textarea", { value: nutri.medical_notes || "", onChange: (e) => updNutri("medical_notes", e.target.value), rows: 2, placeholder: "Notes (diab\xE8te, traitement...)", style: __spreadProps(__spreadValues({}, inputStyle), { resize: "vertical" }) })), /* @__PURE__ */ React.createElement(Field, { label: "ANT\xC9C\xC9DENT DE TROUBLE ALIMENTAIRE (d\xE9clar\xE9 avec bienveillance)" }, /* @__PURE__ */ React.createElement("button", { onClick: () => updNutri("ed_screening_flag", !nutri.ed_screening_flag), style: { width: "100%", padding: "11px", background: nutri.ed_screening_flag ? "#FDE8E8" : T.surface, color: nutri.ed_screening_flag ? "#9B2C2C" : T.textSub, border: `1.5px solid ${nutri.ed_screening_flag ? T.danger : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, nutri.ed_screening_flag ? "Ant\xE9c\xE9dent / risque signal\xE9 \u2014 pas de d\xE9ficit automatique" : "Aucun ant\xE9c\xE9dent signal\xE9")), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "13px 14px", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 } }, "DISCLAIMER"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 11, color: T.textSub, lineHeight: 1.6, margin: 0 } }, NUTRITION_DISCLAIMER)), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    const v = !nutri.consent_disclaimer;
+    updNutri("consent_disclaimer", v);
+  }, style: { width: "100%", padding: "12px", background: nutri.consent_disclaimer ? T.accentLight : T.surface, color: nutri.consent_disclaimer ? T.accent : T.textSub, border: `1.5px solid ${nutri.consent_disclaimer ? T.accent : T.border}`, borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, nutri.consent_disclaimer && /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 15, stroke: 3, color: T.accent }), nutri.consent_disclaimer ? "Consentement donn\xE9" : "Le client consent au disclaimer ci-dessus"), /* @__PURE__ */ React.createElement("button", { onClick: () => saveParams(null, __spreadProps(__spreadValues({}, stripNutri(nutri)), { consent_date: nutri.consent_disclaimer ? (/* @__PURE__ */ new Date()).toISOString() : null })), disabled: busy, style: { width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" } }, busy ? "..." : "ENREGISTRER LE QUESTIONNAIRE")), section === "cibles" && /* @__PURE__ */ React.createElement("div", null, !targets.ready ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 } }, "Calcul impossible : ", targets.missing, ".", /* @__PURE__ */ React.createElement("br", null), "Compl\xE8te les param\xE8tres et enregistre au moins une pes\xE9e.") : /* @__PURE__ */ React.createElement(React.Fragment, null, targets.floored && /* @__PURE__ */ React.createElement("div", { style: { background: "#FDE8E8", border: `1px solid ${T.danger}40`, borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "#9B2C2C", fontWeight: 600, lineHeight: 1.5 } }, "La cible calcul\xE9e passait sous le plancher de s\xE9curit\xE9 (", targets.floor, " kcal). Elle a \xE9t\xE9 plafonn\xE9e au plancher."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-around", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 8px", marginBottom: 12 } }, /* @__PURE__ */ React.createElement(MacroRing, { label: "CALORIES", value: targets.target, unit: "KCAL", color: T.accent }), /* @__PURE__ */ React.createElement(MacroRing, { label: "PROT\xC9INES", value: targets.protein, unit: "G", color: "#1A6640", size: 72 }), /* @__PURE__ */ React.createElement(MacroRing, { label: "GLUCIDES", value: targets.carbs, unit: "G", color: "#A06000", size: 72 }), /* @__PURE__ */ React.createElement(MacroRing, { label: "LIPIDES", value: targets.fat, unit: "G", color: "#1A4A80", size: 72 })), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", marginBottom: 12 } }, [
+    ["\xC2ge / Poids / Taille", `${targets.age} ans \xB7 ${lastWeight} kg \xB7 ${clientProfile.height_cm} cm`],
+    ["M\xE9tabolisme de base (BMR)", `${targets.bmr} kcal`],
+    ["D\xE9pense quotidienne (hors sport)", `${targets.dailyActivity} kcal`],
+    ["S\xE9ances (moyenne / jour)", `+${targets.sportDaily} kcal`],
+    ["D\xE9pense totale (TDEE)", `${targets.tdee} kcal`],
+    ["Ajustement objectif", `${targets.pct > 0 ? "+" : ""}${targets.pct}%`],
+    ["Cible quotidienne", `${targets.target} kcal`]
+  ].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: i === arr.length - 1 ? T.accent : T.text, fontWeight: 800 } }, v)))), targets.perSession.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px" } }, targets.perSession.map((s, i, arr) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 11 } }, /* @__PURE__ */ React.createElement("span", { style: { color: T.textSub } }, s.day, " \xB7 ", s.name, " ", /* @__PURE__ */ React.createElement("span", { style: { color: T.textMuted } }, "(\xD7", s.mult, ")")), /* @__PURE__ */ React.createElement("span", { style: { color: T.text, fontWeight: 700 } }, "~", s.kcal, " kcal")))))), section === "plan" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: generatePlan, disabled: busy, style: { width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, busy ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: "white" }), " ...") : plan.length ? "R\xC9G\xC9N\xC9RER LE PLAN DE LA SEMAINE" : "G\xC9N\xC9RER LE PLAN DE LA SEMAINE"), plan.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Aucun plan pour la semaine en cours", weekInfo ? ` (semaine ${weekInfo.week_number})` : "", ".") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, [0, 1, 2, 3, 4, 5, 6].map((day) => {
+    const rows = plan.filter((p) => p.day_index === day).sort((a, b) => MEAL_TYPES.findIndex((m) => m.id === a.meal_type) - MEAL_TYPES.findIndex((m) => m.id === b.meal_type));
+    if (!rows.length) return null;
+    return /* @__PURE__ */ React.createElement("div", { key: day }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 2, color: T.textSub, marginBottom: 6 } }, DAYS_SHORT[day]), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, rows.map((row) => {
+      const r = recipeById(row.recipe_id);
+      if (!r) return null;
+      return /* @__PURE__ */ React.createElement("div", { key: row.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(MealVisual, { mealType: r.meal_type, imageUrl: r.image_url, size: 38 }), /* @__PURE__ */ React.createElement("div", { onClick: () => setViewRecipe({ recipe: r, servings: row.servings }), style: { flex: 1, minWidth: 0, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: T.text, lineHeight: 1.25 } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, marginTop: 2 } }, mealLabel(r.meal_type), " \xB7 ", Math.round(r.total_kcal * row.servings), " kcal \xB7 \xD7", row.servings)), /* @__PURE__ */ React.createElement("button", { onClick: () => swapMeal(row), title: "Remplacer", style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: T.textSub, cursor: "pointer" } }, "\u21BB"));
+    })));
+  }))), section === "poids" && /* @__PURE__ */ React.createElement("div", null, alert && /* @__PURE__ */ React.createElement("div", { style: { background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert", size: 15, color: "#A06000" }), /* @__PURE__ */ React.createElement("span", null, alert)), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 } }, "\xC9VOLUTION DU POIDS"), /* @__PURE__ */ React.createElement(WeightChart, { logs })), logs.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 14px" } }, logs.slice(-6).reverse().map((l, i, arr) => /* @__PURE__ */ React.createElement("div", { key: l.id, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { color: T.textSub } }, l.logged_date), /* @__PURE__ */ React.createElement("span", { style: { color: T.text, fontWeight: 800 } }, l.weight_kg, " kg"))))), viewRecipe && /* @__PURE__ */ React.createElement(RecipeSheet, { recipe: viewRecipe.recipe, servings: viewRecipe.servings, onClose: () => setViewRecipe(null) }));
+}
+function NutritionPage({ ctx }) {
+  const { supabase, userId, appData } = ctx;
+  const [loading, setLoading] = useState(true);
+  const [nutri, setNutri] = useState(null);
+  const [clientProfile, setClientProfile] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [plan, setPlan] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [weekInfo, setWeekInfo] = useState(null);
+  const [dayIdx, setDayIdx] = useState(() => {
+    const d = (/* @__PURE__ */ new Date()).getDay();
+    return d === 0 ? 6 : d - 1;
+  });
+  const [viewRecipe, setViewRecipe] = useState(null);
+  const [weightInput, setWeightInput] = useState("");
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [wMsg, setWMsg] = useState("");
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [{ data: prof }, np, wl] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", userId).single(),
+          loadNutritionProfile(supabase, userId),
+          loadWeightLogs(supabase, userId)
+        ]);
+        setClientProfile(prof);
+        setNutri(np);
+        setLogs(wl);
+        const { data: wk } = await supabase.from("weeks").select("id, week_number").eq("coachee_id", userId).order("week_number", { ascending: false }).limit(1).maybeSingle();
+        if (wk) {
+          setWeekInfo(wk);
+          const pl = await loadMealPlan(supabase, userId, wk.id);
+          setPlan(pl);
+          const ids = [...new Set(pl.map((p) => p.recipe_id).filter(Boolean))];
+          if (ids.length) {
+            const { data: recs } = await supabase.from("recipes_library").select("*").in("id", ids);
+            setRecipes(recs || []);
+          }
+        }
+      } catch (e) {
+      }
+      setLoading(false);
+    })();
+  }, [supabase, userId]);
+  const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
+  const targets = useMemo(() => computeNutritionTargets({
+    clientProfile,
+    nutriProfile: nutri,
+    lastWeight,
+    sessions: appData == null ? void 0 : appData.sessions,
+    week: appData == null ? void 0 : appData.week
+  }), [clientProfile, nutri, lastWeight, appData]);
+  async function saveWeight() {
+    const v = parseFloat(weightInput);
+    if (!v || v < 30 || v > 300 || savingWeight) return;
+    setSavingWeight(true);
+    setWMsg("");
+    try {
+      const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      await addWeightLog(supabase, userId, v, today);
+      setLogs(await loadWeightLogs(supabase, userId));
+      setWeightInput("");
+      setWMsg("Pes\xE9e enregistr\xE9e \u2713");
+      setTimeout(() => setWMsg(""), 2500);
+    } catch (e) {
+      setWMsg("Erreur : " + e.message);
+    }
+    setSavingWeight(false);
+  }
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 60, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 26 }));
+  const DAYS_SHORT = ["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"];
+  const recipeById = (id) => recipes.find((r) => r.id === id);
+  const dayRows = plan.filter((p) => p.day_index === dayIdx).sort((a, b) => MEAL_TYPES.findIndex((m) => m.id === a.meal_type) - MEAL_TYPES.findIndex((m) => m.id === b.meal_type));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "NUTRITION"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, "Ton plan personnalis\xE9", weekInfo ? ` \xB7 Semaine ${weekInfo.week_number}` : "")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, targets.ready ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "18px 8px", display: "flex", justifyContent: "space-around", boxShadow: `0 2px 14px ${T.shadow}` } }, /* @__PURE__ */ React.createElement(MacroRing, { label: "CALORIES", value: targets.target, unit: "KCAL", color: T.accent }), /* @__PURE__ */ React.createElement(MacroRing, { label: "PROT", value: targets.protein, unit: "G", color: "#1A6640", size: 70 }), /* @__PURE__ */ React.createElement(MacroRing, { label: "GLUC", value: targets.carbs, unit: "G", color: "#A06000", size: 70 }), /* @__PURE__ */ React.createElement(MacroRing, { label: "LIP", value: targets.fat, unit: "G", color: "#1A4A80", size: 70 })) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Tes cibles appara\xEEtront d\xE8s que ton coach aura compl\xE9t\xE9 ton profil et que tu auras saisi ta premi\xE8re pes\xE9e ci-dessous.")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 6px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "REPAS DE LA SEMAINE"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 5, overflowX: "auto", paddingBottom: 10 } }, DAYS_SHORT.map((d, i) => /* @__PURE__ */ React.createElement("button", { key: d, onClick: () => setDayIdx(i), className: "pressable", style: { flex: 1, minWidth: 42, padding: "8px 4px", background: dayIdx === i ? T.accent : T.surface, color: dayIdx === i ? "white" : T.textSub, border: `1px solid ${dayIdx === i ? T.accent : T.border}`, borderRadius: 10, fontSize: 10, fontWeight: 800, cursor: "pointer" } }, d))), dayRows.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Aucun repas planifi\xE9 pour ce jour.", /* @__PURE__ */ React.createElement("br", null), "Ton coach pr\xE9pare ton plan.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, dayRows.map((row, i) => {
+    const r = recipeById(row.recipe_id);
+    if (!r) return null;
+    return /* @__PURE__ */ React.createElement("div", { key: row.id, onClick: () => setViewRecipe({ recipe: r, servings: row.servings }), className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", animation: `fadeUp .3s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement(MealVisual, { mealType: r.meal_type, imageUrl: r.image_url, size: 46 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, fontWeight: 800, letterSpacing: 1 } }, mealLabel(r.meal_type).toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3, marginTop: 2 } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, Math.round(r.total_kcal * row.servings), " kcal \xB7 P", Math.round(r.protein_g * row.servings), " G", Math.round(r.carbs_g * row.servings), " L", Math.round(r.fat_g * row.servings))), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 18, color: T.borderStrong }));
+  }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA PES\xC9E"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", step: "0.1", min: "30", max: "300", value: weightInput, onChange: (e) => setWeightInput(e.target.value), placeholder: lastWeight ? `Dernier : ${lastWeight} kg` : "Ton poids (kg)", style: __spreadProps(__spreadValues({}, inputStyle), { flex: 1 }) }), /* @__PURE__ */ React.createElement("button", { onClick: saveWeight, disabled: savingWeight || !weightInput, style: { flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer" } }, savingWeight ? "..." : "OK")), wMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: wMsg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 8 } }, wMsg), /* @__PURE__ */ React.createElement(WeightChart, { logs }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDisclaimer(!showDisclaimer), style: { background: "transparent", border: "none", color: T.textMuted, fontSize: 10, fontWeight: 600, textDecoration: "underline", cursor: "pointer" } }, "Avertissement nutritionnel"), showDisclaimer && /* @__PURE__ */ React.createElement("p", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, NUTRITION_DISCLAIMER)), viewRecipe && /* @__PURE__ */ React.createElement(RecipeSheet, { recipe: viewRecipe.recipe, servings: viewRecipe.servings, onClose: () => setViewRecipe(null) }));
 }
 function ForgeCoachingApp() {
   const [bootState, setBootState] = useState("loading");
