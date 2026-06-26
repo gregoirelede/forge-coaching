@@ -987,6 +987,7 @@ function BottomTabBar({ activePage, onNavigate, showNutrition, weighReminder }) 
   const tabs = [
     { id: "home", label: "Accueil", icon: "home" },
     { id: "workout", label: "S\xE9ances", icon: "workout" },
+    { id: "parcours", label: "Parcours", icon: "calendar" },
     ...showNutrition ? [{ id: "nutrition", label: "Nutrition", icon: "clock" }] : [],
     { id: "progress", label: "Progr\xE8s", icon: "progress" },
     { id: "profile", label: "Profil", icon: "profile" }
@@ -1261,7 +1262,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         .page-backward{animation:pageInBackward .35s cubic-bezier(0.32,0.72,0.34,1) both}
         .sheet-backdrop{animation:sheetFadeIn .25s ease both}
         .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
-      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx }), page === "nutrition" && /* @__PURE__ */ React.createElement(NutritionPage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
+      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx }), page === "parcours" && /* @__PURE__ */ React.createElement(ParcoursPage, { ctx }), page === "nutrition" && /* @__PURE__ */ React.createElement(NutritionPage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
     ExerciseSheet,
     {
       exercise: sheetExercise,
@@ -1864,7 +1865,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
     setBusy(false);
     onBack();
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6 } }, [["infos", "Infos"], ["programme", "Programme"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flex: 1, padding: "9px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
 }
 function CoachTabBar({ activePage, onNavigate }) {
   const tabs = [
@@ -1982,7 +1983,7 @@ function estimateSessionCalories(session, weightKg, intensityMult) {
   const met = 6 * (intensityMult || 1);
   return Math.round(met * weightKg * hours);
 }
-function computeNutritionTargets({ clientProfile, nutriProfile, lastWeight, sessions, week }) {
+function computeNutritionTargets({ clientProfile, nutriProfile, lastWeight, sessions, week, activePhasePct }) {
   if (!clientProfile || !nutriProfile || !lastWeight) return { ready: false, missing: "Pes\xE9e ou profil manquant" };
   const { sex, birth_date, height_cm } = clientProfile;
   const age = calcAge(birth_date);
@@ -2003,7 +2004,7 @@ function computeNutritionTargets({ clientProfile, nutriProfile, lastWeight, sess
   });
   const sportDaily = Math.round(weekKcal / 7);
   const tdee = Math.round(daily + sportDaily);
-  let pct = parseInt(nutriProfile.goal_adjustment_pct) || 0;
+  let pct = activePhasePct != null && activePhasePct !== "" ? parseInt(activePhasePct) : parseInt(nutriProfile.goal_adjustment_pct) || 0;
   if (pct < -25) pct = -25;
   if (pct > 25) pct = 25;
   let target = Math.round(tdee * (1 + pct / 100));
@@ -2376,19 +2377,22 @@ function CoachNutritionView({ ctx, coachee }) {
   const [program, setProgram] = useState(null);
   const [recipes, setRecipes] = useState([]);
   const [plan, setPlan] = useState([]);
+  const [phases, setPhases] = useState([]);
   const [weekInfo, setWeekInfo] = useState(null);
   const [section, setSection] = useState("parametres");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [viewRecipe, setViewRecipe] = useState(null);
   const reload = useCallback(async () => {
-    const [{ data: prof }, np, wl, prog, recs] = await Promise.all([
+    const [{ data: prof }, np, wl, prog, recs, phs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", coachee.id).single(),
       loadNutritionProfile(supabase, coachee.id),
       loadWeightLogs(supabase, coachee.id),
       loadActiveProgram(supabase, coachee.id),
-      loadRecipes(supabase, coachId)
+      loadRecipes(supabase, coachId),
+      loadPhases(supabase, coachee.id)
     ]);
+    setPhases(phs);
     setClientProfile(prof);
     setNutri(np || { coachee_id: coachee.id, allergies: [], dietary_preferences: [], disliked_foods: [], medical_flag: false, ed_screening_flag: false, consent_disclaimer: false, activity_factor: 1.2, goal_adjustment_pct: 0, meals_per_day: 4, protein_g_per_kg: 2, fat_g_per_kg: 0.9, session_intensity: {} });
     setLogs(wl);
@@ -2405,13 +2409,15 @@ function CoachNutritionView({ ctx, coachee }) {
     reload();
   }, [reload]);
   const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
+  const activePhase = findActivePhase(phases);
   const targets = useMemo(() => computeNutritionTargets({
     clientProfile,
     nutriProfile: nutri,
     lastWeight,
     sessions: program == null ? void 0 : program.sessions_structure,
-    week: program == null ? void 0 : program.week_structure
-  }), [clientProfile, nutri, lastWeight, program]);
+    week: program == null ? void 0 : program.week_structure,
+    activePhasePct: activePhase ? activePhase.goal_adjustment_pct : null
+  }), [clientProfile, nutri, lastWeight, program, activePhase]);
   const trend = weightTrend(logs);
   const alert = trendAlert(trend, parseInt(nutri == null ? void 0 : nutri.goal_adjustment_pct) || 0);
   async function saveParams(extraProfileFields, extraNutriFields) {
@@ -2521,6 +2527,7 @@ function NutritionPage({ ctx }) {
   const [logs, setLogs] = useState([]);
   const [plan, setPlan] = useState([]);
   const [recipes, setRecipes] = useState([]);
+  const [phases, setPhases] = useState([]);
   const [weekInfo, setWeekInfo] = useState(null);
   const [dayIdx, setDayIdx] = useState(() => {
     const d = (/* @__PURE__ */ new Date()).getDay();
@@ -2534,14 +2541,16 @@ function NutritionPage({ ctx }) {
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: prof }, np, wl] = await Promise.all([
+        const [{ data: prof }, np, wl, phs] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", userId).single(),
           loadNutritionProfile(supabase, userId),
-          loadWeightLogs(supabase, userId)
+          loadWeightLogs(supabase, userId),
+          loadPhases(supabase, userId)
         ]);
         setClientProfile(prof);
         setNutri(np);
         setLogs(wl);
+        setPhases(phs);
         const { data: wk } = await supabase.from("weeks").select("id, week_number").eq("coachee_id", userId).order("week_number", { ascending: false }).limit(1).maybeSingle();
         if (wk) {
           setWeekInfo(wk);
@@ -2559,13 +2568,15 @@ function NutritionPage({ ctx }) {
     })();
   }, [supabase, userId]);
   const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
+  const activePhase = findActivePhase(phases);
   const targets = useMemo(() => computeNutritionTargets({
     clientProfile,
     nutriProfile: nutri,
     lastWeight,
     sessions: appData == null ? void 0 : appData.sessions,
-    week: appData == null ? void 0 : appData.week
-  }), [clientProfile, nutri, lastWeight, appData]);
+    week: appData == null ? void 0 : appData.week,
+    activePhasePct: activePhase ? activePhase.goal_adjustment_pct : null
+  }), [clientProfile, nutri, lastWeight, appData, activePhase]);
   async function saveWeight() {
     const v = parseFloat(weightInput);
     if (!v || v < 30 || v > 300 || savingWeight) return;
@@ -2599,6 +2610,371 @@ function NutritionPage({ ctx }) {
     if (!r) return null;
     return /* @__PURE__ */ React.createElement("div", { key: row.id, onClick: () => setViewRecipe({ recipe: r, servings: row.servings }), className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", animation: `fadeUp .3s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement(MealVisual, { mealType: r.meal_type, imageUrl: r.image_url, size: 46 }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, fontWeight: 800, letterSpacing: 1 } }, mealLabel(r.meal_type).toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3, marginTop: 2 } }, r.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, Math.round(r.total_kcal * row.servings), " kcal \xB7 P", Math.round(r.protein_g * row.servings), " G", Math.round(r.carbs_g * row.servings), " L", Math.round(r.fat_g * row.servings))), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 18, color: T.borderStrong }));
   }))), /* @__PURE__ */ React.createElement("div", { id: "forge-weigh-block", style: { padding: "14px 18px 0", scrollMarginTop: 80 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA PES\xC9E"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", step: "0.1", min: "30", max: "300", value: weightInput, onChange: (e) => setWeightInput(e.target.value), placeholder: lastWeight ? `Dernier : ${lastWeight} kg` : "Ton poids (kg)", style: __spreadProps(__spreadValues({}, inputStyle), { flex: 1 }) }), /* @__PURE__ */ React.createElement("button", { onClick: saveWeight, disabled: savingWeight || !weightInput, style: { flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer" } }, savingWeight ? "..." : "OK")), wMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: wMsg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 8 } }, wMsg), /* @__PURE__ */ React.createElement(WeightChart, { logs }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDisclaimer(!showDisclaimer), style: { background: "transparent", border: "none", color: T.textMuted, fontSize: 10, fontWeight: 600, textDecoration: "underline", cursor: "pointer" } }, "Avertissement nutritionnel"), showDisclaimer && /* @__PURE__ */ React.createElement("p", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, NUTRITION_DISCLAIMER)), viewRecipe && /* @__PURE__ */ React.createElement(RecipeSheet, { recipe: viewRecipe.recipe, servings: viewRecipe.servings, onClose: () => setViewRecipe(null) }));
+}
+const PHASE_TYPES = {
+  prise_de_masse: { label: "Prise de masse", text: "#C27A00", bg: "#FEF3DC" },
+  seche: { label: "S\xE8che", text: "#1A4A80", bg: "#DDEEFF" },
+  recomposition: { label: "Recomposition", text: "#1A6640", bg: "#E0F5EC" },
+  maintien: { label: "Maintien", text: "#7A7060", bg: "#EDE8DF" },
+  decharge: { label: "D\xE9charge", text: "#5B35B0", bg: "#EDE8FF" }
+};
+const PHASE_TYPE_LIST = Object.keys(PHASE_TYPES);
+const phaseLabel = (t) => (PHASE_TYPES[t] || {}).label || t;
+const PERIODIZATION_TEMPLATES = [
+  {
+    id: "debutant",
+    name: "D\xE9butant \xB7 Premiers r\xE9sultats",
+    weeks: 24,
+    desc: "Apprendre la technique, puis recomposition, l\xE9g\xE8re prise de masse, d\xE9charge.",
+    phases: [
+      { phase_type: "maintien", weeks: 4, goal_adjustment_pct: 0, name: "Adaptation & technique", target_note: "Apprendre les mouvements, installer les habitudes" },
+      { phase_type: "recomposition", weeks: 12, goal_adjustment_pct: -5, name: "Recomposition", target_note: "Construire du muscle en affinant" },
+      { phase_type: "prise_de_masse", weeks: 6, goal_adjustment_pct: 10, name: "Prise de masse l\xE9g\xE8re", target_note: "Acc\xE9l\xE9rer la prise de muscle" },
+      { phase_type: "decharge", weeks: 2, goal_adjustment_pct: 0, name: "D\xE9charge", target_note: "R\xE9cup\xE9ration avant le prochain cycle" }
+    ]
+  },
+  {
+    id: "inter_masse_seche",
+    name: "Interm\xE9diaire \xB7 Masse & S\xE8che",
+    weeks: 31,
+    desc: "Cycle classique prise de masse \u2192 s\xE8che, avec transitions et d\xE9charge.",
+    phases: [
+      { phase_type: "prise_de_masse", weeks: 16, goal_adjustment_pct: 12, name: "Prise de masse", target_note: "Maximiser la prise de muscle" },
+      { phase_type: "decharge", weeks: 1, goal_adjustment_pct: 0, name: "D\xE9charge", target_note: "R\xE9cup\xE9ration" },
+      { phase_type: "recomposition", weeks: 4, goal_adjustment_pct: -5, name: "Transition / recomposition", target_note: "Stabiliser avant la s\xE8che" },
+      { phase_type: "seche", weeks: 8, goal_adjustment_pct: -18, name: "S\xE8che", target_note: "R\xE9v\xE9ler la d\xE9finition musculaire" },
+      { phase_type: "maintien", weeks: 2, goal_adjustment_pct: 0, name: "Maintien", target_note: "Stabiliser le nouveau poids" }
+    ]
+  },
+  {
+    id: "seche_estivale",
+    name: "S\xE8che estivale",
+    weeks: 16,
+    desc: "\xCAtre sec pour l'\xE9t\xE9, entr\xE9e en douceur puis s\xE8che franche.",
+    phases: [
+      { phase_type: "recomposition", weeks: 4, goal_adjustment_pct: -5, name: "Entr\xE9e en douceur", target_note: "Amorcer en douceur" },
+      { phase_type: "seche", weeks: 10, goal_adjustment_pct: -18, name: "S\xE8che", target_note: "Perdre la masse grasse" },
+      { phase_type: "maintien", weeks: 2, goal_adjustment_pct: 0, name: "Stabilisation", target_note: "Maintenir les r\xE9sultats" }
+    ]
+  },
+  {
+    id: "recomp_longue",
+    name: "Recomposition longue",
+    weeks: 24,
+    desc: "Rester autour du m\xEAme poids en am\xE9liorant la composition corporelle.",
+    phases: [
+      { phase_type: "recomposition", weeks: 10, goal_adjustment_pct: -5, name: "Recomposition", target_note: "\xC9changer du gras contre du muscle" },
+      { phase_type: "decharge", weeks: 1, goal_adjustment_pct: 0, name: "D\xE9charge", target_note: "R\xE9cup\xE9ration" },
+      { phase_type: "recomposition", weeks: 10, goal_adjustment_pct: -5, name: "Recomposition", target_note: "Poursuivre la transformation" },
+      { phase_type: "maintien", weeks: 3, goal_adjustment_pct: 0, name: "Maintien", target_note: "Consolider les acquis" }
+    ]
+  }
+];
+function addDays(dateStr, days) {
+  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(a, b) {
+  return Math.round((/* @__PURE__ */ new Date(b + "T00:00:00") - /* @__PURE__ */ new Date(a + "T00:00:00")) / 864e5);
+}
+function fmtDateShort(dateStr) {
+  if (!dateStr) return "";
+  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+function fmtMonthYear(dateStr) {
+  const d = /* @__PURE__ */ new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+}
+async function loadPhases(supabase, coacheeId) {
+  const { data } = await supabase.from("periodization_phases").select("*").eq("coachee_id", coacheeId).order("phase_order", { ascending: true });
+  return data || [];
+}
+function findActivePhase(phases) {
+  if (!phases || !phases.length) return null;
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  return phases.find((p) => p.start_date <= today && today <= p.end_date) || null;
+}
+function buildPhasesFromTemplate(template, startDate, coacheeId) {
+  const rows = [];
+  let cursor = startDate;
+  template.phases.forEach((ph, i) => {
+    const end = addDays(cursor, ph.weeks * 7);
+    rows.push({
+      coachee_id: coacheeId,
+      phase_type: ph.phase_type,
+      name: ph.name,
+      start_date: cursor,
+      end_date: end,
+      goal_adjustment_pct: ph.goal_adjustment_pct,
+      target_note: ph.target_note || null,
+      program_id: null,
+      phase_order: i + 1
+    });
+    cursor = end;
+  });
+  return rows;
+}
+async function replaceAllPhases(supabase, coacheeId, rows) {
+  await supabase.from("periodization_phases").delete().eq("coachee_id", coacheeId);
+  if (rows.length) {
+    const { error } = await supabase.from("periodization_phases").insert(rows);
+    if (error) throw error;
+  }
+}
+function PhaseTimeline({ phases, weightLogs, onPhaseClick, selectedId }) {
+  if (!phases || !phases.length) return null;
+  const sorted = [...phases].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const first = sorted[0].start_date;
+  const last = sorted[sorted.length - 1].end_date;
+  const totalDays = Math.max(daysBetween(first, last), 1);
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const PX_PER_DAY = 9;
+  const widthPx = Math.max(totalDays * PX_PER_DAY, 320);
+  const H_BANDS = 84;
+  const H_CURVE = 56;
+  const H_AXIS = 22;
+  const totalH = H_CURVE + H_BANDS + H_AXIS;
+  const xForDate = (d) => daysBetween(first, d) / totalDays * widthPx;
+  const logsIn = (weightLogs || []).filter((l) => l.logged_date >= first && l.logged_date <= last).map((l) => ({ x: xForDate(l.logged_date), w: parseFloat(l.weight_kg) }));
+  let curvePath = "", curvePts = [];
+  if (logsIn.length >= 1) {
+    const ws = logsIn.map((p) => p.w);
+    const wMin = Math.min(...ws), wMax = Math.max(...ws);
+    const wRange = Math.max(wMax - wMin, 1);
+    curvePts = logsIn.map((p) => ({ x: p.x, y: 8 + (1 - (p.w - wMin) / wRange) * (H_CURVE - 16), w: p.w }));
+    curvePath = curvePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  }
+  const months = [];
+  let mc = /* @__PURE__ */ new Date(first + "T00:00:00");
+  mc.setDate(1);
+  while (mc.toISOString().slice(0, 10) <= last) {
+    const ds = mc.toISOString().slice(0, 10);
+    if (ds >= first) months.push(ds);
+    mc.setMonth(mc.getMonth() + 1);
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", overflowY: "hidden", paddingBottom: 4, WebkitOverflowScrolling: "touch" } }, /* @__PURE__ */ React.createElement("div", { style: { position: "relative", width: widthPx, height: totalH, minWidth: "100%" } }, curvePts.length > 0 && /* @__PURE__ */ React.createElement("svg", { width: widthPx, height: H_CURVE, style: { position: "absolute", top: 0, left: 0 } }, curvePts.length > 1 && /* @__PURE__ */ React.createElement("path", { d: curvePath, fill: "none", stroke: T.accent, strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", opacity: "0.85" }), curvePts.map((p, i) => /* @__PURE__ */ React.createElement("g", { key: i }, /* @__PURE__ */ React.createElement("circle", { cx: p.x, cy: p.y, r: "2.5", fill: T.accent }), (i === 0 || i === curvePts.length - 1) && /* @__PURE__ */ React.createElement("text", { x: p.x, y: p.y - 6, textAnchor: "middle", fontSize: "8", fontWeight: "700", fill: T.accentDark }, p.w)))), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: H_CURVE, left: 0, height: H_BANDS, width: widthPx } }, sorted.map((ph) => {
+    const x = xForDate(ph.start_date);
+    const w = Math.max(daysBetween(ph.start_date, ph.end_date) / totalDays * widthPx, 28);
+    const st = PHASE_TYPES[ph.phase_type] || { bg: T.surface2, text: T.textSub };
+    const isActive = ph.start_date <= today && today <= ph.end_date;
+    const isSel = selectedId === ph.id;
+    const weeks = Math.round(daysBetween(ph.start_date, ph.end_date) / 7);
+    return /* @__PURE__ */ React.createElement("button", { key: ph.id, onClick: () => onPhaseClick && onPhaseClick(ph), style: {
+      position: "absolute",
+      left: x,
+      top: 0,
+      width: w - 3,
+      height: "100%",
+      background: st.bg,
+      border: isSel ? `2.5px solid ${st.text}` : isActive ? `2px solid ${st.text}` : `1px solid ${st.text}30`,
+      borderRadius: 10,
+      cursor: "pointer",
+      padding: "8px 6px",
+      textAlign: "left",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "space-between",
+      boxShadow: isActive ? `0 3px 12px ${st.text}30` : "none"
+    } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 800, color: st.text, lineHeight: 1.15, letterSpacing: 0.2 } }, phaseLabel(ph.phase_type)), w > 60 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: st.text, opacity: 0.75, fontWeight: 600 } }, weeks, " sem", ph.goal_adjustment_pct != null ? ` \xB7 ${ph.goal_adjustment_pct > 0 ? "+" : ""}${ph.goal_adjustment_pct}%` : ""), isActive && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: "50%", background: st.text } }));
+  })), today >= first && today <= last && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: 0, left: xForDate(today), height: H_CURVE + H_BANDS, width: 2, background: T.danger, zIndex: 5 } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: -2, left: -4, width: 10, height: 10, borderRadius: "50%", background: T.danger, border: `2px solid ${T.surface}` } })), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: H_CURVE + H_BANDS, left: 0, height: H_AXIS, width: widthPx } }, months.map((m, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { position: "absolute", left: xForDate(m), top: 4, fontSize: 8, color: T.textMuted, fontWeight: 700, transform: "translateX(2px)", whiteSpace: "nowrap" } }, fmtMonthYear(m))))));
+}
+function ActivePhaseCard({ phase, phases, programs }) {
+  if (!phase) return null;
+  const st = PHASE_TYPES[phase.phase_type] || { bg: T.surface2, text: T.textSub };
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const totalW = Math.max(Math.round(daysBetween(phase.start_date, phase.end_date) / 7), 1);
+  const curW = Math.min(Math.max(Math.ceil(daysBetween(phase.start_date, today) / 7), 1), totalW);
+  const weeksLeft = Math.max(Math.ceil(daysBetween(today, phase.end_date) / 7), 0);
+  const prog = programs && phase.program_id ? programs.find((p) => p.id === phase.program_id) : null;
+  return /* @__PURE__ */ React.createElement("div", { style: { background: st.bg, border: `1.5px solid ${st.text}40`, borderRadius: 16, padding: "16px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 800, color: st.text, letterSpacing: 1, opacity: 0.8 } }, "PHASE EN COURS"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: st.text, letterSpacing: 1, lineHeight: 1.1, marginTop: 2 } }, phase.name || phaseLabel(phase.phase_type))), /* @__PURE__ */ React.createElement("span", { style: { background: st.text, color: "#FFF", fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800, whiteSpace: "nowrap" } }, phaseLabel(phase.phase_type))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 10, padding: "8px 10px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, color: st.text } }, curW, " / ", totalW), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: st.text, opacity: 0.7, fontWeight: 700 } }, "SEMAINE")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 10, padding: "8px 10px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, color: st.text } }, weeksLeft), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: st.text, opacity: 0.7, fontWeight: 700 } }, "SEM. RESTANTES"))), /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: "rgba(255,255,255,0.5)", borderRadius: 3, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: `${curW / totalW * 100}%`, background: st.text, borderRadius: 3, transition: "width .5s ease" } })), phase.target_note && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: st.text, marginTop: 10, fontStyle: "italic", opacity: 0.9 } }, "\xAB ", phase.target_note, " \xBB"));
+}
+function PhaseDetailSheet({ phase, programs, isPremium, onClose }) {
+  if (!phase) return null;
+  const st = PHASE_TYPES[phase.phase_type] || { bg: T.surface2, text: T.textSub };
+  const weeks = Math.round(daysBetween(phase.start_date, phase.end_date) / 7);
+  const prog = programs && phase.program_id ? programs.find((p) => p.id === phase.program_id) : null;
+  const pct = phase.goal_adjustment_pct;
+  const nutriQual = pct == null ? "Non d\xE9fini" : pct > 3 ? "Surplus calorique (prise de masse)" : pct < -3 ? "D\xE9ficit calorique (s\xE8che)" : "Maintien calorique";
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "82vh", overflowY: "auto", padding: "10px 18px calc(26px + env(safe-area-inset-bottom))" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 12, height: 12, borderRadius: 4, background: st.text } }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 21, color: T.text, letterSpacing: 1, lineHeight: 1.1 } }, phase.name || phaseLabel(phase.phase_type)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: st.text, fontWeight: 700, marginTop: 2 } }, phaseLabel(phase.phase_type))), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer" } }, "\xD7")), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px" } }, [
+    ["Dur\xE9e", `${weeks} semaines`],
+    ["Dates", `${fmtDateShort(phase.start_date)} \u2192 ${fmtDateShort(phase.end_date)}`],
+    ["Programme associ\xE9", prog ? prog.name : "Aucun"],
+    ["Approche nutrition", nutriQual],
+    ...isPremium && pct != null ? [["Ajustement calorique", `${pct > 0 ? "+" : ""}${pct}%`]] : [],
+    ...phase.target_note ? [["Objectif", phase.target_note]] : []
+  ].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600, flexShrink: 0 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700, textAlign: "right" } }, v)))), !isPremium && pct != null && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, fontSize: 10, color: T.textMuted, textAlign: "center", lineHeight: 1.5 } }, "Les cibles caloriques chiffr\xE9es sont disponibles avec l'offre Premium.")));
+}
+function ParcoursPage({ ctx }) {
+  var _a;
+  const { supabase, userId, appData } = ctx;
+  const isPremium = ((_a = appData == null ? void 0 : appData.client) == null ? void 0 : _a.offer) === "premium";
+  const [loading, setLoading] = useState(true);
+  const [phases, setPhases] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [selected, setSelected] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const [ph, wl, { data: progs }] = await Promise.all([
+          loadPhases(supabase, userId),
+          loadWeightLogs(supabase, userId),
+          supabase.from("programs").select("id, name").eq("coachee_id", userId)
+        ]);
+        setPhases(ph);
+        setLogs(wl);
+        setPrograms(progs || []);
+      } catch (e) {
+      }
+      setLoading(false);
+    })();
+  }, [supabase, userId]);
+  const active = findActivePhase(phases);
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 60, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 26 }));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "PARCOURS"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, "Ta planification sur le long terme")), phases.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "40px 24px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 54, height: 54, borderRadius: "50%", background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" } }, /* @__PURE__ */ React.createElement(Icon, { name: "calendar", size: 26, color: T.accent })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 6 } }, "Ton coach pr\xE9pare ton parcours"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, lineHeight: 1.6 } }, "Tes phases d'entra\xEEnement (prise de masse, s\xE8che...) appara\xEEtront ici d\xE8s que ton coach les aura planifi\xE9es."))) : /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement(ActivePhaseCard, { phase: active, phases, programs }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "FRISE COMPL\xC8TE"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px 12px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement(PhaseTimeline, { phases, weightLogs: logs, onPhaseClick: setSelected, selectedId: selected == null ? void 0 : selected.id })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, textAlign: "center", lineHeight: 1.6 } }, "Appuie sur une phase pour voir son d\xE9tail.", logs.length >= 1 ? " La courbe verte montre l'\xE9volution de ton poids." : "")), selected && /* @__PURE__ */ React.createElement(PhaseDetailSheet, { phase: selected, programs, isPremium, onClose: () => setSelected(null) }));
+}
+function CoachPeriodizationView({ ctx, coachee }) {
+  const { supabase } = ctx;
+  const [loading, setLoading] = useState(true);
+  const [phases, setPhases] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [editPhase, setEditPhase] = useState(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [transitionProposal, setTransitionProposal] = useState(null);
+  const reload = useCallback(async () => {
+    const [ph, wl, { data: progs }] = await Promise.all([
+      loadPhases(supabase, coachee.id),
+      loadWeightLogs(supabase, coachee.id),
+      supabase.from("programs").select("id, name, is_active").eq("coachee_id", coachee.id).order("program_order", { ascending: true })
+    ]);
+    setPhases(ph);
+    setLogs(wl);
+    setPrograms(progs || []);
+    setLoading(false);
+  }, [supabase, coachee.id]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
+  const active = findActivePhase(phases);
+  const isPremium = (coachee.offer || "essentiel") === "premium";
+  useEffect(() => {
+    if (!active || !active.program_id) {
+      setTransitionProposal(null);
+      return;
+    }
+    const prog = programs.find((p) => p.id === active.program_id);
+    if (prog && !prog.is_active) setTransitionProposal({ phase: active, program: prog });
+    else setTransitionProposal(null);
+  }, [active, programs]);
+  async function confirmTransition() {
+    if (!transitionProposal) return;
+    setMsg("");
+    try {
+      const { phase, program } = transitionProposal;
+      const full = await supabase.from("programs").select("*").eq("id", program.id).single();
+      if (full.data) {
+        await activateProgram(supabase, coachee.id, full.data.week_structure, full.data.sessions_structure, full.data.name);
+      }
+      setMsg("Programme activ\xE9. L'objectif di\xE8te suit la phase active.");
+      await reload();
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+  }
+  async function applyTemplate(tpl, startDate) {
+    setMsg("");
+    try {
+      const rows = buildPhasesFromTemplate(tpl, startDate, coachee.id);
+      await replaceAllPhases(supabase, coachee.id, rows);
+      setTplOpen(false);
+      setMsg("Mod\xE8le appliqu\xE9 \u2014 ajuste les phases si besoin.");
+      await reload();
+    } catch (e) {
+      setMsg("Erreur : " + e.message);
+    }
+  }
+  async function deletePhase(ph) {
+    if (!window.confirm(`Supprimer la phase "${ph.name || phaseLabel(ph.phase_type)}" ?`)) return;
+    await supabase.from("periodization_phases").delete().eq("id", ph.id);
+    await reload();
+  }
+  if (loading) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "fade-in" }, msg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 12, lineHeight: 1.5 } }, msg), transitionProposal && /* @__PURE__ */ React.createElement("div", { style: { background: T.accentLight, border: `1.5px solid ${T.accent}`, borderRadius: 14, padding: "14px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: T.accentDark, marginBottom: 6 } }, "Transition de phase d\xE9tect\xE9e"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: T.text, lineHeight: 1.5, marginBottom: 12 } }, "Phase active : ", /* @__PURE__ */ React.createElement("b", null, transitionProposal.phase.name || phaseLabel(transitionProposal.phase.phase_type)), ". Activer le programme ", /* @__PURE__ */ React.createElement("b", null, transitionProposal.program.name), transitionProposal.phase.goal_adjustment_pct != null ? ` et passer l'objectif nutrition \xE0 ${transitionProposal.phase.goal_adjustment_pct > 0 ? "+" : ""}${transitionProposal.phase.goal_adjustment_pct}%` : "", " ?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setTransitionProposal(null), style: { flex: 1, padding: "11px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "Plus tard"), /* @__PURE__ */ React.createElement("button", { onClick: confirmTransition, style: { flex: 2, padding: "11px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 11, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "Confirmer"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setTplOpen(true), className: "pressable", style: { flex: 1, padding: "11px", background: T.surface, border: `1.5px solid ${T.accent}50`, borderRadius: 12, color: T.accent, fontSize: 11.5, fontWeight: 800, cursor: "pointer" } }, "Appliquer un mod\xE8le"), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditPhase({}), className: "pressable", style: { flex: 1, padding: "11px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 11.5, fontWeight: 800, cursor: "pointer" } }, "+ Nouvelle phase")), phases.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 } }, "Aucune phase planifi\xE9e. Applique un mod\xE8le pr\xE9-construit ou cr\xE9e une phase manuellement.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ActivePhaseCard, { phase: active, phases, programs }), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px 12px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement(PhaseTimeline, { phases, weightLogs: logs, onPhaseClick: setSelected, selectedId: selected == null ? void 0 : selected.id })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "PHASES"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, [...phases].sort((a, b) => a.start_date.localeCompare(b.start_date)).map((ph) => {
+    const st = PHASE_TYPES[ph.phase_type] || { bg: T.surface2, text: T.textSub };
+    const weeks = Math.round(daysBetween(ph.start_date, ph.end_date) / 7);
+    const prog = ph.program_id ? programs.find((p) => p.id === ph.program_id) : null;
+    return /* @__PURE__ */ React.createElement("div", { key: ph.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { width: 10, height: 38, borderRadius: 4, background: st.text, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, ph.name || phaseLabel(ph.phase_type)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, fmtDateShort(ph.start_date), " \u2192 ", fmtDateShort(ph.end_date), " \xB7 ", weeks, " sem", prog ? ` \xB7 ${prog.name}` : "")), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditPhase(ph), style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: T.textSub, cursor: "pointer", fontWeight: 700 } }, "\xC9diter"), /* @__PURE__ */ React.createElement("button", { onClick: () => deletePhase(ph), style: { background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 } }, "\xD7"));
+  })))), selected && /* @__PURE__ */ React.createElement(PhaseDetailSheet, { phase: selected, programs, isPremium, onClose: () => setSelected(null) }), editPhase && /* @__PURE__ */ React.createElement(PhaseEditorModal, { supabase, coacheeId: coachee.id, phase: editPhase.id ? editPhase : null, programs, existingPhases: phases, onClose: () => setEditPhase(null), onSaved: () => {
+    setEditPhase(null);
+    reload();
+  } }), tplOpen && /* @__PURE__ */ React.createElement(TemplateModal, { onClose: () => setTplOpen(false), onApply: applyTemplate }));
+}
+function PhaseEditorModal({ supabase, coacheeId, phase, programs, existingPhases, onClose, onSaved }) {
+  const [type, setType] = useState((phase == null ? void 0 : phase.phase_type) || "prise_de_masse");
+  const [name, setName] = useState((phase == null ? void 0 : phase.name) || "");
+  const [startDate, setStartDate] = useState((phase == null ? void 0 : phase.start_date) || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+  const [weeks, setWeeks] = useState(phase ? Math.round(daysBetween(phase.start_date, phase.end_date) / 7) : 8);
+  const [programId, setProgramId] = useState((phase == null ? void 0 : phase.program_id) || "");
+  const [pct, setPct] = useState((phase == null ? void 0 : phase.goal_adjustment_pct) != null ? phase.goal_adjustment_pct : 0);
+  const [note, setNote] = useState((phase == null ? void 0 : phase.target_note) || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const endDate = addDays(startDate, (parseInt(weeks) || 1) * 7);
+      const maxOrder = existingPhases.length ? Math.max(...existingPhases.map((p) => p.phase_order || 0)) : 0;
+      const payload = {
+        coachee_id: coacheeId,
+        phase_type: type,
+        name: name.trim() || null,
+        start_date: startDate,
+        end_date: endDate,
+        program_id: programId || null,
+        goal_adjustment_pct: parseInt(pct),
+        target_note: note.trim() || null,
+        phase_order: (phase == null ? void 0 : phase.phase_order) || maxOrder + 1
+      };
+      if (phase == null ? void 0 : phase.id) {
+        const { error: error2 } = await supabase.from("periodization_phases").update(payload).eq("id", phase.id);
+        if (error2) throw error2;
+      } else {
+        const { error: error2 } = await supabase.from("periodization_phases").insert(payload);
+        if (error2) throw error2;
+      }
+      onSaved();
+    } catch (e) {
+      setError(e.message || "Erreur");
+      setSaving(false);
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "90vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 } }, phase ? "MODIFIER LA PHASE" : "NOUVELLE PHASE"), /* @__PURE__ */ React.createElement(Field, { label: "TYPE DE PHASE" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } }, PHASE_TYPE_LIST.map((t) => {
+    const st = PHASE_TYPES[t];
+    const on = type === t;
+    return /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => setType(t), style: { padding: "8px 11px", background: on ? st.bg : T.surface, color: on ? st.text : T.textSub, border: `1.5px solid ${on ? st.text : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" } }, st.label);
+  }))), /* @__PURE__ */ React.createElement(Field, { label: "LIBELL\xC9 (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => setName(e.target.value), placeholder: phaseLabel(type), style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 } }, /* @__PURE__ */ React.createElement(Field, { label: "DATE DE D\xC9BUT" }, /* @__PURE__ */ React.createElement("input", { type: "date", value: startDate, onChange: (e) => setStartDate(e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }) })), /* @__PURE__ */ React.createElement(Field, { label: "DUR\xC9E (SEM.)" }, /* @__PURE__ */ React.createElement("input", { type: "number", min: "1", max: "52", value: weeks, onChange: (e) => setWeeks(e.target.value), style: inputStyle }))), /* @__PURE__ */ React.createElement(Field, { label: "PROGRAMME ASSOCI\xC9 (optionnel)" }, /* @__PURE__ */ React.createElement("select", { value: programId, onChange: (e) => setProgramId(e.target.value), style: inputStyle }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Aucun"), (programs || []).map((p) => /* @__PURE__ */ React.createElement("option", { key: p.id, value: p.id }, p.name, p.is_active ? " (actif)" : "")))), /* @__PURE__ */ React.createElement(Field, { label: `OBJECTIF NUTRITION : ${pct > 0 ? "+" : ""}${pct}%` }, /* @__PURE__ */ React.createElement("input", { type: "range", min: "-25", max: "25", step: "1", value: pct, onChange: (e) => setPct(parseInt(e.target.value)), style: { width: "100%", accentColor: T.accent } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 9, color: T.textMuted, fontWeight: 700 } }, /* @__PURE__ */ React.createElement("span", null, "\u221225% s\xE8che"), /* @__PURE__ */ React.createElement("span", null, "0"), /* @__PURE__ */ React.createElement("span", null, "+25% masse"))), /* @__PURE__ */ React.createElement(Field, { label: "NOTE D'OBJECTIF (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: note, onChange: (e) => setNote(e.target.value), placeholder: "Ex : Atteindre 80 kg", style: inputStyle })), error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving, style: { flex: 2, padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" } }, saving ? "..." : "ENREGISTRER"))));
+}
+function TemplateModal({ onClose, onApply }) {
+  const [chosen, setChosen] = useState(null);
+  const [startDate, setStartDate] = useState((/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "88vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 } }, "MOD\xC8LES DE P\xC9RIODISATION"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 } }, "Choisis une trame : elle g\xE9n\xE8re les phases automatiquement depuis une date de d\xE9but. Tu pourras tout ajuster ensuite. Attention : appliquer un mod\xE8le remplace les phases existantes."), /* @__PURE__ */ React.createElement(Field, { label: "DATE DE D\xC9BUT DU PARCOURS" }, /* @__PURE__ */ React.createElement("input", { type: "date", value: startDate, onChange: (e) => setStartDate(e.target.value), style: __spreadProps(__spreadValues({}, inputStyle), { WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }) })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, PERIODIZATION_TEMPLATES.map((tpl) => {
+    const on = (chosen == null ? void 0 : chosen.id) === tpl.id;
+    return /* @__PURE__ */ React.createElement("div", { key: tpl.id, onClick: () => setChosen(tpl), style: { background: on ? T.accentLight : T.surface, border: `1.5px solid ${on ? T.accent : T.border}`, borderRadius: 14, padding: "13px 14px", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: T.text } }, tpl.name), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, fontWeight: 700, flexShrink: 0 } }, "~", tpl.weeks, " sem")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textSub, lineHeight: 1.5, marginBottom: 8 } }, tpl.desc), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 3, height: 8, borderRadius: 4, overflow: "hidden" } }, tpl.phases.map((ph, i) => {
+      const st = PHASE_TYPES[ph.phase_type];
+      return /* @__PURE__ */ React.createElement("div", { key: i, style: { flex: ph.weeks, background: st.text }, title: st.label });
+    })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 } }, tpl.phases.map((ph, i) => {
+      const st = PHASE_TYPES[ph.phase_type];
+      return /* @__PURE__ */ React.createElement("span", { key: i, style: { fontSize: 8, background: st.bg, color: st.text, padding: "2px 6px", borderRadius: 8, fontWeight: 700 } }, ph.weeks, "sem ", st.label);
+    })));
+  }))), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: () => chosen && onApply(chosen, startDate), disabled: !chosen, style: { flex: 2, padding: "14px", background: chosen ? `linear-gradient(135deg, #064E3B, #0D9488)` : T.surface2, color: chosen ? "white" : T.textMuted, border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: chosen ? "pointer" : "default" } }, "APPLIQUER"))));
 }
 function ForgeCoachingApp() {
   const [bootState, setBootState] = useState("loading");
