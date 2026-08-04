@@ -469,6 +469,29 @@ function fmt(s) {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 }
 const tKey = (weekNum, sid, ei, si) => `${weekNum}-${sid}-${ei}-${si}`;
+function currentWeekFromDate(createdAtISO) {
+  if (!createdAtISO) return 1;
+  const start = new Date(createdAtISO);
+  if (isNaN(start.getTime())) return 1;
+  const now = /* @__PURE__ */ new Date();
+  const days = Math.floor((now - start) / 864e5);
+  return Math.max(1, Math.floor(days / 7) + 1);
+}
+const settingsKey = (userId) => `forge_settings_${userId}`;
+function loadSettings(userId) {
+  try {
+    const s = JSON.parse(localStorage.getItem(settingsKey(userId)) || "null");
+    return __spreadValues({ restTimers: true, restSound: true }, s || {});
+  } catch (e) {
+    return { restTimers: true, restSound: true };
+  }
+}
+function saveSettings(userId, s) {
+  try {
+    localStorage.setItem(settingsKey(userId), JSON.stringify(s));
+  } catch (e) {
+  }
+}
 const storageKey = (userId) => `forge_coaching_${userId}_v2`;
 const pendingKey = (userId) => `forge_pending_${userId}_v2`;
 function loadCache(userId) {
@@ -575,7 +598,37 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
   if (cur < prev) return "down";
   return "equal";
 }
-function useTimers() {
+function playRestChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    const notes = [660, 880, 1046];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = now + i * 0.18;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(1e-3, t + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.18);
+    });
+    setTimeout(() => {
+      try {
+        ctx.close();
+      } catch (e) {
+      }
+    }, 900);
+  } catch (e) {
+  }
+}
+function useTimers(soundEnabledRef) {
   const [timers, setTimers] = useState({});
   useEffect(() => {
     const id = setInterval(() => {
@@ -590,13 +643,14 @@ function useTimers() {
           } else if (t.running && t.remaining === 0) {
             next[k] = __spreadProps(__spreadValues({}, t), { running: false, done: true });
             changed = true;
+            if (!soundEnabledRef || soundEnabledRef.current) playRestChime();
           } else next[k] = t;
         }
         return changed ? next : prev;
       });
     }, 1e3);
     return () => clearInterval(id);
-  }, []);
+  }, [soundEnabledRef]);
   const start = useCallback((k, s) => setTimers((p) => __spreadProps(__spreadValues({}, p), { [k]: { total: s, remaining: s, running: true, done: false } })), []);
   const cancel = useCallback((k) => setTimers((p) => {
     const n = __spreadValues({}, p);
@@ -708,6 +762,32 @@ function SetLog({ weight, actualReps, onWeightChange, onRepsChange, weightCmp, r
       style: { width: 46, height: 30, background: rS.bg, border: `1px solid ${rS.border}`, borderRight: "none", borderRadius: "7px 0 0 7px", color: rS.text, fontSize: 13, fontWeight: 700, textAlign: "center", outline: "none", fontFamily: "inherit", transition: "background .3s, border-color .3s, color .3s" }
     }
   ), /* @__PURE__ */ React.createElement("div", { style: { height: 30, padding: "0 6px", background: rS.suffixBg, border: `1px solid ${rS.border}`, borderLeft: `1px solid ${rS.border}40`, borderRadius: "0 7px 7px 0", display: "flex", alignItems: "center", fontSize: 9, color: rS.text, fontWeight: 800, letterSpacing: 0.5, transition: "background .3s, border-color .3s, color .3s" } }, "REPS")));
+}
+function ToggleSwitch({ on, onChange, disabled }) {
+  return /* @__PURE__ */ React.createElement("button", { onClick: () => {
+    if (!disabled) onChange(!on);
+  }, disabled, style: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    border: "none",
+    flexShrink: 0,
+    position: "relative",
+    background: on ? T.accent : T.borderStrong,
+    cursor: disabled ? "default" : "pointer",
+    transition: "background .25s ease",
+    padding: 0
+  } }, /* @__PURE__ */ React.createElement("span", { style: {
+    position: "absolute",
+    top: 3,
+    left: on ? 21 : 3,
+    width: 22,
+    height: 22,
+    borderRadius: "50%",
+    background: "#FFF",
+    transition: "left .25s cubic-bezier(0.34,1.56,0.64,1)",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.2)"
+  } }));
 }
 function QuickCard({ icon, title, subtitle, onClick }) {
   return /* @__PURE__ */ React.createElement("div", { onClick, className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 40, borderRadius: 10, background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20, color: T.accent })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 2 } }, subtitle)), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 20, color: T.borderStrong }));
@@ -941,7 +1021,10 @@ function ProfilePage({ ctx }) {
       { label: "ALERTE", color: "#9B2C2C", bg: "#FDE8E8", border: "#9B2C2C30", title: "Si tu vois 2 semaines de rouge cons\xE9cutives sur un exercice", text: "Contacte-moi directement. Une r\xE9gression sur 2 semaines de suite signifie qu'on doit ajuster quelque chose : intensit\xE9, r\xE9cup\xE9ration, technique, ou programmation. Pas de panique, c'est exactement \xE0 \xE7a que sert le suivi \u2014 on adapte ensemble." }
     ].map((c, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, padding: "16px", marginBottom: 10, animation: `fadeUp .3s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { background: c.color, color: "#FFF", fontWeight: 900, padding: "4px 10px", borderRadius: 6, letterSpacing: 1, fontFamily: "'Bebas Neue'", fontSize: 11 } }, c.label), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: c.color } }, c.title)), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 12, color: T.text, lineHeight: 1.7, margin: 0 } }, c.text)))));
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 18px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 80, height: 80, borderRadius: "50%", margin: "0 auto 14px", background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 36, color: "white", letterSpacing: 2, boxShadow: "0 6px 20px rgba(13,148,136,0.3)" } }, client.name[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 26, color: T.text, letterSpacing: 3, lineHeight: 1 } }, client.name.toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 4 } }, "Coach\xE9 depuis ", client.startDate || "\u2014")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Objectif"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, client.goal || "\u2014")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Programme"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, ctx.activeSessions.length, " s\xE9ances / semaine")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Coach"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, "Forge Coaching")))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Conventions et codes du programme", onClick: () => setProfileSubView("consignes") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "calendar", title: "Mon programme", subtitle: "Voir l'organisation hebdomadaire", onClick: () => ctx.navigate("workout", "organisation") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Mes records", subtitle: "Records personnels par exercice", onClick: () => ctx.navigate("progress") })), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 18px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 80, height: 80, borderRadius: "50%", margin: "0 auto 14px", background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 36, color: "white", letterSpacing: 2, boxShadow: "0 6px 20px rgba(13,148,136,0.3)" } }, client.name[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 26, color: T.text, letterSpacing: 3, lineHeight: 1 } }, client.name.toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.textMuted, marginTop: 4 } }, "Coach\xE9 depuis ", client.startDate || "\u2014")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Objectif"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, client.goal || "\u2014")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Programme"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, ctx.activeSessions.length, " s\xE9ances / semaine")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "8px 0" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Coach"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, "Forge Coaching")))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Conventions et codes du programme", onClick: () => setProfileSubView("consignes") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "calendar", title: "Mon programme", subtitle: "Voir l'organisation hebdomadaire", onClick: () => ctx.navigate("workout", "organisation") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Mes records", subtitle: "Records personnels par exercice", onClick: () => ctx.navigate("progress") })), !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "18px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10, paddingLeft: 2 } }, "R\xC9GLAGES"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Chronom\xE8tres de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, "D\xE9marrer un minuteur \xE0 la validation d'une s\xE9rie")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers, onChange: (v) => {
+    ctx.updateSetting("restTimers", v);
+    if (!v) ctx.updateSetting("restSound", false);
+  } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: () => {
@@ -1033,7 +1116,19 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     refreshWeighedToday();
   }, [refreshWeighedToday]);
   const weekIdCacheRef = useRef(/* @__PURE__ */ new Map());
-  const { timers, start, cancel } = useTimers();
+  const [settings, setSettings] = useState(() => loadSettings(userId));
+  const soundEnabledRef = useRef(settings.restSound);
+  useEffect(() => {
+    soundEnabledRef.current = settings.restTimers && settings.restSound;
+  }, [settings]);
+  const updateSetting = useCallback((key, value) => {
+    setSettings((prev) => {
+      const next = __spreadProps(__spreadValues({}, prev), { [key]: value });
+      saveSettings(userId, next);
+      return next;
+    });
+  }, [userId]);
+  const { timers, start, cancel } = useTimers(soundEnabledRef);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1064,7 +1159,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
             id: profile.access_code || userId,
             startDate: profile.start_date || "",
             goal: profile.goal || "",
-            offer: profile.offer || "essentiel"
+            offer: profile.offer || "essentiel",
+            createdAt: profile.created_at || null
           },
           week: program.week_structure,
           sessions: program.sessions_structure,
@@ -1072,17 +1168,18 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         };
         if (!cancelled) setAppData(remoteAppData);
         const { allCompletedSets: rcs, allSetLogs: rls, maxWeek } = await loadAllSetsFromSupabase(supabase, userId);
+        const computedWeek = currentWeekFromDate(profile.created_at);
         if (!cancelled) {
           setAllCompletedSets(rcs);
           setAllSetLogs(rls);
-          setCurrentWeek((prev) => Math.max(prev, maxWeek));
-          setViewedWeek((prev) => Math.max(prev, maxWeek));
+          setCurrentWeek(computedWeek);
+          setViewedWeek(computedWeek);
         }
         saveCache(userId, {
           appData: remoteAppData,
           completedSets: rcs,
           setLogs: rls,
-          currentWeek: Math.max(currentWeek, maxWeek),
+          currentWeek: computedWeek,
           lastSavedAt: (/* @__PURE__ */ new Date()).toISOString()
         });
         const pending = loadPending(userId);
@@ -1149,9 +1246,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     const key = tKey(viewedWeek, sessionId, exIdx, setIdx);
     setAllCompletedSets((prev) => {
       const nowDone = !prev[key];
-      if (nowDone && viewedWeek > currentWeek) setCurrentWeek(viewedWeek);
       if (nowDone) {
-        if (viewedWeek >= currentWeek) start(key, parseRepos(repos));
+        if (viewedWeek >= currentWeek && settings.restTimers) start(key, parseRepos(repos));
         setAllSetLogs((l) => l[key] ? l : __spreadProps(__spreadValues({}, l), { [key]: { weight: "", actualReps: "", exerciseName, loggedAt: (/* @__PURE__ */ new Date()).toISOString() } }));
       } else {
         cancel(key);
@@ -1169,7 +1265,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
       });
       return __spreadProps(__spreadValues({}, prev), { [key]: nowDone });
     });
-  }, [viewedWeek, currentWeek, start, cancel, pushSet, allSetLogs]);
+  }, [viewedWeek, currentWeek, start, cancel, pushSet, allSetLogs, settings.restTimers]);
   const updateLog = useCallback((key, field, val) => {
     setAllSetLogs((p) => {
       const next = __spreadProps(__spreadValues({}, p), { [key]: __spreadProps(__spreadValues({}, p[key] || {}), { [field]: val, loggedAt: (/* @__PURE__ */ new Date()).toISOString() }) });
@@ -1224,6 +1320,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     openExerciseSheet: (ex) => setSheetExercise(ex),
     weighedToday,
     refreshWeighedToday,
+    settings,
+    updateSetting,
     onLogout,
     isDemo
   };
@@ -1331,6 +1429,23 @@ async function createCoacheeViaFunction(supabase, payload) {
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error || "Cr\xE9ation \xE9chou\xE9e");
   return json.coachee;
+}
+async function updateCoacheeViaFunction(supabase, payload) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Session expir\xE9e");
+  const url = `${SUPABASE_CONFIG.url}/functions/v1/update-coachee`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": SUPABASE_CONFIG.anonKey
+    },
+    body: JSON.stringify(payload)
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || "Mise \xE0 jour \xE9chou\xE9e");
+  return json;
 }
 async function activateProgram(supabase, coacheeId, weekStructure, sessionsStructure, programName) {
   const { data: existing } = await supabase.from("programs").select("program_order").eq("coachee_id", coacheeId).order("program_order", { ascending: false }).limit(1).maybeSingle();
@@ -1856,6 +1971,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
   const { supabase } = ctx;
   const [tab, setTab] = useState("infos");
   const [busy, setBusy] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   async function toggleActive() {
     const newState = coachee.is_active === false;
     if (!window.confirm(newState ? "R\xE9activer ce coach\xE9 ?" : "D\xE9sactiver ce coach\xE9 ? Son historique sera conserv\xE9.")) return;
@@ -1865,7 +1981,43 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
     setBusy(false);
     onBack();
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditOpen(true), style: { width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "\xC9diter les infos"), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })), editOpen && /* @__PURE__ */ React.createElement(EditCoacheeModal, { supabase, coachee, onClose: () => setEditOpen(false), onSaved: async () => {
+    setEditOpen(false);
+    await onChanged();
+    onBack();
+  } }));
+}
+function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
+  const [name, setName] = useState(coachee.name || "");
+  const [offer, setOffer] = useState(coachee.offer || "essentiel");
+  const [code, setCode] = useState(coachee.access_code || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const codeChanged = code.trim().toUpperCase() !== String(coachee.access_code || "").toUpperCase();
+  async function handleSave() {
+    if (!name.trim() || !code.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await updateCoacheeViaFunction(supabase, {
+        coacheeId: coachee.id,
+        newName: name.trim(),
+        newOffer: offer,
+        newAccessCode: code.trim().toUpperCase()
+      });
+      onSaved();
+    } catch (e) {
+      setError(e.message || "Erreur");
+      setSaving(false);
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "90vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 } }, "\xC9DITER LE COACH\xC9"), /* @__PURE__ */ React.createElement(Field, { label: "NOM" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => {
+    setName(e.target.value);
+    setError("");
+  }, style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "OFFRE" }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, OFFER_OPTIONS.map((o) => /* @__PURE__ */ React.createElement("button", { key: o, onClick: () => setOffer(o), style: { flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", textTransform: "uppercase" } }, o)))), /* @__PURE__ */ React.createElement(Field, { label: "CODE D'ACC\xC8S" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: code, onChange: (e) => {
+    setCode(e.target.value.toUpperCase());
+    setError("");
+  }, style: __spreadProps(__spreadValues({}, inputStyle), { fontWeight: 700, letterSpacing: 1 }) })), codeChanged && /* @__PURE__ */ React.createElement("div", { style: { background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", lineHeight: 1.5, fontWeight: 600 } }, "Attention : changer le code modifie les identifiants de connexion du coach\xE9. Il devra utiliser le nouveau code ", /* @__PURE__ */ React.createElement("b", null, code.trim().toUpperCase()), " pour se connecter, et sera d\xE9connect\xE9 de ses sessions actuelles."), error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 } }, error)), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving || !name.trim() || !code.trim(), style: { flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " ...") : "ENREGISTRER"))));
 }
 function CoachTabBar({ activePage, onNavigate }) {
   const tabs = [
