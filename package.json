@@ -1,0 +1,13 @@
+{
+  "name": "forge-coaching",
+  "private": true,
+  "type": "module",
+  "description": "Forge Coaching — application web de coaching sportif (PWA React mono-fichier).",
+  "scripts": {
+    "build": "node build.mjs",
+    "verifier-gabarit": "node build.mjs --verifier-gabarit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

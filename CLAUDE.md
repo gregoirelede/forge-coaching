@@ -1,0 +1,758 @@
+# FORGE COACHING — CONTEXTE PROJET COMPLET
+### Fichier de référence pour Claude Code · Version 1.0 · Build v7 (~445 Ko / 4 762 lignes)
+
+> **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
+
+---
+
+# PARTIE A — RÈGLES DE TRAVAIL
+
+Tu travailles sur **Forge Coaching**, une application web de coaching sportif en production, utilisée par de vrais coachés. Lis ce document intégralement avant toute action.
+
+1. **Réponds toujours en français.** Toute l'interface de l'app est en français.
+2. **Je suis non technique.** Guide-moi étape par étape pour chaque opération sur GitHub, Supabase ou en ligne de commande. Ne suppose jamais que je sais où cliquer.
+3. **L'app est en production. Ne casse rien.** Toute évolution est **additive**. Avant de modifier un bloc, lis-le en entier. En cas de doute sur l'impact, demande-moi avant.
+4. **Charte visuelle "Forest & Sand" stricte** (Partie F). **Zéro emoji dans l'UI**, sans exception.
+5. **Toute migration SQL doit être idempotente** (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`) — je dois pouvoir la relancer sans risque.
+6. **Après chaque build, annonce-moi la taille du fichier `index.html`** — je la vérifie systématiquement après upload.
+7. **Jamais la clé `service_role` côté client.** Elle vit uniquement dans les secrets des Edge Functions.
+8. **Fournis toujours un parcours de test** après une modification : quoi ouvrir, quoi cliquer, quel résultat attendre.
+9. Si une modification touche la base **et** le code, donne-moi l'**ordre exact** des opérations (SQL d'abord, puis déploiement).
+
+### Cycle de travail standard pour toute nouvelle fonctionnalité
+```
+1. Lire les parties concernées de training-app.jsx
+2. Modifier training-app.jsx (source unique de vérité)
+3. Vérifier la syntaxe : esbuild en dry-run
+4. Builder index.html
+5. Vérifier (greps de contrôle, Partie E) + annoncer la taille
+6. Me donner : ordre des opérations + parcours de test
+7. Commit + push
+```
+
+---
+
+# PARTIE B — IDENTITÉ & ÉTAT DU PROJET
+
+## B.1 — Fiche d'identité
+
+| Élément | Valeur |
+|---|---|
+| Nom | **Forge Coaching** |
+| Slogan | *Forge ton corps. Forge ta discipline.* |
+| Porteur | Grégoire (Greg) Lede — coach sportif, BPJEPS AF |
+| Nature | App web React **mono-fichier**, installable en PWA |
+| Production | `https://gregoirelede.github.io/forge-coaching/` |
+| GitHub | compte `gregoirelede` · repo `forge-coaching` |
+| Hébergement | GitHub Pages (HTTPS obligatoire) |
+| Backend | Supabase — project ref `xlquzhwmdyyiugtezasg` |
+| Compte Supabase | `gregoire.lede777@gmail.com` |
+| Poste de dev | PC Windows (PowerShell) |
+| Tests | iPhone Safari + Android Chrome |
+| Langue UI | Français intégral |
+
+**App Store / Google Play : écarté pour l'instant** (coût + Mac requis pour iOS). L'app reste une PWA installable.
+
+## B.2 — Modèle économique
+
+- Coaching musculation en ligne, cible **débutants et intermédiaires**.
+- Deux offres : **Essentiel ~49 €/mois** · **Premium ~89 €/mois**.
+- `profiles.offer` vaut `'essentiel'` ou `'premium'`.
+- **Module Nutrition = Premium uniquement.** Un coaché Essentiel ne voit jamais l'onglet.
+- **Onglet Parcours (périodisation) = toutes offres**, mais les cibles caloriques chiffrées y restent masquées pour l'Essentiel.
+
+## B.3 — Journal des versions
+
+| Build | Contenu | Taille | Lignes |
+|---|---|---|---|
+| v1–v3 | App coaché : séances, logs kg/reps, comparaison inter-semaines, progrès | — | ~1 551 |
+| v4 | Supabase + Auth par code d'accès + RLS | — | — |
+| v5 | **Espace coach** : coachés, bibliothèque d'exercices, constructeur de programme | ~303 Ko | — |
+| v6 | **Module Nutrition Premium** : BMR/TDEE, recettes, plans de repas, pesées | ~390 Ko | — |
+| v7a | **Calendrier de périodisation** : frise, 4 modèles, onglet Parcours | ~435 Ko | 4 575 |
+| **v7b (actuel)** | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés | **~445 Ko** | **4 762** |
+
+## B.4 — État d'installation
+
+**Déployé et fonctionnel :**
+- [x] `index.html` v7b en ligne sur GitHub Pages
+- [x] `supabase-setup.sql` (schéma initial)
+- [x] `supabase-espace-coach.sql`
+- [x] `supabase-diete.sql`
+- [x] `supabase-periodisation.sql`
+- [x] Edge Function `create-coachee` déployée
+- [x] Edge Function `update-coachee` déployée
+- [x] PWA installable iOS (Safari → Partager → Sur l'écran d'accueil) et Android (Chrome → bannière)
+
+**Optionnel, non fait :**
+- [ ] Clé API Anthropic (`sk-ant-...`) pour la génération de recettes par IA — le bouton "IA" de la page Recettes reste inactif sans elle. Compte sur `console.anthropic.com`, 5 $ de crédit suffisent pour des centaines de générations.
+
+> Si un doute subsiste sur l'état réel de la base, la vérité est dans Supabase → Table Editor. Les 10 tables de la Partie G doivent toutes exister.
+
+---
+
+# PARTIE C — ARCHITECTURE TECHNIQUE
+
+## C.1 — Stack runtime (verrouillée)
+
+- **React 18 + ReactDOM 18** en bundles **UMD inlinés** dans le HTML.
+- **Supabase JS** chargé depuis le **CDN jsDelivr** via une balise `<script>` classique, exposé en `window.supabaseJs`.
+- Le JS de l'app est **pré-compilé avec esbuild** puis inliné.
+- Aucune dépendance npm au runtime. Aucun bundler côté navigateur.
+
+## C.2 — Les quatre pièges déjà rencontrés — ne jamais les reproduire
+
+1. **Pas d'`import()` dynamique** pour Supabase → faisait planter l'app silencieusement (écran blanc). Utiliser `window.supabaseJs.createClient()`.
+2. **Pas de Babel standalone dans le navigateur** → échoue silencieusement sur un fichier de cette taille (écran "CHARGEMENT..." infini). La compilation se fait avec esbuild, en amont.
+3. **Ne pas inliner le bundle Supabase** → son webpack tente de résoudre un `publicPath` et échoue. CDN uniquement.
+4. **L'app ne peut pas joindre Supabase en `file://`** → le navigateur bloque les requêtes d'origine `null`. Tester **uniquement** via l'URL GitHub Pages en HTTPS. Ouvrir `index.html` par double-clic ne prouve rien.
+
+## C.3 — Structure du repo
+
+```
+forge-coaching/
+├── index.html                          ← LE fichier déployé (build)
+├── CLAUDE.md                           ← ce document
+├── src/
+│   └── training-app.jsx                ← SOURCE UNIQUE (~4 762 lignes)
+├── build.mjs                           ← script de build (Partie E)
+├── vendor/
+│   ├── react.production.min.js         ← React 18 UMD
+│   └── react-dom.production.min.js     ← ReactDOM 18 UMD
+├── sql/
+│   ├── supabase-setup.sql
+│   ├── supabase-espace-coach.sql
+│   ├── supabase-diete.sql
+│   └── supabase-periodisation.sql
+├── edge-functions/
+│   ├── create-coachee.ts
+│   └── update-coachee.ts
+└── guides/
+    ├── GUIDE-edge-function-windows.md
+    ├── GUIDE-diete.md
+    └── GUIDE-periodisation.md
+```
+
+> Si le repo actuel ne suit pas encore cette arborescence, la mettre en place est une bonne première tâche — mais `index.html` doit **impérativement rester à la racine**, sinon GitHub Pages ne le sert plus.
+
+---
+
+# PARTIE D — CARTE DU CODE (`training-app.jsx`)
+
+Composants et constantes clés, à connaître avant toute modification :
+
+| Nom | Rôle |
+|---|---|
+| `SUPABASE_CONFIG` | URL + clé anon, tout en haut du fichier (~lignes 14-15) |
+| `getSupabase()` | Fabrique le client Supabase — **transformé au build** |
+| `codeToCredentials()` | Convertit un code d'accès en email/mot de passe internes |
+| `ForgeCoachingApp` | Composant racine, routage par rôle — **`export default` retiré au build** |
+| `LoadingScreen` / `LoginScreen` / `CoachLoginScreen` | Écrans de démarrage |
+| `AuthenticatedApp` | Toute l'app côté coaché |
+| `CoachApp` | Toute l'app côté coach |
+| `NutritionPage` | Nutrition côté coaché |
+| `CoachNutritionView` / `CoachRecipesPage` | Nutrition + recettes côté coach |
+| `ParcoursPage` | Onglet Parcours côté coaché |
+| `CoachPeriodizationView` | Sous-vue Périodisation côté coach |
+| `PhaseTimeline` | Frise chronologique (composant partagé) |
+| `FloatingBanner` | Bannière flottante des chronomètres |
+| `muscleColors` | Couleurs par groupe musculaire — **liste fermée** |
+| `PHASE_TYPES` / `PERIODIZATION_TEMPLATES` | Périodisation (Partie I) |
+| `DEFAULT_SESSIONS` / `WEEK` | Structure de programme par défaut |
+| `activePhasePct` | Objectif nutrition piloté par la phase active |
+
+**États de démarrage de `ForgeCoachingApp`** : `loading` → `login` / `coachLogin` → `ready` (routage `role === 'coach'` vs `coachee`) ou `demo`.
+
+---
+
+# PARTIE E — PIPELINE DE BUILD
+
+> **Correctif du 4 août 2026 — lire la Partie O avant d'utiliser cette partie.** Le `build.mjs` reproduit en E.2 ne redonne **pas** le fichier en production, et deux de ses défauts sont graves : `format: "iife"` provoquerait un écran blanc, et son remplacement de `getSupabase()` supprimerait la persistance de session, déconnectant tous les coachés à chaque fermeture de l'app. **Ne jamais copier le script de E.2.** Le seul script valide est le `build.mjs` présent à la racine du dépôt, prouvé conforme à l'octet près. Les 4 intentions de E.1 et les contrôles de E.3, eux, restent exacts.
+
+## E.1 — Les 4 transformations obligatoires
+
+Appliquées à `training-app.jsx` **avant** compilation :
+
+1. **Ligne d'import React** → `const { useState, useEffect, useCallback, useMemo, useRef } = React;`
+2. **`getSupabase()`** → suppression de l'import dynamique, remplacement par `window.supabaseJs.createClient(...)`
+3. **`export default function ForgeCoachingApp()`** → `function ForgeCoachingApp()`
+4. **URL Supabase** → retirer tout suffixe `/rest/v1/` : `https://xlquzhwmdyyiugtezasg.supabase.co`
+
+## E.2 — Script de build (`build.mjs`, Node 18+)
+
+Prérequis, une seule fois : `npm install esbuild` à la racine du repo.
+Et télécharger les deux UMD React 18 dans `vendor/` (production, minifiés).
+
+```js
+// build.mjs — node build.mjs
+import { readFileSync, writeFileSync } from "node:fs";
+import { transform } from "esbuild";
+
+const SRC  = "src/training-app.jsx";
+const OUT  = "index.html";
+const SUPA = "https://xlquzhwmdyyiugtezasg.supabase.co";
+
+let code = readFileSync(SRC, "utf8");
+
+// 1 — import React → destructuring global
+code = code.replace(
+  /^import\s*\{[^}]*\}\s*from\s*["']react["'];?\s*$/m,
+  "const { useState, useEffect, useCallback, useMemo, useRef } = React;"
+);
+
+// 2 — getSupabase() → client UMD du CDN
+code = code.replace(
+  /(const|let|var|async function)\s+getSupabase[\s\S]*?return\s+_supabasePromise;\s*\}/m,
+  `let _supabaseClient = null;
+function getSupabase() {
+  if (!_supabaseClient) {
+    _supabaseClient = window.supabaseJs.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+  }
+  return Promise.resolve(_supabaseClient);
+}`
+);
+
+// 3 — export default
+code = code.replace("export default function ForgeCoachingApp()", "function ForgeCoachingApp()");
+
+// 4 — URL Supabase
+code = code.replaceAll(SUPA + "/rest/v1/", SUPA);
+
+// Compilation JSX → JS
+const { code: appJs } = await transform(code, {
+  loader: "jsx", target: "es2017", format: "iife", minify: false,
+});
+
+const reactJs    = readFileSync("vendor/react.production.min.js", "utf8");
+const reactDomJs = readFileSync("vendor/react-dom.production.min.js", "utf8");
+
+const ICON = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+  + "<defs><linearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'>"
+  + "<stop offset='0%25' stop-color='%23064E3B'/><stop offset='100%25' stop-color='%232DD4BF'/>"
+  + "</linearGradient></defs>"
+  + "<path d='M32 3 L58 12 L58 37 C58 51 32 62 32 62 C32 62 6 51 6 37 L6 12 Z' fill='url(%23g)'/></svg>";
+
+const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
+  <title>Forge Coaching</title>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <link rel="icon" type="image/svg+xml" href="${ICON}"/>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #F5F1EB; } #root { min-height: 100vh; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>${reactJs}</script>
+  <script>${reactDomJs}</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>window.supabaseJs = window.supabase;</script>
+  <script>
+${appJs}
+const _root = ReactDOM.createRoot(document.getElementById("root"));
+_root.render(React.createElement(ForgeCoachingApp));
+  </script>
+</body>
+</html>`;
+
+writeFileSync(OUT, html);
+console.log(`index.html : ${Math.round(html.length / 1024)} Ko`);
+```
+
+> **Attention aux regex des étapes 1 et 2** : si la source a évolué, elles peuvent ne plus matcher. **Toujours vérifier après build** avec les contrôles ci-dessous. En cas de doute, l'`index.html` actuellement en production est la référence : son squelette HTML est celui qui fonctionne.
+
+## E.3 — Contrôles obligatoires après chaque build
+
+```bash
+grep -c "React.createElement" index.html   # doit être > 0
+grep -c "esm.sh" index.html                # doit être 0
+grep -c "export default" index.html        # doit être 0
+grep -c "type=\"text/babel\"" index.html   # doit être 0
+grep -c "window.supabaseJs" index.html     # doit être > 0
+grep -c "/rest/v1/" index.html             # doit être 0
+grep -c "function CoachApp" index.html     # doit être > 0
+grep -c "function AuthenticatedApp" index.html
+grep -c "ParcoursPage\|PhaseTimeline\|PERIODIZATION_TEMPLATES" index.html
+grep -c "NutritionPage\|CoachRecipesPage" index.html
+ls -la index.html                          # annoncer la taille
+```
+
+---
+
+# PARTIE F — DÉPLOIEMENT
+
+## F.1 — Deux méthodes
+
+**Via Git (à privilégier depuis Claude Code) :**
+```bash
+git add index.html src/training-app.jsx
+git commit -m "v7c : <description courte>"
+git push
+```
+
+**Via l'interface GitHub (méthode historique de Greg) :**
+repo `forge-coaching` → **Add file → Upload files** → déposer `index.html` (il remplace l'ancien) → **Commit changes**.
+
+GitHub Pages redéploie en **~1 minute**. Suivi dans l'onglet **Actions** → ligne "pages build and deployment" avec une coche verte.
+
+## F.2 — La mise à jour n'apparaît pas : procédure de diagnostic
+
+Ordre à respecter, ce piège s'est déjà produit :
+
+1. **Vérifier la taille du fichier sur GitHub** — si elle correspond à l'ancienne version, le remplacement n'a pas pris.
+2. **Ouvrir dans le navigateur avec un anti-cache** : `https://gregoirelede.github.io/forge-coaching/?v=2` (incrémenter le chiffre).
+3. **Si ça marche avec `?v=` mais pas sur l'icône installée** → c'est le cache de la PWA. Supprimer l'icône de l'écran d'accueil (appui long → Supprimer), puis réinstaller depuis Safari (Partager → Sur l'écran d'accueil).
+
+> **Les PWA installées gardent l'ancienne version en cache et ne se rafraîchissent pas toutes seules.** C'est le comportement normal, pas un bug.
+
+---
+
+# PARTIE G — SCHÉMA SUPABASE COMPLET (10 tables)
+
+### `profiles` — extension de `auth.users`
+```sql
+id                 uuid PK REFERENCES auth.users(id)
+name               text NOT NULL
+access_code        text UNIQUE NOT NULL      -- code personnel, jamais en clair ici
+goal               text
+start_date         date
+role               text DEFAULT 'coachee' CHECK (role IN ('coach','coachee'))
+coach_id           uuid REFERENCES profiles(id)
+offer              text DEFAULT 'essentiel' CHECK (offer IN ('essentiel','premium'))
+is_active          boolean DEFAULT true
+sex                text CHECK (sex IN ('homme','femme'))
+birth_date         date
+height_cm          int
+```
+
+### `programs`
+```sql
+id                   uuid PK
+coachee_id           uuid REFERENCES profiles(id) NOT NULL
+name                 text
+week_structure       jsonb NOT NULL      -- contenu de WEEK[]
+sessions_structure   jsonb NOT NULL      -- contenu de SESSIONS[]
+is_active            boolean DEFAULT true
+program_order        int DEFAULT 1
+created_at           timestamptz DEFAULT now()
+```
+
+### `weeks`
+```sql
+id           uuid PK
+coachee_id   uuid REFERENCES profiles(id) NOT NULL
+program_id   uuid REFERENCES programs(id) NOT NULL
+week_number  int NOT NULL       -- numérotation CONTINUE depuis le début du coaching
+start_date   date
+UNIQUE (coachee_id, week_number)
+```
+
+### `sets_logged`
+```sql
+id                  uuid PK
+coachee_id          uuid REFERENCES profiles(id) NOT NULL
+week_id             uuid REFERENCES weeks(id) NOT NULL
+session_config_id   int NOT NULL       -- id de la séance (1..5)
+exercise_index      int NOT NULL
+exercise_name       text NOT NULL
+set_index           int NOT NULL       -- 0-based
+weight              decimal
+actual_reps         int
+completed           boolean DEFAULT false
+logged_at           timestamptz DEFAULT now()
+UNIQUE (coachee_id, week_id, session_config_id, exercise_index, set_index)
+```
+
+### `exercises_library`
+```sql
+id          uuid PK
+coach_id    uuid REFERENCES profiles(id) NOT NULL
+name        text NOT NULL
+muscle      text NOT NULL      -- doit correspondre à une clé de muscleColors
+notes       text
+created_at  timestamptz DEFAULT now()
+UNIQUE (coach_id, name)
+```
+
+### `weight_logs`
+```sql
+id          uuid PK
+coachee_id  uuid REFERENCES profiles(id) NOT NULL
+weight_kg   decimal NOT NULL
+logged_date date NOT NULL
+created_at  timestamptz DEFAULT now()
+UNIQUE (coachee_id, logged_date)
+```
+
+### `nutrition_profiles`
+```sql
+id                   uuid PK
+coachee_id           uuid REFERENCES profiles(id) UNIQUE NOT NULL
+allergies            text[]
+dietary_preferences  text[]
+disliked_foods       text[]
+medical_flag         boolean DEFAULT false
+medical_notes        text
+ed_screening_flag    boolean DEFAULT false   -- risque trouble alimentaire
+consent_disclaimer   boolean DEFAULT false
+consent_date         timestamptz
+activity_factor      decimal DEFAULT 1.2     -- vie quotidienne HORS sport
+goal_adjustment_pct  int DEFAULT 0           -- surplus(+) / déficit(−) en %
+meals_per_day        int DEFAULT 4
+protein_g_per_kg     decimal DEFAULT 2.0
+fat_g_per_kg         decimal DEFAULT 0.9
+updated_at           timestamptz DEFAULT now()
+```
+
+### `recipes_library`
+```sql
+id             uuid PK
+coach_id       uuid REFERENCES profiles(id) NOT NULL
+name           text NOT NULL
+meal_type      text CHECK (meal_type IN ('petit_dejeuner','dejeuner','diner','collation'))
+ingredients    jsonb        -- [{name, qty, unit, kcal, protein, carbs, fat}]
+steps          text[]
+total_kcal     int
+protein_g      int
+carbs_g        int
+fat_g          int
+base_servings  int DEFAULT 1
+image_url      text         -- une seule image par recette, réutilisée
+tags           text[]
+created_at     timestamptz DEFAULT now()
+```
+
+### `meal_plans`
+```sql
+id          uuid PK
+coachee_id  uuid REFERENCES profiles(id) NOT NULL
+week_id     uuid REFERENCES weeks(id) NOT NULL
+day_index   int NOT NULL      -- 0 = lundi … 6 = dimanche
+meal_type   text NOT NULL
+recipe_id   uuid REFERENCES recipes_library(id)
+servings    decimal DEFAULT 1
+created_at  timestamptz DEFAULT now()
+UNIQUE (coachee_id, week_id, day_index, meal_type)
+```
+
+### `periodization_phases`
+```sql
+id                   uuid PK
+coachee_id           uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL
+phase_type           text NOT NULL CHECK (phase_type IN
+                     ('prise_de_masse','seche','recomposition','maintien','decharge'))
+name                 text
+start_date           date NOT NULL
+end_date             date NOT NULL
+program_id           uuid REFERENCES programs(id) ON DELETE SET NULL
+goal_adjustment_pct  int
+target_note          text
+phase_order          int NOT NULL
+created_at           timestamptz DEFAULT now()
+```
+Index : `idx_phases_coachee ON periodization_phases(coachee_id, phase_order)`
+Contrainte métier : les phases d'un coaché **ne se chevauchent jamais** et sont idéalement contiguës.
+
+## G.1 — Règle RLS générale
+
+RLS activée sur **toutes** les tables, sans exception.
+
+- **Coaché** → ses propres lignes : `auth.uid() = coachee_id`
+- **Coach** → celles de ses coachés :
+  ```sql
+  EXISTS (SELECT 1 FROM profiles p
+          WHERE p.id = <table>.coachee_id AND p.coach_id = auth.uid())
+  ```
+- **Bibliothèques du coach** (`exercises_library`, `recipes_library`) : écriture si `coach_id = auth.uid()` ; lecture seule pour les coachés rattachés à ce coach.
+
+## G.2 — Edge Functions
+
+| Fonction | Rôle |
+|---|---|
+| `create-coachee` | Crée le compte Auth + le profil d'un nouveau coaché |
+| `update-coachee` | Modifie nom, offre et code d'accès (le code change les identifiants Auth) |
+
+Les deux utilisent la clé `service_role` **exclusivement côté serveur**.
+
+**Redéploiement (PowerShell Windows, Supabase CLI installé via Scoop) :**
+```powershell
+cd ~\Documents
+mkdir -p supabase\functions\<nom-fonction>
+# placer le fichier renommé en index.ts dans ce dossier
+supabase functions deploy <nom-fonction> --no-verify-jwt
+```
+Les secrets sont partagés entre toutes les fonctions — inutile de les reconfigurer.
+Si `supabase` n'est pas reconnu : fermer/rouvrir PowerShell, ou relancer `supabase login`.
+
+---
+
+# PARTIE H — CHARTE VISUELLE "FOREST & SAND" (verrouillée)
+
+```js
+const T = {
+  bg: "#F5F1EB", surface: "#FFFCF7", surface2: "#EDE8DF",
+  border: "#DDD5C8", borderStrong: "#C8BFB0",
+  text: "#1E2820", textSub: "#7A7060", textMuted: "#A89880",
+  accent: "#2D6A4F", accentDark: "#1E4D38", accentLight: "#E4F0EB",
+  accentText: "#FFFFFF",
+};
+```
+
+- **Polices** : `DM Sans` (texte courant) · `Bebas Neue` (titres, labels, onglets — majuscules + letter-spacing).
+- **Animations** : `fade-in`, `popIn`, transitions douces `0.3s ease`.
+- **Zéro emoji** dans l'interface.
+- **Logo** : bouclier, monogramme "FC".
+- Cartes : `borderRadius` ~13 px, `border: 1px solid T.border`, ombre légère `0 1px 8px`.
+
+### Couleurs des phases de périodisation
+| Type | Libellé | Texte | Fond |
+|---|---|---|---|
+| `prise_de_masse` | Prise de masse | `#C27A00` | `#FEF3DC` |
+| `seche` | Sèche | `#1A4A80` | `#DDEEFF` |
+| `recomposition` | Recomposition | `#1A6640` | `#E0F5EC` |
+| `maintien` | Maintien | `#7A7060` | `#EDE8DF` |
+| `decharge` | Décharge | `#5B35B0` | `#EDE8FF` |
+
+### Catégories musculaires (`muscleColors` — liste fermée)
+Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios · Mollets · Grand dorsal · Haut du dos · Biceps · Fessier/Ischios · Adducteurs
+
+> La saisie du muscle se fait **par menu déroulant**, jamais en texte libre — sinon le code couleur casse. Ajouter une catégorie est une évolution à part entière (couleur + cohérence sur toutes les vues).
+
+---
+
+# PARTIE I — MODULES FONCTIONNELS
+
+## I.1 — Côté coaché
+
+**Connexion** : code d'accès personnel. En interne, l'app génère un email + mot de passe invisibles pour le coaché et ouvre une session Supabase Auth persistée. Déconnexion : lien discret, texte seul, en bas de la page Profil.
+
+**Navigation — 6 onglets** (5 pour un Essentiel) : Accueil · Séances · Parcours · Nutrition *(Premium)* · Progrès · Profil.
+
+- **Séances** — 3 sous-onglets : `SEMAINE` (séances du jour, onglets de jours intégrés, saisie kg/reps par série, chronomètres, badges de technique), `ORGANISATION ENTRAINEMENTS` (structure hebdomadaire), `CONSIGNES` (consignes du coach : label coloré + titre + texte).
+  Bandeau "semaine N en cours" en haut.
+- **Parcours** *(toutes offres)* — frise de périodisation en lecture seule, phase en cours mise en avant (semaine X/Y + compte à rebours "N semaines restantes"), détail au clic, courbe de poids superposée. Pour un Essentiel : type et objectif affichés, **cibles caloriques chiffrées masquées**.
+- **Nutrition** *(Premium)* — cibles kcal + macros, plan de repas de la semaine, saisie de la pesée. **Lecture seule** hors pesée : toute la configuration se fait côté coach.
+- **Progrès** — exercices groupés par muscle en accordéon, pastille colorée, record kg, nombre de semaines loguées, mini-graphique au clic.
+- **Profil** — infos + **Réglages** (voir I.3).
+
+## I.2 — Côté coach
+
+Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion → login email + mot de passe.
+
+- **Liste des coachés** : création (code d'accès + offre, via `create-coachee`), **édition** (nom / offre / code d'accès, via `update-coachee`), désactivation par `is_active` — **jamais de suppression d'historique**.
+- **Bibliothèque d'exercices** : CRUD complet.
+- **Constructeur de programme** : planning hebdomadaire, exercices, séries, reps par série.
+- **Détail coaché** : onglets Infos · Progression (lecture) · Nutrition · Périodisation.
+- **Bibliothèque de recettes** : CRUD + bouton "IA" (API Anthropic) pour aider à remplir la bibliothèque.
+- **Périodisation** : appliquer un des 4 modèles depuis une date de début, créer/éditer des phases manuellement, frise + courbe de poids, propositions de transition.
+
+## I.3 — Réglages coaché (v7b)
+
+Dans Profil, stockés en **localStorage sur l'appareil de chaque coaché** — rien en base :
+- **Chronomètres** actifs ou non.
+- **Sonnerie de fin de repos** — modifiable uniquement si les chronomètres sont actifs (grisée sinon).
+
+> Sur iPhone, la sonnerie passe par le son du navigateur : téléphone non silencieux + au moins une interaction préalable avec l'app (règle iOS).
+
+## I.4 — Modèles de périodisation (`PERIODIZATION_TEMPLATES`, constante en dur)
+
+1. **Débutant · Premiers résultats** — 24 semaines
+2. **Intermédiaire · Masse & Sèche**
+3. **Sèche estivale**
+4. **Recomposition longue**
+
+Appliquer un modèle = générer les `periodization_phases` à partir d'une date de début choisie par le coach. Durées et pourcentages sont des **points de départ éditables**.
+
+---
+
+# PARTIE J — RÈGLES MÉTIER (décisions actées)
+
+Ne pas les remettre en cause sans validation explicite de ma part.
+
+1. **Charge et reps comparées indépendamment**, jamais par tonnage. Code couleur vert/rouge sur chaque bulle séparément.
+2. Comparaison **strictement avec la semaine immédiatement précédente**. Modifier la semaine N recalcule uniquement les couleurs de N+1, jamais au-delà.
+3. **Échec musculaire supposé à chaque série** — c'est le fondement de la comparaison.
+4. **Numérotation des semaines continue** depuis le début du coaching, quel que soit le changement de programme.
+5. **Semaine "en cours"** = déterminée par la date, **jamais** par la validation d'une série. Loguer dans une semaine future ne doit pas déplacer la semaine en cours (bug corrigé en v7b).
+6. Stockage **hybride localStorage + Supabase**.
+7. **L'IA sert au coach** pour remplir sa bibliothèque de recettes. **Jamais** de génération par client et par semaine (budget). Une image par recette maximum, réutilisée.
+8. **Transitions de phase semi-automatiques** : l'app propose, le coach confirme d'un clic. Jamais de bascule silencieuse.
+9. **La phase de périodisation active pilote l'objectif nutrition.** Elle est prioritaire sur `nutrition_profiles.goal_adjustment_pct`. Sans périodisation, le module diète retombe sur le réglage manuel.
+10. **Cadre légal nutrition** : questionnaire de santé obligatoire, disclaimers, consentement horodaté, garde-fous dans les calculs. Le contenu est présenté comme **suggestion éducative, jamais comme prescription** — cohérent avec le niveau BPJEPS. Non négociable.
+11. **Bornes d'ajustement calorique** : prise de masse +10/+15 % · sèche −15/−20 % · recomposition −5/0 %. Un plancher calorique de sécurité s'applique **toujours**, y compris quand une phase impose un pourcentage plus agressif.
+
+## J.1 — Moteur de calcul nutrition
+
+Recalcul à chaque nouvelle pesée ou changement de paramètre :
+
+1. **Âge** = aujourd'hui − `birth_date`
+2. **BMR — Mifflin-St Jeor** (poids = dernière pesée) :
+   - Homme : `10×poids + 6.25×taille − 5×âge + 5`
+   - Femme : `10×poids + 6.25×taille − 5×âge − 161`
+3. **Dépense quotidienne hors sport** = `BMR × activity_factor`
+4. **Calories des séances** estimées à partir des données du programme existant
+5. **Cible** = TDEE ajusté du `goal_adjustment_pct` (phase active prioritaire), puis **bridé par le plancher de sécurité**
+6. **Macros** : protéines = `protein_g_per_kg × poids`, lipides = `fat_g_per_kg × poids`, glucides = le reste
+7. **Assemblage des repas** : filtrage par allergies et préférences, ajustement des portions (`servings`) pour approcher les cibles
+
+## J.2 — Ce qu'il ne faut PAS modifier sans discussion
+
+- La logique d'entraînement : programmes, logs, comparaison vert/rouge, chronomètres, numérotation des semaines.
+- Le format des données lues par les vues existantes.
+- Les garde-fous de sécurité du module nutrition.
+- Les policies RLS existantes.
+
+---
+
+# PARTIE K — COMPTES DE TEST
+
+> **Aucun code d'accès réel ne doit figurer dans ce fichier.** Le dépôt est **public**, et un code d'accès suffit à ouvrir la session d'un coaché : l'email et le mot de passe internes s'en déduisent mécaniquement (`codeToCredentials`, formule visible dans l'`index.html` déployé). Publier un code, c'est publier un compte.
+
+| Rôle | Identifiant |
+|---|---|
+| Coach | `coach@forge.app` + mot de passe choisi |
+| Coaché (Greg) | ton code personnel, modifiable depuis l'espace coach |
+| Coaché test | Esteban Cervilla — code à demander à Greg |
+
+Les codes se consultent et se modifient dans l'**espace coach → liste des coachés → édition**. C'est le seul endroit légitime : passer par le Table Editor de Supabase désynchroniserait le profil et le compte Auth, et le coaché ne pourrait plus se connecter.
+
+---
+
+# PARTIE L — BUGS CORRIGÉS (ne pas réintroduire)
+
+- **Modales mal positionnées** : un parent avec `transform` crée un bloc conteneur qui casse `position: fixed`.
+- **Inputs `type="date"` qui débordent** sur iOS Safari.
+- **Champ "séries" se réinitialisant à 1** pendant l'édition.
+- **Badges de technique invisibles** côté coaché.
+- **Boutons inaccessibles** dans les modales scrollables.
+- **Semaine "en cours" déplacée** par la validation d'une série dans une semaine future, sans retour arrière possible.
+- **Onglets tronqués** dans le header (prévoir `padding: 5px 14px` minimum).
+
+---
+
+# PARTIE M — BACKLOG & PROCHAINES ÉTAPES
+
+**Point d'attention ouvert :** la barre de navigation coaché compte **6 onglets** pour un Premium. C'est le maximum raisonnable sur mobile. Piste si ça devient trop dense à l'usage : intégrer Parcours dans l'écran d'accueil plutôt qu'en onglet dédié. À trancher à l'usage.
+
+**Non fait, envisageable plus tard :** graphiques et analytics avancés côté coach · messagerie intégrée · publication sur les stores · ajout de catégories musculaires · paiement en ligne / gestion des abonnements.
+
+**Phase suivante du projet (hors code) :** acquisition clients — stratégie Instagram, recrutement des premiers bêta-testeurs. Cette partie se traite dans la conversation "Stratégie & Vision", pas ici.
+
+---
+
+# PARTIE N — ENVIRONNEMENT DE TRAVAIL
+
+## N.1 — Où le travail s'exécute
+
+Je travaille **sans machine de développement locale**. Il n'y a pas de dossier du projet sur mon PC, et il n'y en aura pas : je dois pouvoir travailler depuis mon PC Windows, mon iPhone ou mon Android indifféremment.
+
+Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'app mobile Claude) : le repo GitHub est cloné dans une machine virtuelle gérée par Anthropic, tu y fais les modifications, et tu pousses une branche que je relis et fusionne.
+
+| Élément | Valeur |
+|---|---|
+| Repo à connecter | `github.com/gregoirelede/forge-coaching` |
+| Branche de production | `main` (c'est elle que GitHub Pages sert) |
+| Compte GitHub | `gregoirelede` |
+| Machine d'exécution | VM cloud Anthropic, Ubuntu 24.04 — **pas mon PC** |
+
+**Conséquences pratiques à respecter :**
+
+- La VM est **repartie de zéro à chaque session**. Tout ce dont le build a besoin doit être **committé dans le repo** : `vendor/react.production.min.js`, `vendor/react-dom.production.min.js`, `build.mjs`, et un `package.json` déclarant `esbuild`. Ne compte jamais sur un fichier qui ne serait présent que sur ma machine.
+- Si `node_modules` est absent, commence par `npm install`.
+- Je ne peux **pas** lancer de commande PowerShell moi-même pendant une session cloud. Pour un déploiement d'Edge Function Supabase (qui exige le CLI en local), donne-moi les instructions à part et je les ferai plus tard depuis mon PC.
+- Le déploiement se fait **par fusion de branche**, plus par upload manuel. Une fois la branche fusionnée dans `main`, GitHub Pages redéploie tout seul en ~1 minute.
+- Je relis les modifications depuis mon téléphone : des messages de commit clairs et une description de PR lisible me sont indispensables.
+
+## N.2 — Repères de version
+
+| Champ | Valeur |
+|---|---|
+| Dernier build déployé | **4 août 2026** — v7b, ~445 Ko, 4 762 lignes |
+| Contenu de ce build | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés |
+
+> À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
+
+## N.3 — Secrets
+
+- **Clé `anon` Supabase** : publique par nature, déjà présente dans l'`index.html` déployé. Aucun problème à la manipuler.
+- **Clé API Anthropic** (`sk-ant-...`) : pas encore obtenue. Le jour où elle le sera, elle devra être stockée **hors du repo** et jamais committée.
+- ⚠️ **Clé `service_role` Supabase** : ne jamais la coller dans une conversation, ni dans le repo, ni dans un fichier de config. Elle reste uniquement dans les secrets des Edge Functions Supabase.
+- Avant chaque commit, vérifie qu'aucun secret ne s'est glissé dans les fichiers modifiés.
+
+---
+
+# PARTIE O — ÉTAT RÉEL DU DÉPÔT (4 août 2026)
+
+Section ajoutée par Claude Code lors de la première session sur le dépôt. Elle décrit ce qui a été **vérifié** ou **corrigé** par rapport aux parties précédentes. En cas de contradiction, c'est cette partie qui fait foi : elle a été établie en lisant le dépôt et la base réels.
+
+## O.1 — Ce qui a été mis en place
+
+Le dépôt ne contenait que `index.html`. L'arborescence de la Partie C.3 a été créée :
+
+| Élément | État |
+|---|---|
+| `src/training-app.jsx` | **Fourni par Greg le 4 août 2026.** 4 762 lignes, conforme. Le build reproduit la production à l'octet près |
+| `CLAUDE.md` | Ajouté à la racine, lu automatiquement à chaque session |
+| `build.mjs` | Écrit d'après le fichier de production, gabarit HTML vérifié à l'octet près |
+| `package.json` + `package-lock.json` | Déclarent esbuild, `npm install` puis `node build.mjs` |
+| `vendor/react*.production.min.js` | **React 18.3.1**, extraits de l'`index.html` de production |
+| `sql/schema-snapshot.sql` | Instantané de la base réelle, idempotent |
+| `edge-functions/*.ts` | Sources récupérées depuis Supabase, à l'identique du déployé |
+| `guides/GUIDE-edge-function-windows.md` | Reconstitué depuis la Partie G.2 |
+| `.gitignore` | `node_modules/` |
+
+## O.2 — Corrections apportées à la Partie E
+
+**Le script de E.2 ne doit jamais être utilisé tel quel.** Trois défauts, dont un silencieux et grave.
+
+1. **La transformation 2 (`getSupabase`) est dangereuse.** Le remplacement documenté en E.2 réécrit la fonction en supprimant deux éléments présents dans le fichier réellement en ligne :
+   - `auth: { persistSession: true, autoRefreshToken: true }` — sans lui, **plus aucune session n'est conservée** : chaque coaché est déconnecté à la fermeture de l'app et doit ressaisir son code. L'app a l'air de marcher, le dégât n'apparaît qu'à l'usage.
+   - `if (!isSupabaseConfigured) return null;` — le garde-fou du mode démo.
+
+   Le bloc exact attendu en sortie de build est celui du `build.mjs` de la racine. Ce dernier vérifie désormais la présence de `persistSession` et du garde-fou, et **interrompt le build** si l'un des deux manque.
+2. **`format: "iife"` est faux.** Il enfermerait `ForgeCoachingApp` dans une fonction, `ReactDOM.createRoot` ne le trouverait plus : écran blanc. Le build de production utilise `transform(code, { loader: "jsx", target: "es2017", minify: false })`, **sans `format`**. Vérifié : le code applicatif de l'`index.html` déployé n'est enfermé dans aucune IIFE, et `target: "es2017"` explique les fonctions utilitaires `__spreadValues` en tête de bundle.
+3. **Le gabarit HTML de E.2 n'est pas celui de la production.** Les écarts réels : `charset="UTF-8"` (et non `utf-8`), et un `viewport` valant `width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover`. Le `build.mjs` de la racine reprend le gabarit exact.
+
+**Preuve que le pipeline est juste :** `node build.mjs` lancé sur `src/training-app.jsx` redonne un `index.html` de **456 617 octets, identique à l'octet près** à celui qui tourne en production. C'est le test de non-régression de référence : après toute modification du build, on doit pouvoir retrouver cette égalité en repartant de la source v7b.
+
+`node build.mjs --verifier-gabarit` reste disponible : il reprend le code applicatif de l'`index.html` existant, le repasse dans le gabarit et compare octet par octet, sans avoir besoin de la source.
+
+## O.3 — Corrections apportées à la Partie G
+
+Le schéma décrit est exact, à deux colonnes près, présentes en base mais absentes de la documentation :
+
+- `nutrition_profiles.session_intensity jsonb DEFAULT '{}'` — non documentée.
+- `profiles.created_at timestamptz DEFAULT now()` — non documentée.
+
+## O.4 — Deux observations sur la RLS (aucune modification faite)
+
+Constats de lecture, à trancher plus tard. La Partie J.2 interdit de toucher aux policies sans discussion, donc **rien n'a été changé**.
+
+1. **`exercises_library` n'a qu'une seule policy** (`coach manages own library`, `coach_id = auth.uid()`). La règle G.1 annonce une lecture seule pour les coachés rattachés ; elle n'existe pas en base. Sans conséquence tant que le coaché lit ses exercices depuis le JSON du programme et jamais depuis la bibliothèque. `recipes_library`, elle, a bien sa policy de lecture coaché.
+2. **`weight_logs` → `coach reads coachee weights` est en `FOR ALL`**, pas en `SELECT`. Le nom suggère une lecture seule, la policy accorde l'écriture. Sans danger aujourd'hui (seul le coach concerné est visé), mais l'intitulé induit en erreur.
+
+## O.5 — Vérification de la base au 4 août 2026
+
+Projet `xlquzhwmdyyiugtezasg`, Postgres 17.6, statut ACTIVE_HEALTHY.
+
+- **10 tables sur 10** présentes, **RLS active sur les 10**, 20 policies au total.
+- **9 index** conformes, dont `idx_phases_coachee`.
+- **2 Edge Functions ACTIVE** (`create-coachee`, `update-coachee`), sans clé en dur : tout passe par `Deno.env`. Chacune vérifie l'identité de l'appelant et son `role = 'coach'`.
+- Volumétrie : 4 profils, 14 programmes, 18 semaines, 673 séries loguées, 33 exercices, 23 pesées, 3 phases. `recipes_library` et `meal_plans` sont vides.
+
+## O.6 — Ce qui manque toujours
+
+**Plus aucun blocage.** Le dépôt est complet et le cycle de travail de la Partie A est opérationnel de bout en bout.
+
+Restent absents, par confort uniquement :
+
+- Les 4 fichiers SQL d'origine (voir `sql/README.md`) — remplacés par `sql/schema-snapshot.sql`.
+- Les guides `GUIDE-diete.md` et `GUIDE-periodisation.md` (voir `guides/README.md`).
+- La clé API Anthropic, qui laisse le bouton "IA" de la page Recettes inactif (Partie B.4).
+
+---
+
+**FIN DU CONTEXTE.**
+Avant de commencer : confirme-moi que tu as tout lu, résume en 5 lignes ce que tu as compris, et dis-moi si quelque chose te manque pour travailler.
