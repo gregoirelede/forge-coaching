@@ -18,6 +18,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 7. **Jamais la clé `service_role` côté client.** Elle vit uniquement dans les secrets des Edge Functions.
 8. **Fournis toujours un parcours de test** après une modification : quoi ouvrir, quoi cliquer, quel résultat attendre.
 9. Si une modification touche la base **et** le code, donne-moi l'**ordre exact** des opérations (SQL d'abord, puis déploiement).
+10. **Va au bout toi-même (règle du 5 août 2026).** Tout ce qui peut être fait depuis la session doit l'être : builder, fusionner dans `main`, vérifier que GitHub Pages a redéployé, contrôler la base. Ne me laisse que ce qui est réellement hors de ta portée — et dans ce cas, dis-le explicitement au lieu de me donner une consigne à exécuter. Le parcours de test se joue en entier avant de me rendre la main.
 
 ### Cycle de travail standard pour toute nouvelle fonctionnalité
 ```
@@ -689,9 +690,10 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **4 août 2026** — v7b, 456 617 octets, 4 762 lignes |
-| Contenu de ce build | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés |
-| Build prêt, non fusionné | **5 août 2026** — v7c, 456 615 octets. Placeholder de l'écran de connexion. À basculer en "déployé" une fois la branche fusionnée dans `main` |
+| Dernier build déployé | **5 août 2026** — v7c, 456 615 octets, 4 762 lignes |
+| Contenu de ce build | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) |
+| Build précédent | 4 août 2026 — v7b, 456 617 octets. Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés |
+| Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
 
