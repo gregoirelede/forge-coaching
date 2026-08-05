@@ -551,7 +551,7 @@ function LoginScreen({ onAuthSuccess, onCoachClick }) {
         <input ref={inputRef} type="text" value={code}
           onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }}
           onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
-          placeholder="EX : GREG-2025"
+          placeholder="EX : MDUPONT"
           autoCapitalize="characters" autoComplete="off" spellCheck={false}
           style={{ width: "100%", padding: "15px 16px", background: T.bg, border: `1.5px solid ${error ? T.danger : T.borderStrong}`, borderRadius: 12, fontSize: 16, fontWeight: 700, letterSpacing: 2, textAlign: "center", color: T.text, outline: "none", textTransform: "uppercase", fontFamily: "inherit", transition: "border-color .2s" }}/>
         <div style={{ minHeight: 22, marginTop: 8, textAlign: "center" }}>

@@ -70,7 +70,8 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | v5 | **Espace coach** : coachés, bibliothèque d'exercices, constructeur de programme | ~303 Ko | — |
 | v6 | **Module Nutrition Premium** : BMR/TDEE, recettes, plans de repas, pesées | ~390 Ko | — |
 | v7a | **Calendrier de périodisation** : frise, 4 modèles, onglet Parcours | ~435 Ko | 4 575 |
-| **v7b (actuel)** | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés | **~445 Ko** | **4 762** |
+| **v7b** | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés | 456 617 o | 4 762 |
+| **v7c** | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) | 456 615 o | 4 762 |
 
 ## B.4 — État d'installation
 
@@ -618,6 +619,25 @@ Recalcul à chaque nouvelle pesée ou changement de paramètre :
 
 Les codes se consultent et se modifient dans l'**espace coach → liste des coachés → édition**. C'est le seul endroit légitime : passer par le Table Editor de Supabase désynchroniserait le profil et le compte Auth, et le coaché ne pourrait plus se connecter.
 
+## K.1 — Convention de nommage des codes d'accès (décidée le 5 août 2026)
+
+**Première lettre du prénom + nom de famille, le tout en majuscules, sans espace ni tiret.**
+
+Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part ici :
+
+| Coaché (fictif) | Code |
+|---|---|
+| Marie Dupont | `MDUPONT` |
+| Jean Bernard | `JBERNARD` |
+
+À appliquer à **tout nouveau compte coaché**. Le placeholder de l'écran de connexion suit la même forme : `EX : MDUPONT`.
+
+**Points d'attention lors de l'attribution d'un code :**
+
+- Le code est unique en base (contrainte `UNIQUE` sur `profiles.access_code`). Deux coachés dont le prénom et le nom donneraient le même code — par exemple Marie Dupont et Marc Dupont — entreraient en collision. Dans ce cas, ajouter la deuxième lettre du prénom : `MADUPONT` et `MRDUPONT`.
+- Les accents et caractères spéciaux doivent être retirés : l'email interne est dérivé du code via `[^a-z0-9-]`, donc `LEDÉ` deviendrait `led` et non `lede`. Écrire le code sans accent.
+- Un code reste **un identifiant de connexion** : il ne se note ni dans le dépôt, ni dans une conversation, ni dans un fichier. Il se transmet directement au coaché.
+
 ---
 
 # PARTIE L — BUGS CORRIGÉS (ne pas réintroduire)
@@ -669,8 +689,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **4 août 2026** — v7b, ~445 Ko, 4 762 lignes |
+| Dernier build déployé | **4 août 2026** — v7b, 456 617 octets, 4 762 lignes |
 | Contenu de ce build | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés |
+| Build prêt, non fusionné | **5 août 2026** — v7c, 456 615 octets. Placeholder de l'écran de connexion. À basculer en "déployé" une fois la branche fusionnée dans `main` |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
 
