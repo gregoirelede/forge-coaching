@@ -36,15 +36,33 @@ Les opérations qui détruisent ou suspendent le projet lui-même :
 
 Ces quatre-là demanderont toujours une validation explicite.
 
-## Si la permission redemande quand même
+## CE FICHIER NE SUFFIT PAS — constaté le 6 août 2026
 
-Deux causes possibles :
+Il y a **deux couches d'autorisation superposées**, et ce fichier n'en gouverne
+qu'une.
 
-1. **Le fichier vient d'être créé pendant la session.** La configuration n'est relue
-   qu'au démarrage. C'est normal : la session suivante l'appliquera.
-2. **Le connecteur a pris un troisième identifiant.** Dans ce cas il faut ajouter ce
-   nouvel identifiant aux deux listes. Pour le trouver : le nom d'outil complet
-   apparaît dans le message d'erreur, sous la forme `mcp__<identifiant>__execute_sql`.
+| Couche | Gouvernée par | Constat |
+|---|---|---|
+| Locale (Claude Code) | ce fichier | **Fonctionne.** Les règles `deny` retirent bien les outils de la liste disponible |
+| Connecteur (côté Supabase) | validation dans l'interface | **Non couverte.** Les outils capables d'écrire y sont soumis |
+
+Conséquence observée : sous l'identité `6ad508a5-…`, `get_advisors` répond
+normalement, mais `execute_sql` et `apply_migration` renvoient
+`MCP error -32003: requires approval` **instantanément**, sans qu'aucune demande
+ne soit présentée à l'utilisateur. Il n'y a donc rien à accepter — ce n'est pas
+un clic manqué.
+
+Sous l'identité `Supabase`, ces mêmes outils fonctionnent : cette identité-là a
+reçu la validation du connecteur le 5 août 2026.
+
+**Donc :** quand le connecteur démarre sous `Supabase`, tout marche. Sous
+`6ad508a5-…`, les écritures sont impossibles et il faut attendre une session
+qui reparte sur l'autre identité. Ce fichier reste utile pour ses `deny`, qui
+sont de vrais garde-fous actifs, mais il ne débloque pas les écritures.
+
+**Si un troisième identifiant apparaît**, l'ajouter aux deux listes. Le nom
+complet est visible dans le message d'erreur, sous la forme
+`mcp__<identifiant>__execute_sql`.
 
 ## Pour révoquer
 
