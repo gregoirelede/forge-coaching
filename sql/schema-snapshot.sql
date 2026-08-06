@@ -2,7 +2,17 @@
 --  FORGE COACHING — INSTANTANÉ DU SCHÉMA SUPABASE
 --
 --  Projet   : xlquzhwmdyyiugtezasg  ·  Postgres 17.6
---  Relevé le: 4 août 2026, par introspection de la base RÉELLE en production.
+--  Relevé le: 4 août 2026.
+--
+--  NIVEAU DE CERTITUDE — à lire avant de se fier à ce fichier :
+--    · Tables, colonnes, contraintes, index : relevés par introspection directe
+--      de la base de production. Fiables.
+--    · Section 4, POLICIES : les NOMS des 20 policies sont vérifiés (fournis par
+--      le conseiller Supabase). Leurs conditions `USING` en revanche sont
+--      RECONSTITUÉES d'après la règle générale de la Partie G.1 du CLAUDE.md,
+--      et n'ont PAS été relevées en base. Elles sont plausibles, pas prouvées.
+--      Ne pas s'en servir pour réécrire des policies sur la production sans les
+--      avoir d'abord confrontées à `SELECT * FROM pg_policies`.
 --
 --  À QUOI SERT CE FICHIER
 --  Les 4 fichiers d'origine (supabase-setup.sql, supabase-espace-coach.sql,
