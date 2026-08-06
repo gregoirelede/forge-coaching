@@ -2,6 +2,11 @@
 
 ## Ce qu'il contient
 
+- **`2026-08-06-index-cles-etrangeres.sql`** — 6 index manquants. Risque nul.
+- **`2026-08-06-optimisation-rls.sql`** — optimisation des 20 policies RLS.
+  Auto-vérifiée : s'annule entièrement au moindre écart.
+- **`NOTE-optimisation-rls.md`** — l'analyse derrière ces deux migrations, et
+  pourquoi 80 signalements sur 108 ne doivent PAS être corrigés.
 - **`schema-snapshot.sql`** — l'état exact de la base Supabase de production, relevé
   le 4 août 2026 par introspection directe. Idempotent : relançable sans risque.
 
