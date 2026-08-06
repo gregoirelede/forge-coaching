@@ -787,6 +787,22 @@ coach — dont la solidité se règle gratuitement en choisissant un bon mot de 
 Le conseiller de sécurité restera donc à **1 avertissement** en permanence. C'est
 normal, ce n'est pas une régression.
 
+**`rls_auto_enable()` — faux positif, la fonction est une protection.**
+
+Le conseiller signale `public.rls_auto_enable()` comme une fonction
+`SECURITY DEFINER` appelable par n'importe qui via `/rest/v1/rpc/`. C'est
+inexact : elle est déclarée `RETURNS event_trigger`, et PostgreSQL interdit
+d'appeler directement une fonction de ce type — toute tentative échoue.
+
+Ce qu'elle fait : à chaque `CREATE TABLE` dans le schéma `public`, elle exécute
+`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`. C'est un filet de sécurité qui
+garantit qu'aucune table ne pourra jamais être créée sans RLS. Elle est durcie
+correctement (`SET search_path TO 'pg_catalog'`, propriétaire `postgres`).
+
+**On la garde.** Un `REVOKE EXECUTE ... FROM PUBLIC` suffit à faire taire le
+signalement sans rien changer à son fonctionnement : un déclencheur d'événement
+est lancé par le moteur, pas via le privilège EXECUTE de l'appelant.
+
 **Le vrai argument du plan Pro, lui, ce sont les sauvegardes.** La documentation
 Supabase recommande explicitement aux projets du plan gratuit d'exporter
 régulièrement leurs données : **il n'y a aucune sauvegarde automatique**. Le plan
