@@ -728,6 +728,7 @@ Le dépôt ne contenait que `index.html`. L'arborescence de la Partie C.3 a ét�
 | `edge-functions/*.ts` | Sources récupérées depuis Supabase, à l'identique du déployé |
 | `guides/GUIDE-edge-function-windows.md` | Reconstitué depuis la Partie G.2 |
 | `.gitignore` | `node_modules/` |
+| `.claude/settings.json` | **Ajouté le 6 août 2026.** Autorise durablement les outils Supabase (le connecteur change d'identifiant entre sessions, l'autorisation cliquée ne survivait pas). Migrations et déploiement d'Edge Functions inclus ; opérations destructrices de projet bloquées. Voir `.claude/README.md` |
 
 ## O.2 — Corrections apportées à la Partie E
 
