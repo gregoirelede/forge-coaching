@@ -151,6 +151,20 @@ function parseRepos(str) {
 function fmt(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`; }
 const tKey = (weekNum, sid, ei, si) => `${weekNum}-${sid}-${ei}-${si}`;
 
+// Durée estimée d'une séance, calculée depuis son contenu réel :
+// ~45 s d'effort par série + le repos prescrit entre les séries + 2 min
+// d'installation par exercice. Arrondie aux 5 minutes.
+function estimateSessionMinutes(session) {
+  if (!session || !Array.isArray(session.exercises) || session.exercises.length === 0) return 60;
+  let seconds = 0;
+  session.exercises.forEach(ex => {
+    const sets = ex.series || (Array.isArray(ex.reps) ? ex.reps.length : 0) || 0;
+    const rest = parseRepos(ex.repos || "");
+    seconds += sets * 45 + Math.max(0, sets - 1) * rest + 120;
+  });
+  return Math.max(15, Math.round(seconds / 60 / 5) * 5);
+}
+
 // Calcule la semaine de coaching en cours à partir de la date de création du compte.
 // Semaine 1 = la semaine de la création. Figée : ne dépend que du temps écoulé.
 function currentWeekFromDate(createdAtISO) {
@@ -498,6 +512,40 @@ function ToggleSwitch({ on, onChange, disabled }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CONFIRMATION MAISON — remplace window.confirm (dialogues natifs bannis de l'UI)
+// ═══════════════════════════════════════════════════════════════════════════════
+function ConfirmSheet({ title, message, confirmLabel = "Confirmer", danger = false, onConfirm, onCancel }) {
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 900 }}/>
+      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 901, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", padding: "0 18px calc(18px + env(safe-area-inset-bottom))" }}>
+        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 16px" }}/>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, textAlign: "center" }}>{title}</div>
+        {message ? <div style={{ fontSize: 13, color: T.textSub, textAlign: "center", lineHeight: 1.6, margin: "10px 4px 0" }}>{message}</div> : null}
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: "14px", background: danger ? T.danger : "linear-gradient(135deg, #064E3B, #0D9488)", color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>{confirmLabel}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Hook d'utilisation : const { confirm, confirmUI } = useConfirm();
+// puis dans un handler : if (!(await confirm({ title: "...", message: "..." }))) return;
+// et {confirmUI} rendu dans le JSX du composant.
+function useConfirm() {
+  const [req, setReq] = useState(null);
+  const confirm = useCallback((opts) => new Promise(resolve => setReq({ ...opts, resolve })), []);
+  const close = (val) => { const r = req; setReq(null); if (r) r.resolve(val); };
+  const confirmUI = req ? (
+    <ConfirmSheet title={req.title} message={req.message} confirmLabel={req.confirmLabel} danger={req.danger}
+      onConfirm={() => close(true)} onCancel={() => close(false)}/>
+  ) : null;
+  return { confirm, confirmUI };
+}
+
 function QuickCard({ icon, title, subtitle, onClick }) {
   return (
     <div onClick={onClick} className="quick-card" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
@@ -551,7 +599,7 @@ function LoginScreen({ onAuthSuccess, onCoachClick }) {
         <input ref={inputRef} type="text" value={code}
           onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }}
           onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
-          placeholder="EX : MDUPONT"
+          placeholder="EX : MDUPONT27"
           autoCapitalize="characters" autoComplete="off" spellCheck={false}
           style={{ width: "100%", padding: "15px 16px", background: T.bg, border: `1.5px solid ${error ? T.danger : T.borderStrong}`, borderRadius: 12, fontSize: 16, fontWeight: 700, letterSpacing: 2, textAlign: "center", color: T.text, outline: "none", textTransform: "uppercase", fontFamily: "inherit", transition: "border-color .2s" }}/>
         <div style={{ minHeight: 22, marginTop: 8, textAlign: "center" }}>
@@ -592,7 +640,7 @@ function LoadingScreen({ text = "Chargement..." }) {
   );
 }
 
-function ErrorScreen({ title, message, onLogout }) {
+function ErrorScreen({ title, message, onLogout, actionLabel = "Se déconnecter" }) {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: 22, gap: 14 }}>
       <Icon name="alert" size={42} color={T.danger}/>
@@ -600,7 +648,7 @@ function ErrorScreen({ title, message, onLogout }) {
       <div style={{ fontSize: 13, color: T.textSub, textAlign: "center", maxWidth: 340, lineHeight: 1.6 }}>{message}</div>
       {onLogout && (
         <button onClick={onLogout} style={{ marginTop: 14, padding: "10px 22px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, letterSpacing: .8, cursor: "pointer" }}>
-          Se déconnecter
+          {actionLabel}
         </button>
       )}
     </div>
@@ -650,7 +698,7 @@ function HomePage({ ctx }) {
             </div>
             <div style={{ display: "flex", gap: 14, marginBottom: 18, fontSize: 11, opacity: 0.9, position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="workout" size={14} color="white"/><span>{todaySession.exercises.length} exercices</span></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="clock" size={14} color="white"/><span>~75 min</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="clock" size={14} color="white"/><span>~{estimateSessionMinutes(todaySession)} min</span></div>
             </div>
             <button style={{ background: "white", color: "#064E3B", border: "none", borderRadius: 14, padding: "13px 20px", fontSize: 13, fontWeight: 800, letterSpacing: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", position: "relative" }}>
               <Icon name="play" size={14} color="#064E3B" filled/> COMMENCER LA SÉANCE
@@ -1041,6 +1089,7 @@ function ProgressPage({ ctx }) {
 function ProfilePage({ ctx }) {
   const { appData, profileSubView, setProfileSubView, onLogout, isDemo } = ctx;
   const { client } = appData;
+  const { confirm, confirmUI } = useConfirm();
 
   if (profileSubView === "consignes") {
     return (
@@ -1136,9 +1185,10 @@ function ProfilePage({ ctx }) {
       <div style={{ padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 }}>
         FORGE COACHING · v1.0{isDemo ? " · MODE DÉMO" : ""}
       </div>
+      {confirmUI}
       {onLogout && !isDemo && (
         <div style={{ padding: "16px 18px 0", textAlign: "center" }}>
-          <button onClick={() => { if (window.confirm("Confirmer la déconnexion ?")) onLogout(); }}
+          <button onClick={async () => { if (await confirm({ title: "DÉCONNEXION", message: "Tu devras ressaisir ton code d'accès pour te reconnecter.", confirmLabel: "Se déconnecter", danger: true })) onLogout(); }}
             style={{ background: "transparent", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 600, letterSpacing: .8, cursor: "pointer", padding: "6px 14px", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icon name="logout" size={13} color={T.textMuted}/>
             Se déconnecter
@@ -1458,6 +1508,30 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Vidage de la file d'attente hors-ligne (séries loguées sans réseau) ──
+  const flushPending = useCallback(async () => {
+    if (isDemo || !supabase || !appData?.programId) return;
+    const pending = loadPending(userId);
+    if (pending.length === 0) return;
+    setSyncStatus("pending");
+    try {
+      for (const payload of pending) {
+        await pushSetToSupabase({ supabase, userId, programId: appData.programId, weekIdCache: weekIdCacheRef.current, payload });
+      }
+      savePending(userId, []);
+      setSyncStatus("synced");
+    } catch {
+      setSyncStatus("error"); // la file est conservée, on retentera
+    }
+  }, [supabase, userId, appData, isDemo]);
+
+  // Retente automatiquement dès que la connexion revient (avant v7d : uniquement
+  // au redémarrage de l'app — une séance entière pouvait rester non synchronisée)
+  useEffect(() => {
+    window.addEventListener("online", flushPending);
+    return () => window.removeEventListener("online", flushPending);
+  }, [flushPending]);
+
   // ── Push d'une série vers Supabase (avec gestion offline) ──
   const pushSet = useCallback(async (payload) => {
     if (isDemo || !supabase || !appData?.programId) return; // mode démo : pas de push
@@ -1465,12 +1539,14 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     try {
       await pushSetToSupabase({ supabase, userId, programId: appData.programId, weekIdCache: weekIdCacheRef.current, payload });
       setSyncStatus("synced");
+      // si des séries attendaient dans la file, on en profite pour les écouler
+      if (loadPending(userId).length > 0) flushPending();
     } catch (e) {
       // offline ou erreur : ajout en file
       queueForSync(userId, payload);
       setSyncStatus("error");
     }
-  }, [supabase, userId, appData, isDemo]);
+  }, [supabase, userId, appData, isDemo, flushPending]);
 
   // ── Toggle d'une série + déclenchement du timer ──
   const toggleSet = useCallback((sessionId, exIdx, setIdx, repos, exerciseName) => {
@@ -1547,7 +1623,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", color: T.text, overflowX: "hidden" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+        /* Polices auto-hébergées : les @font-face sont déclarées dans le gabarit HTML (build.mjs) — RGPD + hors-ligne */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
         input[type=number]{-moz-appearance:textfield}
@@ -1637,10 +1713,18 @@ const TECHNIQUE_OPTIONS = [
 const DAYS_ORDER = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"];
 
 // Génère un code d'accès au format NOM-ANNÉE
+// Convention K.1 (5 août 2026) + 2 chiffres aléatoires (6 août 2026) :
+// première lettre du prénom + nom de famille + 2 chiffres, majuscules, sans accent.
+// Les chiffres rendent le code impossible à deviner à partir du seul nom —
+// c'est l'unique secret du compte, il ne doit pas se déduire d'un post Instagram.
 function generateAccessCode(name) {
-  const clean = (name || "").trim().toUpperCase().split(/\s+/)[0].replace(/[^A-Z0-9]/g, "");
-  const year = new Date().getFullYear();
-  return clean ? `${clean}-${year}` : "";
+  const parts = (name || "").trim().toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")   // retire les accents : LEDÉ → LEDE
+    .split(/\s+/).map(p => p.replace(/[^A-Z0-9]/g, "")).filter(Boolean);
+  if (parts.length === 0) return "";
+  const digits = String(Math.floor(Math.random() * 90) + 10); // 2 chiffres : 10 à 99
+  const base = parts.length === 1 ? parts[0] : parts[0][0] + parts.slice(1).join("");
+  return base + digits;
 }
 
 // Charge la liste des coachés du coach connecté
@@ -2012,6 +2096,7 @@ function CoachListPage({ ctx }) {
 // ── Page : bibliothèque d'exercices ──
 function CoachLibraryPage({ ctx }) {
   const { supabase, coachId, library, reloadLibrary } = ctx;
+  const { confirm, confirmUI } = useConfirm();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null); // null | {} (new) | exercise (edit)
   const [name, setName] = useState("");
@@ -2051,7 +2136,7 @@ function CoachLibraryPage({ ctx }) {
   }
 
   async function handleDelete(ex) {
-    if (!window.confirm(`Supprimer "${ex.name}" de la bibliothèque ?`)) return;
+    if (!(await confirm({ title: "SUPPRIMER L'EXERCICE", message: `"${ex.name}" sera retiré de ta bibliothèque.`, confirmLabel: "Supprimer", danger: true }))) return;
     await supabase.from("exercises_library").delete().eq("id", ex.id);
     await reloadLibrary();
   }
@@ -2065,6 +2150,7 @@ function CoachLibraryPage({ ctx }) {
     <div style={{ paddingBottom: 100 }} className="fade-in">
       <div style={{ padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
+          {confirmUI}
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>BIBLIOTHÈQUE</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{library.length} exercices</div>
         </div>
@@ -2145,6 +2231,7 @@ function CoachLibraryPage({ ctx }) {
 // ── Constructeur de programme ──
 function ProgramBuilder({ ctx, coachee, onClose }) {
   const { supabase, library, coachees } = ctx;
+  const { confirm, confirmUI } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]); // [{id, name, exercises:[...], abdosCardio:[...]}]
   const [week, setWeek] = useState(DAYS_ORDER.map(d => ({ day: d, sessionId: null })));
@@ -2345,7 +2432,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
   }
   async function doActivate() {
     if (!sessions.length) { setMsg("Ajoute au moins une séance"); return; }
-    if (!window.confirm("Activer ce programme pour le coaché ? L'ancien programme actif sera archivé.")) return;
+    if (!(await confirm({ title: "ACTIVER CE PROGRAMME", message: "L'ancien programme actif du coaché sera archivé. La numérotation des semaines continue.", confirmLabel: "Activer" }))) return;
     setSaving(true); setMsg("");
     try {
       const clean = sanitizeSessions(sessions);
@@ -2363,6 +2450,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
 
   return (
     <div style={{ paddingBottom: 120 }} className="fade-in">
+      {confirmUI}
       <div style={{ padding: "8px 18px 14px" }}>
         <Field label="NOM DU PROGRAMME">
           <input type="text" value={programName} onChange={e => setProgramName(e.target.value)} placeholder="Ex : Prise de masse - Bloc 1" style={inputStyle}/>
@@ -2642,13 +2730,17 @@ function CoachProgressView({ ctx, coachee }) {
 // ── Page détail d'un coaché (3 sous-vues : Infos / Programme / Progression) ──
 function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
   const { supabase } = ctx;
+  const { confirm, confirmUI } = useConfirm();
   const [tab, setTab] = useState("infos");
   const [busy, setBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   async function toggleActive() {
     const newState = coachee.is_active === false;
-    if (!window.confirm(newState ? "Réactiver ce coaché ?" : "Désactiver ce coaché ? Son historique sera conservé.")) return;
+    const ok = await confirm(newState
+      ? { title: "RÉACTIVER CE COACHÉ", message: `${coachee.name} retrouvera l'accès à son espace.`, confirmLabel: "Réactiver" }
+      : { title: "DÉSACTIVER CE COACHÉ", message: `${coachee.name} ne pourra plus se connecter. Tout son historique est conservé.`, confirmLabel: "Désactiver", danger: true });
+    if (!ok) return;
     setBusy(true);
     await supabase.from("profiles").update({ is_active: newState }).eq("id", coachee.id);
     await onChanged();
@@ -2658,6 +2750,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
 
   return (
     <div style={{ paddingBottom: 100 }} className="fade-in">
+      {confirmUI}
       <div style={{ padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={onBack} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
           <Icon name="chevronLeft" size={20} color={T.text}/>
@@ -2752,7 +2845,10 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
             </div>
           </Field>
           <Field label="CODE D'ACCÈS">
-            <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 1 }}/>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 1 }}/>
+              <button onClick={() => { setCode(generateAccessCode(name)); setError(""); }} title="Générer un nouveau code" style={{ flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 10, cursor: "pointer", fontSize: 16 }}>↻</button>
+            </div>
           </Field>
           {codeChanged && (
             <div style={{ background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", lineHeight: 1.5, fontWeight: 600 }}>
@@ -2826,7 +2922,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", color: T.text, overflowX: "hidden" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+        /* Polices auto-hébergées : les @font-face sont déclarées dans le gabarit HTML (build.mjs) — RGPD + hors-ligne */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input,select,textarea{font-family:inherit}
         ::-webkit-scrollbar{width:4px;height:4px}
@@ -3195,6 +3291,7 @@ function RecipeSheet({ recipe, servings = 1, onClose }) {
 // ── Page coach : bibliothèque de recettes (CRUD + assistance IA) ──
 function CoachRecipesPage({ ctx }) {
   const { supabase, coachId } = ctx;
+  const { confirm, confirmUI } = useConfirm();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -3210,7 +3307,7 @@ function CoachRecipesPage({ ctx }) {
   useEffect(() => { reload(); }, [reload]);
 
   async function handleDelete(r) {
-    if (!window.confirm(`Supprimer la recette "${r.name}" ?`)) return;
+    if (!(await confirm({ title: "SUPPRIMER LA RECETTE", message: `"${r.name}" sera retirée de ta bibliothèque.`, confirmLabel: "Supprimer", danger: true }))) return;
     await supabase.from("recipes_library").delete().eq("id", r.id);
     reload();
   }
@@ -3227,6 +3324,7 @@ function CoachRecipesPage({ ctx }) {
     <div style={{ paddingBottom: 100 }} className="fade-in">
       <div style={{ padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
+          {confirmUI}
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>RECETTES</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{recipes.length} recettes</div>
         </div>
@@ -4412,6 +4510,7 @@ function ParcoursPage({ ctx }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 function CoachPeriodizationView({ ctx, coachee }) {
   const { supabase } = ctx;
+  const { confirm, confirmUI } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [phases, setPhases] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -4472,7 +4571,7 @@ function CoachPeriodizationView({ ctx, coachee }) {
   }
 
   async function deletePhase(ph) {
-    if (!window.confirm(`Supprimer la phase "${ph.name || phaseLabel(ph.phase_type)}" ?`)) return;
+    if (!(await confirm({ title: "SUPPRIMER LA PHASE", message: `"${ph.name || phaseLabel(ph.phase_type)}" sera retirée du parcours.`, confirmLabel: "Supprimer", danger: true }))) return;
     await supabase.from("periodization_phases").delete().eq("id", ph.id);
     await reload();
   }
@@ -4481,6 +4580,7 @@ function CoachPeriodizationView({ ctx, coachee }) {
 
   return (
     <>
+    {confirmUI}
     <div className="fade-in">
       {msg && <div style={{ fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 12, lineHeight: 1.5 }}>{msg}</div>}
 
@@ -4677,8 +4777,22 @@ function TemplateModal({ onClose, onApply }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ROOT — login (coaché ou coach) / app coaché / espace coach / démo
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function ForgeCoachingApp() {
-  // bootState : "loading" | "login" | "coachLogin" | "ready" | "demo"
+// Filet de sécurité : une erreur JavaScript imprévue affiche un écran de
+// secours avec un bouton Recharger, au lieu d'un écran blanc définitif.
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error) { try { console.error("Erreur applicative :", error); } catch {} }
+  render() {
+    if (this.state.hasError) {
+      return <ErrorScreen title="UN PROBLÈME EST SURVENU" message="Une erreur inattendue s'est produite. Tes données sont en sécurité — recharge l'application pour reprendre." onLogout={() => window.location.reload()} actionLabel="Recharger l'application"/>;
+    }
+    return this.props.children;
+  }
+}
+
+function ForgeCoachingRoot() {
+  // bootState : "loading" | "login" | "coachLogin" | "ready" | "demo" | "bootError"
   const [bootState, setBootState] = useState("loading");
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null); // profil lu en base (contient role)
@@ -4721,7 +4835,10 @@ export default function ForgeCoachingApp() {
           }
         });
       } catch (e) {
-        if (!cancelled) setBootState("demo");
+        // Échec technique (CDN Supabase injoignable, réseau coupé au premier
+        // lancement...) : on l'affiche. Basculer en démo ici montrerait des
+        // données d'exemple à un vrai coaché — c'est pire qu'une erreur.
+        if (!cancelled) setBootState("bootError");
       }
     })();
     return () => { cancelled = true; };
@@ -4742,6 +4859,7 @@ export default function ForgeCoachingApp() {
   }, []);
 
   if (bootState === "loading")    return <LoadingScreen text="Initialisation..."/>;
+  if (bootState === "bootError")  return <ErrorScreen title="CONNEXION IMPOSSIBLE" message="L'application n'a pas réussi à joindre le serveur. Vérifie ta connexion internet, puis réessaie." onLogout={() => window.location.reload()} actionLabel="Réessayer"/>;
   if (bootState === "login")      return <LoginScreen onAuthSuccess={handleAuthSuccess} onCoachClick={() => setBootState("coachLogin")}/>;
   if (bootState === "coachLogin") return <CoachLoginScreen onBack={() => setBootState("login")} onAuthSuccess={handleAuthSuccess}/>;
 
@@ -4759,4 +4877,8 @@ export default function ForgeCoachingApp() {
       onLogout={bootState === "demo" ? null : handleLogout}
     />
   );
+}
+
+export default function ForgeCoachingApp() {
+  return <ErrorBoundary><ForgeCoachingRoot/></ErrorBoundary>;
 }
