@@ -769,6 +769,31 @@ Projet `xlquzhwmdyyiugtezasg`, Postgres 17.6, statut ACTIVE_HEALTHY.
 - **2 Edge Functions ACTIVE** (`create-coachee`, `update-coachee`), sans clé en dur : tout passe par `Deno.env`. Chacune vérifie l'identité de l'appelant et son `role = 'coach'`.
 - Volumétrie : 4 profils, 14 programmes, 18 semaines, 673 séries loguées, 33 exercices, 23 pesées, 3 phases. `recipes_library` et `meal_plans` sont vides.
 
+## O.7 — Avertissements de sécurité assumés (décidé le 7 août 2026)
+
+**`auth_leaked_password_protection` — ne pas chercher à le corriger.**
+
+Le conseiller de sécurité Supabase signale que la protection contre les mots de
+passe fuités est désactivée. Elle l'est parce qu'elle est **réservée au plan Pro**
+(~25 $/mois) ; sur le plan gratuit, l'interrupteur du tableau de bord passe au
+vert mais la fonction ne s'applique pas.
+
+Décision : **on la laisse désactivée.** Cette protection refuse les mots de passe
+figurant dans des fuites connues. Or aucun coaché ne choisit le sien : l'app le
+dérive du code d'accès (`Forge_<CODE>_2025!`), une forme qui n'apparaîtra jamais
+dans un corpus de fuites. Elle ne couvrirait donc qu'un seul compte, celui du
+coach — dont la solidité se règle gratuitement en choisissant un bon mot de passe.
+
+Le conseiller de sécurité restera donc à **1 avertissement** en permanence. C'est
+normal, ce n'est pas une régression.
+
+**Le vrai argument du plan Pro, lui, ce sont les sauvegardes.** La documentation
+Supabase recommande explicitement aux projets du plan gratuit d'exporter
+régulièrement leurs données : **il n'y a aucune sauvegarde automatique**. Le plan
+Pro en fait une par jour, conservée 7 jours. À prendre le jour du premier client
+payant, pas avant — perdre les données d'un client qui paie n'est récupérable ni
+techniquement ni commercialement.
+
 ## O.6 — Ce qui manque toujours
 
 **Plus aucun blocage.** Le dépôt est complet et le cycle de travail de la Partie A est opérationnel de bout en bout.
