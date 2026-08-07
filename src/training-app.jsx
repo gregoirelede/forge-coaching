@@ -1717,13 +1717,23 @@ const DAYS_ORDER = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI",
 // première lettre du prénom + nom de famille + 2 chiffres, majuscules, sans accent.
 // Les chiffres rendent le code impossible à deviner à partir du seul nom —
 // c'est l'unique secret du compte, il ne doit pas se déduire d'un post Instagram.
+// Longueur minimale d'un code d'accès. Le code EST le secret du compte :
+// l'email et le mot de passe internes s'en déduisent. 8 caractères est le
+// plancher retenu, aligné sur le minimum exigé par Supabase Auth.
+const MIN_CODE_LENGTH = 8;
+
 function generateAccessCode(name) {
   const parts = (name || "").trim().toUpperCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")   // retire les accents : LEDÉ → LEDE
     .split(/\s+/).map(p => p.replace(/[^A-Z0-9]/g, "")).filter(Boolean);
   if (parts.length === 0) return "";
-  const digits = String(Math.floor(Math.random() * 90) + 10); // 2 chiffres : 10 à 99
   const base = parts.length === 1 ? parts[0] : parts[0][0] + parts.slice(1).join("");
+  // Au moins 2 chiffres, et assez pour garantir 8 caractères au total.
+  // Un nom court (Greg Ledé → GLEDE) ne donnerait que 7 caractères avec 2 chiffres :
+  // on en ajoute un troisième plutôt que de descendre sous le seuil.
+  const nbChiffres = Math.max(2, MIN_CODE_LENGTH - base.length);
+  let digits = "";
+  for (let i = 0; i < nbChiffres; i++) digits += Math.floor(Math.random() * 10);
   return base + digits;
 }
 
