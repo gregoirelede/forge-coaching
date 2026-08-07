@@ -77,6 +77,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7d** | Sprint 1 : codes d'accès + 2 chiffres · icône iOS · polices auto-hébergées · ErrorBoundary · écran d'erreur réseau · confirmations maison · file hors-ligne au retour du réseau · durée de séance calculée | 468 587 o | 4 884 |
 | **v7e** | Code d'accès garanti à 8 caractères minimum (`MIN_CODE_LENGTH`) | 468 723 o | 4 894 |
 | **v7f** | Sprint 2 : PWA complète — manifest, service worker, bannière de mise à jour, démarrage hors-ligne | 472 495 o | 5 013 |
+| **v7g** | Sprint 2 : mode sombre — 64 variables CSS, réglage Auto/Clair/Sombre dans Profil | 484 534 o | 5 114 |
 
 ## B.4 — État d'installation
 
@@ -499,6 +500,17 @@ Si `supabase` n'est pas reconnu : fermer/rouvrir PowerShell, ou relancer `supaba
 
 # PARTIE H — CHARTE VISUELLE "FOREST & SAND" (verrouillée)
 
+> **Depuis la v7g, toutes les couleurs passent par des variables CSS** définies dans
+> `src/theme.css` et inlinées au build. La constante `T` du code ne contient plus que
+> des `var(--x)`. Conséquence pratique : **on ne code plus jamais une couleur en dur**
+> dans `training-app.jsx` — sinon elle ne suivra pas le mode sombre. Seule exception
+> assumée : le dégradé du bouclier (`#064E3B` → `#2DD4BF`), qui est l'identité de
+> marque et reste identique dans les deux thèmes.
+>
+> Le mode sombre garde l'esprit de la charte : fonds vert-charbon plutôt que noirs,
+> texte blanc cassé chaud, accent vert éclairci (`#4FA97F`) pour rester lisible.
+> Contraste titre/fond mesuré à 14,7:1, très au-dessus du seuil d'accessibilité.
+
 ```js
 const T = {
   bg: "#F5F1EB", surface: "#FFFCF7", surface2: "#EDE8DF",
@@ -560,6 +572,7 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
 ## I.3 — Réglages coaché (v7b)
 
 Dans Profil, stockés en **localStorage sur l'appareil de chaque coaché** — rien en base :
+- **Apparence** : Automatique / Clair / Sombre. « Automatique » suit le réglage du téléphone, en direct.
 - **Chronomètres** actifs ou non.
 - **Sonnerie de fin de repos** — modifiable uniquement si les chronomètres sont actifs (grisée sinon).
 

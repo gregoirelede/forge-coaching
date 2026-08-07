@@ -84,30 +84,41 @@ const DEFAULT_SESSIONS = [
 // ═══════════════════════════════════════════════════════════════════════════════
 //  THEME Forest & Sand
 // ═══════════════════════════════════════════════════════════════════════════════
+// Palette — chaque valeur pointe vers une variable CSS définie dans src/theme.css.
+// Le thème clair/sombre bascule en posant data-theme sur <html> : aucun composant
+// n'a besoin d'être informé, les centaines de références T.xxx suivent d'elles-mêmes.
 const T = {
-  bg: "#F5F1EB", surface: "#FFFCF7", surface2: "#EDE8DF",
-  border: "#DDD5C8", borderStrong: "#C8BFB0",
-  text: "#1E2820", textSub: "#7A7060", textMuted: "#A89880",
-  accent: "#2D6A4F", accentDark: "#1E4D38", accentLight: "#E4F0EB", accentText: "#FFFFFF",
-  danger: "#C0392B", inputBg: "#EDE8DF",
-  shadow: "rgba(30,40,32,0.08)",
-  cmpUp:   { bg: "#E0F5EC", border: "#1A6640", text: "#1A6640" },
-  cmpDown: { bg: "#FDE8E8", border: "#9B2C2C", text: "#9B2C2C" },
+  bg: "var(--bg)", surface: "var(--surface)", surface2: "var(--surface2)",
+  border: "var(--border)", borderStrong: "var(--border-strong)",
+  text: "var(--text)", textSub: "var(--text-sub)", textMuted: "var(--text-muted)",
+  accent: "var(--accent)", accentDark: "var(--accent-dark)",
+  accentLight: "var(--accent-light)", accentText: "var(--accent-text)",
+  danger: "var(--danger)", inputBg: "var(--input-bg)",
+  shadow: "var(--shadow)",
+  // Variantes translucides de l'accent (remplacent les concaténations hexadécimales,
+  // impossibles sur une var() : "var(--accent)55" ne veut rien dire en CSS)
+  accentA10: "var(--accent-a10)", accentA20: "var(--accent-a20)",
+  accentA33: "var(--accent-a33)", accentA38: "var(--accent-a38)",
+  accentLightA53: "var(--accent-light-a53)",
+  setDoneBg: "var(--set-done-bg)",
+  warnBg: "var(--warn-bg)", warnText: "var(--warn-text)", warnBorder: "var(--warn-border)",
+  cmpUp:   { bg: "var(--cmp-up-bg)",   border: "var(--cmp-up-border)",   text: "var(--cmp-up-text)" },
+  cmpDown: { bg: "var(--cmp-down-bg)", border: "var(--cmp-down-border)", text: "var(--cmp-down-text)" },
 };
 
 const muscleColors = {
-  "Triceps":        { bg:"#FDE8E8", text:"#9B2C2C" },
-  "Pectoraux":      { bg:"#FEF0E0", text:"#974A0A" },
-  "Deltoïde post":  { bg:"#EDE8FF", text:"#5B35B0" },
-  "Deltoïde lat":   { bg:"#E0EDFF", text:"#1A56A0" },
-  "Quadriceps":     { bg:"#E0F5EC", text:"#1A6640" },
-  "Ischios":        { bg:"#FFF8DC", text:"#8A6500" },
-  "Mollets":        { bg:"#FDE8F3", text:"#8A2060" },
-  "Grand dorsal":   { bg:"#D8F5EA", text:"#1A5535" },
-  "Haut du dos":    { bg:"#DDEEFF", text:"#1A4A80" },
-  "Biceps":         { bg:"#F0E0FF", text:"#5A1A90" },
-  "Fessier/Ischios":{ bg:"#FFE8E8", text:"#902020" },
-  "Adducteurs":     { bg:"#E0FFE8", text:"#1A7030" },
+  "Triceps":        { bg:"var(--m-triceps-bg)",    text:"var(--m-triceps-tx)" },
+  "Pectoraux":      { bg:"var(--m-pectoraux-bg)",  text:"var(--m-pectoraux-tx)" },
+  "Deltoïde post":  { bg:"var(--m-deltpost-bg)",   text:"var(--m-deltpost-tx)" },
+  "Deltoïde lat":   { bg:"var(--m-deltlat-bg)",    text:"var(--m-deltlat-tx)" },
+  "Quadriceps":     { bg:"var(--m-quadriceps-bg)", text:"var(--m-quadriceps-tx)" },
+  "Ischios":        { bg:"var(--m-ischios-bg)",    text:"var(--m-ischios-tx)" },
+  "Mollets":        { bg:"var(--m-mollets-bg)",    text:"var(--m-mollets-tx)" },
+  "Grand dorsal":   { bg:"var(--m-dorsal-bg)",     text:"var(--m-dorsal-tx)" },
+  "Haut du dos":    { bg:"var(--m-hautdos-bg)",    text:"var(--m-hautdos-tx)" },
+  "Biceps":         { bg:"var(--m-biceps-bg)",     text:"var(--m-biceps-tx)" },
+  "Fessier/Ischios":{ bg:"var(--m-fessier-bg)",    text:"var(--m-fessier-tx)" },
+  "Adducteurs":     { bg:"var(--m-adducteurs-bg)", text:"var(--m-adducteurs-tx)" },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -174,6 +185,65 @@ function currentWeekFromDate(createdAtISO) {
   const now = new Date();
   const days = Math.floor((now - start) / 86400000);
   return Math.max(1, Math.floor(days / 7) + 1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  THÈME CLAIR / SOMBRE
+//  Le choix vit en localStorage, par appareil — comme les chronos et la sonnerie.
+//  "auto" suit le réglage du téléphone ; "clair" et "sombre" le forcent.
+//  Tout passe par data-theme sur <html> : aucun composant n'a besoin d'être
+//  informé, les variables CSS de theme.css font le reste.
+// ═══════════════════════════════════════════════════════════════════════════════
+const THEME_KEY = "forge_theme";
+const THEME_MODES = ["auto", "clair", "sombre"];
+
+function loadTheme() {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return THEME_MODES.includes(v) ? v : "auto";
+  } catch { return "auto"; }
+}
+
+function applyTheme(mode) {
+  try {
+    const html = document.documentElement;
+    if (mode === "auto") html.removeAttribute("data-theme");
+    else html.setAttribute("data-theme", mode);
+    // La barre d'état du téléphone doit suivre le fond réel de l'app.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      const fond = getComputedStyle(html).getPropertyValue("--bg").trim();
+      if (fond) meta.setAttribute("content", fond);
+    }
+  } catch {}
+}
+
+function useTheme() {
+  const [theme, setThemeState] = useState(loadTheme);
+
+  useEffect(() => { applyTheme(theme); }, [theme]);
+
+  // En mode automatique, on suit les changements du téléphone en direct
+  // (bascule programmée au coucher du soleil, par exemple).
+  useEffect(() => {
+    if (theme !== "auto" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const surChangement = () => applyTheme("auto");
+    mq.addEventListener ? mq.addEventListener("change", surChangement)
+                        : mq.addListener(surChangement);
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener("change", surChangement)
+                             : mq.removeListener(surChangement);
+    };
+  }, [theme]);
+
+  const setTheme = useCallback((mode) => {
+    if (!THEME_MODES.includes(mode)) return;
+    try { localStorage.setItem(THEME_KEY, mode); } catch {}
+    setThemeState(mode);
+  }, []);
+
+  return { theme, setTheme };
 }
 
 // Réglages coaché stockés localement (par appareil)
@@ -408,10 +478,10 @@ function Spinner({ size = 16, color = T.accent }) {
 // SyncDot
 function SyncDot({ status }) {
   const cfg = {
-    synced:  { color: "#1A6640", label: "Synchronisé" },
-    pending: { color: "#C27A00", label: "Synchronisation..." },
-    error:   { color: "#9B2C2C", label: "Hors-ligne" },
-    demo:    { color: "#A89880", label: "Mode démo (local)" },
+    synced:  { color: "var(--cmp-up-text)", label: "Synchronisé" },
+    pending: { color: T.warnText, label: "Synchronisation..." },
+    error:   { color: "var(--cmp-down-text)", label: "Hors-ligne" },
+    demo:    { color: T.textMuted, label: "Mode démo (local)" },
   }[status] || { color: T.textMuted, label: "—" };
   return <div title={cfg.label} style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, boxShadow: `0 0 0 2px ${cfg.color}25`, flexShrink: 0, transition: "background .3s" }}/>;
 }
@@ -786,7 +856,7 @@ function WorkoutPage({ ctx }) {
               const sess = sessions.find(s => s.id === w.sessionId);
               const isActive = !!sess;
               return (
-                <div key={i} style={{ background: isActive ? T.accentLight : T.surface2, border: `1px solid ${isActive ? T.accent + "55" : T.border}`, borderRadius: 10, padding: "12px 4px", textAlign: "center", animation: `fadeUp .35s ease ${i * 0.04}s both` }}>
+                <div key={i} style={{ background: isActive ? T.accentLight : T.surface2, border: `1px solid ${isActive ? T.accentA33 : T.border}`, borderRadius: 10, padding: "12px 4px", textAlign: "center", animation: `fadeUp .35s ease ${i * 0.04}s both` }}>
                   <div style={{ fontSize: 9, fontWeight: 800, color: isActive ? T.accent : T.textMuted, marginBottom: 6 }}>{w.day.slice(0,3)}</div>
                   <div style={{ fontSize: 7.5, color: isActive ? T.accentDark : T.textMuted, lineHeight: 1.4, fontWeight: 500 }}>{sess ? sess.name : "REPOS"}</div>
                 </div>
@@ -821,7 +891,7 @@ function WorkoutPage({ ctx }) {
               return (
                 <button key={w} className="pressable" onClick={() => { setViewedWeek(w); setExpandedEx(null); }} style={{ background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "5px 11px", borderRadius: 16, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: .6, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, boxShadow: isActive ? `0 1px 6px ${T.accent}25` : "none", cursor: "pointer" }}>
                   <span>SEMAINE {w}</span>
-                  {isCurrent && (<span style={{ background: isActive ? "rgba(255,255,255,0.22)" : T.accent + "18", color: isActive ? "#FFF" : T.accent, fontSize: 7, fontWeight: 900, letterSpacing: .8, padding: "1.5px 5px", borderRadius: 8 }}>EN COURS</span>)}
+                  {isCurrent && (<span style={{ background: isActive ? "rgba(255,255,255,0.22)" : T.accentA10, color: isActive ? "#FFF" : T.accent, fontSize: 7, fontWeight: 900, letterSpacing: .8, padding: "1.5px 5px", borderRadius: 8 }}>EN COURS</span>)}
                 </button>
               );
             });
@@ -849,7 +919,7 @@ function WorkoutPage({ ctx }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <div style={{ fontFamily: "'Bebas Neue'", fontSize: 25, color: T.accent, letterSpacing: 3, lineHeight: 1 }}>{activeSession.name}</div>
                 {viewedWeek !== currentWeek && (
-                  <span style={{ background: viewedWeek < currentWeek ? "#FEF3DC" : T.surface2, color: viewedWeek < currentWeek ? "#C27A00" : T.textSub, fontSize: 8, fontWeight: 900, letterSpacing: 1, padding: "2px 7px", borderRadius: 6, border: `1px solid ${viewedWeek < currentWeek ? "#C27A0040" : T.border}` }}>
+                  <span style={{ background: viewedWeek < currentWeek ? T.warnBg : T.surface2, color: viewedWeek < currentWeek ? T.warnText : T.textSub, fontSize: 8, fontWeight: 900, letterSpacing: 1, padding: "2px 7px", borderRadius: 6, border: `1px solid ${viewedWeek < currentWeek ? T.warnBorder : T.border}` }}>
                     {viewedWeek < currentWeek ? "ARCHIVE · ÉDITABLE" : "FUTURE"}
                   </span>
                 )}
@@ -879,7 +949,7 @@ function WorkoutPage({ ctx }) {
           const doneSets = ex.reps.filter((_, si) => isDone(exIdx, si)).length;
           const allDone = doneSets === ex.series;
           return (
-            <div key={exIdx} style={{ background: allDone ? T.accentLight : T.surface, border: `1px solid ${allDone ? T.accent + "60" : T.border}`, borderRadius: 13, overflow: "hidden", boxShadow: `0 1px 8px ${T.shadow}`, transition: "border-color .2s, background .2s", animation: `fadeUp .35s ease ${exIdx * 0.04}s both` }}>
+            <div key={exIdx} style={{ background: allDone ? T.accentLight : T.surface, border: `1px solid ${allDone ? T.accentA38 : T.border}`, borderRadius: 13, overflow: "hidden", boxShadow: `0 1px 8px ${T.shadow}`, transition: "border-color .2s, background .2s", animation: `fadeUp .35s ease ${exIdx * 0.04}s both` }}>
               <div className="pressable" onClick={() => setExpandedEx(isOpen ? null : exIdx)} style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: allDone ? T.accent : T.surface2, border: `1.5px solid ${allDone ? T.accent : T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: allDone ? T.accentText : T.textSub, transition: "all .2s" }}>
                   {allDone ? <Icon name="check" size={14} stroke={3} color={T.accentText}/> : ex.ordre}
@@ -891,13 +961,13 @@ function WorkoutPage({ ctx }) {
                     <span style={{ color: T.textMuted, fontSize: 10 }}>{ex.series} séries · {ex.repos}</span>
                     {ex.technique && (() => {
                       const tStyle = {
-                        "RP":       { bg: "#E0F5EC", text: "#1A6640", label: "RP" },
-                        "DS":       { bg: "#DDEEFF", text: "#1A4A80", label: "DS" },
-                        "Superset": { bg: "#EDE8FF", text: "#5B35B0", label: "SUPERSET" },
+                        "RP":       { bg: "var(--cmp-up-bg)", text: "var(--cmp-up-text)", label: "RP" },
+                        "DS":       { bg: "var(--p-seche-bg)", text: "var(--p-seche-tx)", label: "DS" },
+                        "Superset": { bg: "var(--p-decharge-bg)", text: "var(--p-decharge-tx)", label: "SUPERSET" },
                       }[ex.technique];
                       return tStyle ? <span style={{ background: tStyle.bg, color: tStyle.text, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: .5 }}>{tStyle.label}</span> : null;
                     })()}
-                    {ex.commentaire && <span style={{ background: "#FEF3DC", color: "#A06000", fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{ex.commentaire}</span>}
+                    {ex.commentaire && <span style={{ background: T.warnBg, color: T.warnText, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{ex.commentaire}</span>}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
@@ -912,9 +982,9 @@ function WorkoutPage({ ctx }) {
                   </button>
                   {ex.technique && (() => {
                     const tInfo = {
-                      "RP":       { bg: "#E0F5EC", border: "#1A6640", text: "#1A6640", label: "REST-PAUSE (RP)", desc: "À l'échec, repose la charge 30 s, puis enchaîne une série supplémentaire." },
-                      "DS":       { bg: "#DDEEFF", border: "#1A4A80", text: "#1A4A80", label: "DROP SET (DS)", desc: "À l'échec, 30 s de repos, baisse la charge de 30-40% puis repars jusqu'à l'échec." },
-                      "Superset": { bg: "#EDE8FF", border: "#5B35B0", text: "#5B35B0", label: "SUPERSET", desc: "Enchaîne cet exercice avec le suivant sans repos entre les deux." },
+                      "RP":       { bg: "var(--cmp-up-bg)", border: "var(--cmp-up-text)", text: "var(--cmp-up-text)", label: "REST-PAUSE (RP)", desc: "À l'échec, repose la charge 30 s, puis enchaîne une série supplémentaire." },
+                      "DS":       { bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", text: "var(--p-seche-tx)", label: "DROP SET (DS)", desc: "À l'échec, 30 s de repos, baisse la charge de 30-40% puis repars jusqu'à l'échec." },
+                      "Superset": { bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", text: "var(--p-decharge-tx)", label: "SUPERSET", desc: "Enchaîne cet exercice avec le suivant sans repos entre les deux." },
                     }[ex.technique];
                     return tInfo ? (
                       <div style={{ background: tInfo.bg, border: `1px solid ${tInfo.border}40`, borderRadius: 9, padding: "9px 11px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -936,7 +1006,7 @@ function WorkoutPage({ ctx }) {
                       const wCmp = getCmp(exIdx, setIdx, "weight", log.weight);
                       const rCmp = getCmp(exIdx, setIdx, "actualReps", log.actualReps);
                       return (
-                        <div key={setIdx} style={{ background: done ? (timer?.done ? T.accentLight : "#F0F8F4") : T.bg, border: `1px solid ${done ? (timer?.done ? T.accent + "60" : T.accent + "35") : T.border}`, borderRadius: 10, overflow: "hidden", transition: "all .15s" }}>
+                        <div key={setIdx} style={{ background: done ? (timer?.done ? T.accentLight : T.setDoneBg) : T.bg, border: `1px solid ${done ? (timer?.done ? T.accentA38 : T.accentA20) : T.border}`, borderRadius: 10, overflow: "hidden", transition: "all .15s" }}>
                           <div className="pressable" onClick={() => toggleSet(activeSession.id, exIdx, setIdx, ex.repos, ex.exercice)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", cursor: "pointer" }}>
                             <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: done ? T.accent : T.surface, border: `1.5px solid ${done ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? T.accentText : T.textSub, fontWeight: 900, transition: "all .2s" }}>
                               {done ? <Icon name="check" size={14} stroke={3} color={T.accentText}/> : setIdx + 1}
@@ -952,7 +1022,7 @@ function WorkoutPage({ ctx }) {
                             ) : null}
                           </div>
                           {done && (
-                            <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px 10px", borderTop: `1px solid ${T.accent}20`, background: T.accentLight + "88", animation: "popIn .2s ease", flexWrap: "wrap" }}>
+                            <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px 10px", borderTop: `1px solid ${T.accent}20`, background: T.accentLightA53, animation: "popIn .2s ease", flexWrap: "wrap" }}>
                               <span style={{ fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: .8, whiteSpace: "nowrap" }}>LOG</span>
                               <SetLog weight={log.weight} actualReps={log.actualReps} weightCmp={wCmp} repsCmp={rCmp} onWeightChange={v => updateLog(key, "weight", v)} onRepsChange={v => updateLog(key, "actualReps", v)}/>
                             </div>
@@ -1105,11 +1175,11 @@ function ProfilePage({ ctx }) {
         </div>
         <div style={{ padding: "0 18px" }}>
           {[
-            { label: "ÉCHAUFFEMENT", color: "#C27A00", bg: "#FEF3DC", border: "#C27A0030", title: "Avant chaque exercice", text: "Réalise 2 à 3 séries légères à 50/60% de la charge de travail prévue avant d'attaquer tes séries de travail. Ne zappe jamais cette étape." },
-            { label: "RP",           color: "#1A6640", bg: "#E0F5EC", border: "#1A664030", title: "Rest-Pause",            text: "Après être allé à l'échec sur une série, repose la charge pendant 30 secondes, puis enchaîne une série supplémentaire. Note-la dans le logbook." },
-            { label: "DS",           color: "#1A4A80", bg: "#DDEEFF", border: "#1A4A8030", title: "Drop Set",              text: "Après avoir atteint l'échec, prends 30 secondes de repos. Baisse ensuite la charge de 30 à 40% et réalise une série supplémentaire jusqu'à l'échec." },
-            { label: "SUPERSET",     color: "#5B35B0", bg: "#EDE8FF", border: "#5B35B030", title: "Deux exercices en enchaînement", text: "Lorsque deux exercices sont surlignés de cette couleur, enchaîne-les sans temps de repos entre les deux (ou juste le temps de t'installer sur la machine suivante). Prends ensuite le temps de repos indiqué sur l'exercice 2 avant de repartir sur l'exercice 1." },
-            { label: "ALERTE",       color: "#9B2C2C", bg: "#FDE8E8", border: "#9B2C2C30", title: "Si tu vois 2 semaines de rouge consécutives sur un exercice", text: "Contacte-moi directement. Une régression sur 2 semaines de suite signifie qu'on doit ajuster quelque chose : intensité, récupération, technique, ou programmation. Pas de panique, c'est exactement à ça que sert le suivi — on adapte ensemble." },
+            { label: "ÉCHAUFFEMENT", color: T.warnText, bg: T.warnBg, border: "var(--warn-border)", title: "Avant chaque exercice", text: "Réalise 2 à 3 séries légères à 50/60% de la charge de travail prévue avant d'attaquer tes séries de travail. Ne zappe jamais cette étape." },
+            { label: "RP",           color: "var(--cmp-up-text)", bg: "var(--cmp-up-bg)", border: "var(--cmp-up-border)", title: "Rest-Pause",            text: "Après être allé à l'échec sur une série, repose la charge pendant 30 secondes, puis enchaîne une série supplémentaire. Note-la dans le logbook." },
+            { label: "DS",           color: "var(--p-seche-tx)", bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", title: "Drop Set",              text: "Après avoir atteint l'échec, prends 30 secondes de repos. Baisse ensuite la charge de 30 à 40% et réalise une série supplémentaire jusqu'à l'échec." },
+            { label: "SUPERSET",     color: "var(--p-decharge-tx)", bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", title: "Deux exercices en enchaînement", text: "Lorsque deux exercices sont surlignés de cette couleur, enchaîne-les sans temps de repos entre les deux (ou juste le temps de t'installer sur la machine suivante). Prends ensuite le temps de repos indiqué sur l'exercice 2 avant de repartir sur l'exercice 1." },
+            { label: "ALERTE",       color: "var(--cmp-down-text)", bg: "var(--cmp-down-bg)", border: "var(--cmp-down-border)", title: "Si tu vois 2 semaines de rouge consécutives sur un exercice", text: "Contacte-moi directement. Une régression sur 2 semaines de suite signifie qu'on doit ajuster quelque chose : intensité, récupération, technique, ou programmation. Pas de panique, c'est exactement à ça que sert le suivi — on adapte ensemble." },
           ].map((c, i) => (
             <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, padding: "16px", marginBottom: 10, animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -1159,6 +1229,31 @@ function ProfilePage({ ctx }) {
         <div style={{ padding: "18px 18px 0" }}>
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10, paddingLeft: 2 }}>RÉGLAGES</div>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", boxShadow: `0 1px 8px ${T.shadow}` }}>
+            {/* Apparence — stockée localement, par appareil, comme les autres réglages */}
+            <div style={{ padding: "13px 0", borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Apparence</div>
+              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, marginBottom: 10, lineHeight: 1.4 }}>
+                « Automatique » suit le réglage de ton téléphone
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[["auto", "AUTO"], ["clair", "CLAIR"], ["sombre", "SOMBRE"]].map(([val, lib]) => {
+                  const actif = ctx.theme === val;
+                  return (
+                    <button key={val} onClick={() => ctx.setTheme(val)} className="pressable"
+                      style={{
+                        flex: 1, padding: "9px 4px", borderRadius: 10, cursor: "pointer",
+                        background: actif ? T.accent : T.bg,
+                        color: actif ? T.accentText : T.textSub,
+                        border: `1.5px solid ${actif ? T.accent : T.border}`,
+                        fontSize: 10, fontWeight: 800, letterSpacing: 1, fontFamily: "inherit",
+                        transition: "all .2s ease",
+                      }}>
+                      {lib}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             {/* Chronomètres de repos */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -1377,6 +1472,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     setSettings(prev => { const next = { ...prev, [key]: value }; saveSettings(userId, next); return next; });
   }, [userId]);
   const { timers, start, cancel } = useTimers(soundEnabledRef);
+  // Thème clair/sombre — stocké localement, comme les chronos et la sonnerie
+  const { theme, setTheme } = useTheme();
 
   // ── Chargement initial : profil + programme + logs ────────────────────────
   useEffect(() => {
@@ -1617,6 +1714,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     openExerciseSheet: (ex) => setSheetExercise(ex),
     weighedToday, refreshWeighedToday,
     settings, updateSetting,
+    theme, setTheme,
     onLogout, isDemo,
   };
 
@@ -1880,7 +1978,7 @@ const inputStyle = {
 function OfferBadge({ offer }) {
   const isPrem = offer === "premium";
   return (
-    <span style={{ background: isPrem ? "#FEF3DC" : T.accentLight, color: isPrem ? "#A06000" : T.accent, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: .5 }}>
+    <span style={{ background: isPrem ? T.warnBg : T.accentLight, color: isPrem ? T.warnText : T.accent, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: .5 }}>
       {isPrem ? "PREMIUM" : "ESSENTIEL"}
     </span>
   );
@@ -2861,7 +2959,7 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
             </div>
           </Field>
           {codeChanged && (
-            <div style={{ background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", lineHeight: 1.5, fontWeight: 600 }}>
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
               Attention : changer le code modifie les identifiants de connexion du coaché. Il devra utiliser le nouveau code <b>{code.trim().toUpperCase()}</b> pour se connecter, et sera déconnecté de ses sessions actuelles.
             </div>
           )}
@@ -3235,10 +3333,10 @@ function WeightChart({ logs }) {
 function MealVisual({ mealType, imageUrl, size = 44 }) {
   if (imageUrl) return <img src={imageUrl} alt="" style={{ width: size, height: size, borderRadius: 12, objectFit: "cover", flexShrink: 0 }}/>;
   const map = {
-    petit_dejeuner: { bg: "#FEF3DC", icon: "clock",    color: "#A06000" },
-    dejeuner:       { bg: "#E0F5EC", icon: "home",     color: "#1A6640" },
-    collation:      { bg: "#EDE8FF", icon: "info",     color: "#5B35B0" },
-    diner:          { bg: "#DDEEFF", icon: "calendar", color: "#1A4A80" },
+    petit_dejeuner: { bg: T.warnBg, icon: "clock",    color: T.warnText },
+    dejeuner:       { bg: "var(--cmp-up-bg)", icon: "home",     color: "var(--cmp-up-text)" },
+    collation:      { bg: "var(--p-decharge-bg)", icon: "info",     color: "var(--p-decharge-tx)" },
+    diner:          { bg: "var(--p-seche-bg)", icon: "calendar", color: "var(--p-seche-tx)" },
   };
   const v = map[mealType] || map.dejeuner;
   return (
@@ -3266,7 +3364,7 @@ function RecipeSheet({ recipe, servings = 1, onClose }) {
           <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer" }}>×</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 16 }}>
-          {[["KCAL", Math.round(recipe.total_kcal * mult), T.accent], ["PROT", Math.round(recipe.protein_g * mult) + "g", "#1A6640"], ["GLUC", Math.round(recipe.carbs_g * mult) + "g", "#A06000"], ["LIP", Math.round(recipe.fat_g * mult) + "g", "#1A4A80"]].map(([l, v, c]) => (
+          {[["KCAL", Math.round(recipe.total_kcal * mult), T.accent], ["PROT", Math.round(recipe.protein_g * mult) + "g", "var(--cmp-up-text)"], ["GLUC", Math.round(recipe.carbs_g * mult) + "g", T.warnText], ["LIP", Math.round(recipe.fat_g * mult) + "g", "var(--p-seche-tx)"]].map(([l, v, c]) => (
             <div key={l} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 4px", textAlign: "center" }}>
               <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: c }}>{v}</div>
               <div style={{ fontSize: 7, color: T.textMuted, fontWeight: 800, letterSpacing: 1 }}>{l}</div>
@@ -3722,7 +3820,7 @@ function CoachNutritionView({ ctx, coachee }) {
   if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
   if ((coachee.offer || "essentiel") !== "premium") return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "26px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
-      Ce coaché est en offre Essentiel.<br/>Le module diète est réservé à l'offre <b style={{ color: "#A06000" }}>Premium</b>.
+      Ce coaché est en offre Essentiel.<br/>Le module diète est réservé à l'offre <b style={{ color: T.warnText }}>Premium</b>.
     </div>
   );
 
@@ -3739,7 +3837,7 @@ function CoachNutritionView({ ctx, coachee }) {
       </div>
       {msg && <div style={{ fontSize: 11, color: msg.includes("Erreur") || msg.includes("requis") || msg.includes("sensible") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>{msg}</div>}
       {nutri.medical_flag && (
-        <div style={{ background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", lineHeight: 1.5, fontWeight: 600 }}>
+        <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
           Pathologie déclarée : l'avis d'un médecin ou diététicien est recommandé avant toute mise en place.
         </div>
       )}
@@ -3817,14 +3915,14 @@ function CoachNutritionView({ ctx, coachee }) {
           </Field>
           <Field label="SITUATION MÉDICALE">
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <button onClick={() => updNutri("medical_flag", !nutri.medical_flag)} style={{ flex: 1, padding: "11px", background: nutri.medical_flag ? "#FEF3DC" : T.surface, color: nutri.medical_flag ? "#A06000" : T.textSub, border: `1.5px solid ${nutri.medical_flag ? "#C27A00" : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={() => updNutri("medical_flag", !nutri.medical_flag)} style={{ flex: 1, padding: "11px", background: nutri.medical_flag ? T.warnBg : T.surface, color: nutri.medical_flag ? T.warnText : T.textSub, border: `1.5px solid ${nutri.medical_flag ? T.warnText : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                 {nutri.medical_flag ? "Pathologie déclarée" : "Aucune pathologie déclarée"}
               </button>
             </div>
             {nutri.medical_flag && <textarea value={nutri.medical_notes || ""} onChange={e => updNutri("medical_notes", e.target.value)} rows={2} placeholder="Notes (diabète, traitement...)" style={{ ...inputStyle, resize: "vertical" }}/>}
           </Field>
           <Field label="ANTÉCÉDENT DE TROUBLE ALIMENTAIRE (déclaré avec bienveillance)">
-            <button onClick={() => updNutri("ed_screening_flag", !nutri.ed_screening_flag)} style={{ width: "100%", padding: "11px", background: nutri.ed_screening_flag ? "#FDE8E8" : T.surface, color: nutri.ed_screening_flag ? "#9B2C2C" : T.textSub, border: `1.5px solid ${nutri.ed_screening_flag ? T.danger : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => updNutri("ed_screening_flag", !nutri.ed_screening_flag)} style={{ width: "100%", padding: "11px", background: nutri.ed_screening_flag ? "var(--cmp-down-bg)" : T.surface, color: nutri.ed_screening_flag ? "var(--cmp-down-text)" : T.textSub, border: `1.5px solid ${nutri.ed_screening_flag ? T.danger : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
               {nutri.ed_screening_flag ? "Antécédent / risque signalé — pas de déficit automatique" : "Aucun antécédent signalé"}
             </button>
           </Field>
@@ -3850,15 +3948,15 @@ function CoachNutritionView({ ctx, coachee }) {
             </div>
           ) : (<>
             {targets.floored && (
-              <div style={{ background: "#FDE8E8", border: `1px solid ${T.danger}40`, borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "#9B2C2C", fontWeight: 600, lineHeight: 1.5 }}>
+              <div style={{ background: "var(--cmp-down-bg)", border: `1px solid ${T.danger}40`, borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "var(--cmp-down-text)", fontWeight: 600, lineHeight: 1.5 }}>
                 La cible calculée passait sous le plancher de sécurité ({targets.floor} kcal). Elle a été plafonnée au plancher.
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-around", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 8px", marginBottom: 12 }}>
               <MacroRing label="CALORIES" value={targets.target} unit="KCAL" color={T.accent}/>
-              <MacroRing label="PROTÉINES" value={targets.protein} unit="G" color="#1A6640" size={72}/>
-              <MacroRing label="GLUCIDES" value={targets.carbs} unit="G" color="#A06000" size={72}/>
-              <MacroRing label="LIPIDES" value={targets.fat} unit="G" color="#1A4A80" size={72}/>
+              <MacroRing label="PROTÉINES" value={targets.protein} unit="G" color="var(--cmp-up-text)" size={72}/>
+              <MacroRing label="GLUCIDES" value={targets.carbs} unit="G" color={T.warnText} size={72}/>
+              <MacroRing label="LIPIDES" value={targets.fat} unit="G" color="var(--p-seche-tx)" size={72}/>
             </div>
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", marginBottom: 12 }}>
               {[["Âge / Poids / Taille", `${targets.age} ans · ${lastWeight} kg · ${clientProfile.height_cm} cm`],
@@ -3932,8 +4030,8 @@ function CoachNutritionView({ ctx, coachee }) {
       {section === "poids" && (
         <div>
           {alert && (
-            <div style={{ background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: "#A06000", fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 8 }}>
-              <Icon name="alert" size={15} color="#A06000"/>
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 8 }}>
+              <Icon name="alert" size={15} color={T.warnText}/>
               <span>{alert}</span>
             </div>
           )}
@@ -4052,15 +4150,15 @@ function NutritionPage({ ctx }) {
 
       {!weighedTodayLocal && (
         <div style={{ padding: "0 18px 14px" }}>
-          <button onClick={scrollToWeigh} className="pressable" style={{ width: "100%", background: "#FEF3DC", border: "1px solid #C27A0040", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 11, cursor: "pointer", textAlign: "left" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: "#F6E3BC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon name="trending" size={18} color="#A06000"/>
+          <button onClick={scrollToWeigh} className="pressable" style={{ width: "100%", background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 11, cursor: "pointer", textAlign: "left" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--warn-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="trending" size={18} color={T.warnText}/>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 800, color: "#8A5400" }}>Pense à te peser aujourd'hui</div>
-              <div style={{ fontSize: 10.5, color: "#A06000", marginTop: 1 }}>Un suivi quotidien affine tes cibles. Appuie pour saisir.</div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: "var(--warn-text)" }}>Pense à te peser aujourd'hui</div>
+              <div style={{ fontSize: 10.5, color: T.warnText, marginTop: 1 }}>Un suivi quotidien affine tes cibles. Appuie pour saisir.</div>
             </div>
-            <Icon name="chevronRight" size={18} color="#C27A00"/>
+            <Icon name="chevronRight" size={18} color={T.warnText}/>
           </button>
         </div>
       )}
@@ -4070,9 +4168,9 @@ function NutritionPage({ ctx }) {
         {targets.ready ? (
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "18px 8px", display: "flex", justifyContent: "space-around", boxShadow: `0 2px 14px ${T.shadow}` }}>
             <MacroRing label="CALORIES" value={targets.target} unit="KCAL" color={T.accent}/>
-            <MacroRing label="PROT" value={targets.protein} unit="G" color="#1A6640" size={70}/>
-            <MacroRing label="GLUC" value={targets.carbs} unit="G" color="#A06000" size={70}/>
-            <MacroRing label="LIP" value={targets.fat} unit="G" color="#1A4A80" size={70}/>
+            <MacroRing label="PROT" value={targets.protein} unit="G" color="var(--cmp-up-text)" size={70}/>
+            <MacroRing label="GLUC" value={targets.carbs} unit="G" color={T.warnText} size={70}/>
+            <MacroRing label="LIP" value={targets.fat} unit="G" color="var(--p-seche-tx)" size={70}/>
           </div>
         ) : (
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
@@ -4150,11 +4248,11 @@ function NutritionPage({ ctx }) {
 //  PÉRIODISATION — Constantes, modèles & helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 const PHASE_TYPES = {
-  prise_de_masse: { label: "Prise de masse", text: "#C27A00", bg: "#FEF3DC" },
-  seche:          { label: "Sèche",          text: "#1A4A80", bg: "#DDEEFF" },
-  recomposition:  { label: "Recomposition",  text: "#1A6640", bg: "#E0F5EC" },
-  maintien:       { label: "Maintien",       text: "#7A7060", bg: "#EDE8DF" },
-  decharge:       { label: "Décharge",       text: "#5B35B0", bg: "#EDE8FF" },
+  prise_de_masse: { label: "Prise de masse", text: "var(--p-masse-tx)",    bg: "var(--p-masse-bg)" },
+  seche:          { label: "Sèche",          text: "var(--p-seche-tx)",    bg: "var(--p-seche-bg)" },
+  recomposition:  { label: "Recomposition",  text: "var(--p-recomp-tx)",   bg: "var(--p-recomp-bg)" },
+  maintien:       { label: "Maintien",       text: "var(--p-maintien-tx)", bg: "var(--p-maintien-bg)" },
+  decharge:       { label: "Décharge",       text: "var(--p-decharge-tx)", bg: "var(--p-decharge-bg)" },
 };
 const PHASE_TYPE_LIST = Object.keys(PHASE_TYPES);
 const phaseLabel = (t) => (PHASE_TYPES[t] || {}).label || t;
@@ -5004,6 +5102,9 @@ function ForgeCoachingRoot() {
 
 export default function ForgeCoachingApp() {
   const { updateReady, applyUpdate } = useServiceWorker();
+  // Le thème est déjà posé par le script du <head> ; on aligne ici la couleur de
+  // la barre d'état, y compris sur l'écran de connexion et dans l'espace coach.
+  useEffect(() => { applyTheme(loadTheme()); }, []);
   return (
     <ErrorBoundary>
       {updateReady && <UpdateBanner onUpdate={applyUpdate}/>}
