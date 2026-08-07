@@ -1,0 +1,175 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FORGE COACHING — PALETTES CLAIRE ET SOMBRE
+
+   Inliné dans le <head> par build.mjs. Toutes les couleurs de l'app passent par
+   ces variables : la constante T du code JS ne contient plus que des var(--x).
+   Changer de thème revient donc à poser data-theme="sombre" sur <html>, sans
+   qu'aucun composant n'ait besoin d'être informé.
+
+   La palette claire est la charte "Forest & Sand" d'origine, inchangée.
+   La palette sombre en garde l'esprit : fonds vert-charbon plutôt que noirs,
+   texte blanc cassé chaud, accent vert éclairci pour rester lisible.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #F5F1EB;
+  --surface: #FFFCF7;
+  --surface2: #EDE8DF;
+  --border: #DDD5C8;
+  --border-strong: #C8BFB0;
+  --text: #1E2820;
+  --text-sub: #7A7060;
+  --text-muted: #A89880;
+  --accent: #2D6A4F;
+  --accent-dark: #1E4D38;
+  --accent-light: #E4F0EB;
+  --accent-text: #FFFFFF;
+  --danger: #C0392B;
+  --input-bg: #EDE8DF;
+  --shadow: rgba(30, 40, 32, 0.08);
+
+  /* Accent avec transparence — remplace les concaténations T.accent + "55" */
+  --accent-a10: rgba(45, 106, 79, 0.09);
+  --accent-a20: rgba(45, 106, 79, 0.21);
+  --accent-a33: rgba(45, 106, 79, 0.33);
+  --accent-a38: rgba(45, 106, 79, 0.38);
+  --accent-light-a53: rgba(228, 240, 235, 0.53);
+
+  /* Comparaison inter-semaines : progression / régression */
+  --cmp-up-bg: #E0F5EC;   --cmp-up-border: #1A6640;   --cmp-up-text: #1A6640;
+  --cmp-down-bg: #FDE8E8; --cmp-down-border: #9B2C2C; --cmp-down-text: #9B2C2C;
+
+  /* Série validée, chrono terminé */
+  --set-done-bg: #F0F8F4;
+
+  /* Encadré d'avertissement */
+  --warn-bg: #FEF3DC; --warn-text: #A06000; --warn-border: rgba(194, 122, 0, 0.25);
+
+  /* Groupes musculaires — liste fermée (Partie H) */
+  --m-triceps-bg: #FDE8E8;    --m-triceps-tx: #9B2C2C;
+  --m-pectoraux-bg: #FEF0E0;  --m-pectoraux-tx: #974A0A;
+  --m-deltpost-bg: #EDE8FF;   --m-deltpost-tx: #5B35B0;
+  --m-deltlat-bg: #E0EDFF;    --m-deltlat-tx: #1A56A0;
+  --m-quadriceps-bg: #E0F5EC; --m-quadriceps-tx: #1A6640;
+  --m-ischios-bg: #FFF8DC;    --m-ischios-tx: #8A6500;
+  --m-mollets-bg: #FDE8F3;    --m-mollets-tx: #8A2060;
+  --m-dorsal-bg: #D8F5EA;     --m-dorsal-tx: #1A5535;
+  --m-hautdos-bg: #DDEEFF;    --m-hautdos-tx: #1A4A80;
+  --m-biceps-bg: #F0E0FF;     --m-biceps-tx: #5A1A90;
+  --m-fessier-bg: #FFE8E8;    --m-fessier-tx: #902020;
+  --m-adducteurs-bg: #E0FFE8; --m-adducteurs-tx: #1A7030;
+
+  /* Phases de périodisation (Partie H) */
+  --p-masse-bg: #FEF3DC;  --p-masse-tx: #C27A00;
+  --p-seche-bg: #DDEEFF;  --p-seche-tx: #1A4A80;
+  --p-recomp-bg: #E0F5EC; --p-recomp-tx: #1A6640;
+  --p-maintien-bg: #EDE8DF; --p-maintien-tx: #7A7060;
+  --p-decharge-bg: #EDE8FF; --p-decharge-tx: #5B35B0;
+}
+
+:root[data-theme="sombre"] {
+  --bg: #141815;
+  --surface: #1B211D;
+  --surface2: #232A25;
+  --border: #2F372F;
+  --border-strong: #454E47;
+  --text: #ECE8E0;
+  --text-sub: #A7A093;
+  --text-muted: #7C766A;
+  --accent: #4FA97F;
+  --accent-dark: #3C8A66;
+  --accent-light: #1D2B24;
+  --accent-text: #0A0E0B;
+  --danger: #E4695A;
+  --input-bg: #232A25;
+  --shadow: rgba(0, 0, 0, 0.45);
+
+  --accent-a10: rgba(79, 169, 127, 0.10);
+  --accent-a20: rgba(79, 169, 127, 0.22);
+  --accent-a33: rgba(79, 169, 127, 0.34);
+  --accent-a38: rgba(79, 169, 127, 0.40);
+  --accent-light-a53: rgba(29, 43, 36, 0.60);
+
+  --cmp-up-bg: #17301F;   --cmp-up-border: #4FA97F;   --cmp-up-text: #6FCB9B;
+  --cmp-down-bg: #331B1B; --cmp-down-border: #E4695A; --cmp-down-text: #F09287;
+
+  --set-done-bg: #1A2620;
+
+  --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
+
+  --m-triceps-bg: #37201F;    --m-triceps-tx: #F2A29B;
+  --m-pectoraux-bg: #362512;  --m-pectoraux-tx: #F0B478;
+  --m-deltpost-bg: #241E3A;   --m-deltpost-tx: #B9A3F0;
+  --m-deltlat-bg: #16263B;    --m-deltlat-tx: #8FBDF0;
+  --m-quadriceps-bg: #16301F; --m-quadriceps-tx: #7ACFA2;
+  --m-ischios-bg: #322A14;    --m-ischios-tx: #E0C263;
+  --m-mollets-bg: #331C29;    --m-mollets-tx: #EFA1C8;
+  --m-dorsal-bg: #14302A;     --m-dorsal-tx: #7CD3B6;
+  --m-hautdos-bg: #16263A;    --m-hautdos-tx: #8FBEE8;
+  --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
+  --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
+  --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+
+  --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
+  --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
+  --p-recomp-bg: #16301F; --p-recomp-tx: #7ACFA2;
+  --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
+  --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
+}
+
+/* Mode automatique : suit le réglage du téléphone tant que le coaché n'a pas
+   choisi explicitement. data-theme="clair" ou "sombre" prend le dessus. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]):not([data-theme="sombre"]) {
+    --bg: #141815;
+    --surface: #1B211D;
+    --surface2: #232A25;
+    --border: #2F372F;
+    --border-strong: #454E47;
+    --text: #ECE8E0;
+    --text-sub: #A7A093;
+    --text-muted: #7C766A;
+    --accent: #4FA97F;
+    --accent-dark: #3C8A66;
+    --accent-light: #1D2B24;
+    --accent-text: #0A0E0B;
+    --danger: #E4695A;
+    --input-bg: #232A25;
+    --shadow: rgba(0, 0, 0, 0.45);
+
+    --accent-a10: rgba(79, 169, 127, 0.10);
+    --accent-a20: rgba(79, 169, 127, 0.22);
+    --accent-a33: rgba(79, 169, 127, 0.34);
+    --accent-a38: rgba(79, 169, 127, 0.40);
+    --accent-light-a53: rgba(29, 43, 36, 0.60);
+
+    --cmp-up-bg: #17301F;   --cmp-up-border: #4FA97F;   --cmp-up-text: #6FCB9B;
+    --cmp-down-bg: #331B1B; --cmp-down-border: #E4695A; --cmp-down-text: #F09287;
+
+    --set-done-bg: #1A2620;
+
+    --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
+
+    --m-triceps-bg: #37201F;    --m-triceps-tx: #F2A29B;
+    --m-pectoraux-bg: #362512;  --m-pectoraux-tx: #F0B478;
+    --m-deltpost-bg: #241E3A;   --m-deltpost-tx: #B9A3F0;
+    --m-deltlat-bg: #16263B;    --m-deltlat-tx: #8FBDF0;
+    --m-quadriceps-bg: #16301F; --m-quadriceps-tx: #7ACFA2;
+    --m-ischios-bg: #322A14;    --m-ischios-tx: #E0C263;
+    --m-mollets-bg: #331C29;    --m-mollets-tx: #EFA1C8;
+    --m-dorsal-bg: #14302A;     --m-dorsal-tx: #7CD3B6;
+    --m-hautdos-bg: #16263A;    --m-hautdos-tx: #8FBEE8;
+    --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
+    --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
+    --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+
+    --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
+    --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
+    --p-recomp-bg: #16301F; --p-recomp-tx: #7ACFA2;
+    --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
+    --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
+  }
+}
+
+/* Le fond de page suit le thème, y compris derrière la zone sûre iOS. */
+html, body { background: var(--bg); }
