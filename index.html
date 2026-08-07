@@ -10,6 +10,7 @@
   <meta name="theme-color" content="#F5F1EB"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'><stop offset='0%25' stop-color='%23064E3B'/><stop offset='100%25' stop-color='%232DD4BF'/></linearGradient></defs><path d='M32 3 L58 12 L58 37 C58 51 32 62 32 62 C32 62 6 51 6 37 L6 12 Z' fill='url(%23g)'/></svg>"/>
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
   <style>
 @font-face { font-family: 'Bebas Neue'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/bebasneue-400-latin-ext.woff2') format('woff2'); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: 'Bebas Neue'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/bebasneue-400-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -3215,6 +3216,99 @@ function TemplateModal({ onClose, onApply }) {
     })));
   }))), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: () => chosen && onApply(chosen, startDate), disabled: !chosen, style: { flex: 2, padding: "14px", background: chosen ? `linear-gradient(135deg, #064E3B, #0D9488)` : T.surface2, color: chosen ? "white" : T.textMuted, border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: chosen ? "pointer" : "default" } }, "APPLIQUER"))));
 }
+function useServiceWorker() {
+  const [updateReady, setUpdateReady] = useState(false);
+  const regRef = useRef(null);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let annule = false;
+    const surveiller = (sw) => {
+      if (!sw) return;
+      sw.addEventListener("statechange", () => {
+        if (!annule && sw.state === "installed" && navigator.serviceWorker.controller) {
+          setUpdateReady(true);
+        }
+      });
+    };
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      if (annule) return;
+      regRef.current = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) setUpdateReady(true);
+      surveiller(reg.installing);
+      reg.addEventListener("updatefound", () => surveiller(reg.installing));
+    }).catch(() => {
+    });
+    const verifier = () => {
+      const reg = regRef.current;
+      if (reg && document.visibilityState === "visible") reg.update().catch(() => {
+      });
+    };
+    document.addEventListener("visibilitychange", verifier);
+    let dejaRecharge = false;
+    const surBascule = () => {
+      if (dejaRecharge) return;
+      dejaRecharge = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", surBascule);
+    return () => {
+      annule = true;
+      document.removeEventListener("visibilitychange", verifier);
+      navigator.serviceWorker.removeEventListener("controllerchange", surBascule);
+    };
+  }, []);
+  const applyUpdate = useCallback(() => {
+    const reg = regRef.current;
+    if (reg && reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+    else window.location.reload();
+  }, []);
+  return { updateReady, applyUpdate };
+}
+function UpdateBanner({ onUpdate }) {
+  const [enCours, setEnCours] = useState(false);
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("style", null, `@keyframes forgeSlideDown{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:translateY(0)}}`), /* @__PURE__ */ React.createElement("div", { style: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1e3,
+    background: "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+    color: "white",
+    fontFamily: "'DM Sans', sans-serif",
+    padding: "calc(10px + env(safe-area-inset-top)) 16px 12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    boxShadow: "0 4px 24px rgba(30,40,32,0.28)",
+    animation: "forgeSlideDown .35s ease both"
+  } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 1.8, lineHeight: 1.1 } }, "MISE \xC0 JOUR DISPONIBLE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, opacity: 0.85, marginTop: 2 } }, "Une nouvelle version de l'app est pr\xEAte.")), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        setEnCours(true);
+        onUpdate();
+      },
+      disabled: enCours,
+      style: {
+        flexShrink: 0,
+        background: "white",
+        color: "#064E3B",
+        border: "none",
+        borderRadius: 11,
+        padding: "10px 16px",
+        fontSize: 11,
+        fontWeight: 800,
+        letterSpacing: 1,
+        cursor: enCours ? "default" : "pointer",
+        opacity: enCours ? 0.7 : 1,
+        fontFamily: "inherit",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
+      }
+    },
+    enCours ? "..." : "RECHARGER"
+  )));
+}
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -3317,7 +3411,8 @@ function ForgeCoachingRoot() {
   );
 }
 function ForgeCoachingApp() {
-  return /* @__PURE__ */ React.createElement(ErrorBoundary, null, /* @__PURE__ */ React.createElement(ForgeCoachingRoot, null));
+  const { updateReady, applyUpdate } = useServiceWorker();
+  return /* @__PURE__ */ React.createElement(ErrorBoundary, null, updateReady && /* @__PURE__ */ React.createElement(UpdateBanner, { onUpdate: applyUpdate }), /* @__PURE__ */ React.createElement(ForgeCoachingRoot, null));
 }
 
 const _root = ReactDOM.createRoot(document.getElementById("root"));

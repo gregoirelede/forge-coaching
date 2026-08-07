@@ -19,6 +19,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 8. **Fournis toujours un parcours de test** après une modification : quoi ouvrir, quoi cliquer, quel résultat attendre.
 9. Si une modification touche la base **et** le code, donne-moi l'**ordre exact** des opérations (SQL d'abord, puis déploiement).
 10. **Va au bout toi-même (règle du 5 août 2026).** Tout ce qui peut être fait depuis la session doit l'être : builder, fusionner dans `main`, vérifier que GitHub Pages a redéployé, contrôler la base. Ne me laisse que ce qui est réellement hors de ta portée — et dans ce cas, dis-le explicitement au lieu de me donner une consigne à exécuter. Le parcours de test se joue en entier avant de me rendre la main.
+11. **Vérifie toujours sur la dernière version (règle du 7 août 2026).** Avant d'affirmer l'état de quoi que ce soit — code, base, déploiement — repars du dépôt à jour (`git pull`) et d'un relevé frais. Une mesure prise avant un déploiement ne prouve rien sur l'état d'après : la citer comme preuve est une faute de méthode.
 
 ### Cycle de travail standard pour toute nouvelle fonctionnalité
 ```
@@ -75,6 +76,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7c** | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) | 456 615 o | 4 762 |
 | **v7d** | Sprint 1 : codes d'accès + 2 chiffres · icône iOS · polices auto-hébergées · ErrorBoundary · écran d'erreur réseau · confirmations maison · file hors-ligne au retour du réseau · durée de séance calculée | 468 587 o | 4 884 |
 | **v7e** | Code d'accès garanti à 8 caractères minimum (`MIN_CODE_LENGTH`) | 468 723 o | 4 894 |
+| **v7f** | Sprint 2 : PWA complète — manifest, service worker, bannière de mise à jour, démarrage hors-ligne | 472 495 o | 5 013 |
 
 ## B.4 — État d'installation
 
@@ -103,6 +105,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 - **Supabase JS** chargé depuis le **CDN jsDelivr** via une balise `<script>` classique, exposé en `window.supabaseJs`.
 - Le JS de l'app est **pré-compilé avec esbuild** puis inliné.
 - Aucune dépendance npm au runtime. Aucun bundler côté navigateur.
+- **Service worker** (`sw.js`, généré au build depuis `src/sw-template.js`) : cache l'app pour le démarrage hors-ligne et détecte les mises à jour. Il n'intercepte **jamais** Supabase ni le CDN — aucune donnée de coaché, aucun jeton ne transite par le cache.
 
 ## C.2 — Les quatre pièges déjà rencontrés — ne jamais les reproduire
 
@@ -309,7 +312,9 @@ Ordre à respecter, ce piège s'est déjà produit :
 2. **Ouvrir dans le navigateur avec un anti-cache** : `https://gregoirelede.github.io/forge-coaching/?v=2` (incrémenter le chiffre).
 3. **Si ça marche avec `?v=` mais pas sur l'icône installée** → c'est le cache de la PWA. Supprimer l'icône de l'écran d'accueil (appui long → Supprimer), puis réinstaller depuis Safari (Partager → Sur l'écran d'accueil).
 
-> **Les PWA installées gardent l'ancienne version en cache et ne se rafraîchissent pas toutes seules.** C'est le comportement normal, pas un bug.
+> **Depuis la v7f, ce problème est résolu.** Le service worker détecte la nouvelle version et affiche une bannière « Mise à jour disponible — Recharger » dans l'app. Plus besoin de supprimer et réinstaller l'icône.
+>
+> **Exception, une seule fois :** les PWA installées AVANT la v7f n'ont pas encore de service worker. Elles ont besoin d'un dernier rafraîchissement manuel (ou d'une réinstallation) pour l'enregistrer. À partir de là, toutes les mises à jour suivantes se font par la bannière.
 
 ---
 

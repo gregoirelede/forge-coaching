@@ -4787,6 +4787,119 @@ function TemplateModal({ onClose, onApply }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ROOT — login (coaché ou coach) / app coaché / espace coach / démo
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SERVICE WORKER — mise à jour sans réinstaller la PWA
+//
+//  Jusqu'ici, une PWA installée gardait l'ancienne version en cache et il fallait
+//  supprimer puis réinstaller l'icône pour voir une mise à jour. Le service
+//  worker détecte la nouvelle version et propose au coaché de recharger.
+//  La bascule n'est JAMAIS automatique : personne ne se fait recharger l'app en
+//  pleine séance.
+// ═══════════════════════════════════════════════════════════════════════════════
+function useServiceWorker() {
+  const [updateReady, setUpdateReady] = useState(false);
+  const regRef = useRef(null);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let annule = false;
+
+    // Une nouvelle version est prête quand un worker est "installed" ALORS QU'UN
+    // autre contrôle déjà la page. Sans contrôleur, c'est la première visite :
+    // rien à signaler.
+    const surveiller = (sw) => {
+      if (!sw) return;
+      sw.addEventListener("statechange", () => {
+        if (!annule && sw.state === "installed" && navigator.serviceWorker.controller) {
+          setUpdateReady(true);
+        }
+      });
+    };
+
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      if (annule) return;
+      regRef.current = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) setUpdateReady(true);
+      surveiller(reg.installing);
+      reg.addEventListener("updatefound", () => surveiller(reg.installing));
+    }).catch(() => {
+      // Un échec d'enregistrement ne doit jamais empêcher l'app de fonctionner.
+    });
+
+    // Une PWA installée peut rester ouverte des jours : on revérifie à chaque
+    // retour au premier plan.
+    const verifier = () => {
+      const reg = regRef.current;
+      if (reg && document.visibilityState === "visible") reg.update().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", verifier);
+
+    // Quand le nouveau worker prend la main, on recharge une seule fois.
+    let dejaRecharge = false;
+    const surBascule = () => {
+      if (dejaRecharge) return;
+      dejaRecharge = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", surBascule);
+
+    return () => {
+      annule = true;
+      document.removeEventListener("visibilitychange", verifier);
+      navigator.serviceWorker.removeEventListener("controllerchange", surBascule);
+    };
+  }, []);
+
+  const applyUpdate = useCallback(() => {
+    const reg = regRef.current;
+    if (reg && reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+    else window.location.reload();
+  }, []);
+
+  return { updateReady, applyUpdate };
+}
+
+// Bannière de mise à jour. Rendue à la racine, hors de tout parent transformé
+// (piège de la Partie L : un transform casse position:fixed).
+function UpdateBanner({ onUpdate }) {
+  const [enCours, setEnCours] = useState(false);
+  return (
+    <>
+      <style>{`@keyframes forgeSlideDown{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
+        background: "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        color: "white", fontFamily: "'DM Sans', sans-serif",
+        padding: "calc(10px + env(safe-area-inset-top)) 16px 12px",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
+        boxShadow: "0 4px 24px rgba(30,40,32,0.28)",
+        animation: "forgeSlideDown .35s ease both",
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 1.8, lineHeight: 1.1 }}>
+            MISE À JOUR DISPONIBLE
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+            Une nouvelle version de l'app est prête.
+          </div>
+        </div>
+        <button
+          onClick={() => { setEnCours(true); onUpdate(); }}
+          disabled={enCours}
+          style={{
+            flexShrink: 0, background: "white", color: "#064E3B", border: "none",
+            borderRadius: 11, padding: "10px 16px", fontSize: 11, fontWeight: 800,
+            letterSpacing: 1, cursor: enCours ? "default" : "pointer",
+            opacity: enCours ? 0.7 : 1, fontFamily: "inherit",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+          }}>
+          {enCours ? "..." : "RECHARGER"}
+        </button>
+      </div>
+    </>
+  );
+}
+
 // Filet de sécurité : une erreur JavaScript imprévue affiche un écran de
 // secours avec un bouton Recharger, au lieu d'un écran blanc définitif.
 class ErrorBoundary extends React.Component {
@@ -4890,5 +5003,11 @@ function ForgeCoachingRoot() {
 }
 
 export default function ForgeCoachingApp() {
-  return <ErrorBoundary><ForgeCoachingRoot/></ErrorBoundary>;
+  const { updateReady, applyUpdate } = useServiceWorker();
+  return (
+    <ErrorBoundary>
+      {updateReady && <UpdateBanner onUpdate={applyUpdate}/>}
+      <ForgeCoachingRoot/>
+    </ErrorBoundary>
+  );
 }
