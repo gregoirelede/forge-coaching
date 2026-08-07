@@ -1466,11 +1466,14 @@ const TECHNIQUE_OPTIONS = [
   { value: "Superset", label: "Superset" }
 ];
 const DAYS_ORDER = ["LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI", "DIMANCHE"];
+const MIN_CODE_LENGTH = 8;
 function generateAccessCode(name) {
   const parts = (name || "").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(/\s+/).map((p) => p.replace(/[^A-Z0-9]/g, "")).filter(Boolean);
   if (parts.length === 0) return "";
-  const digits = String(Math.floor(Math.random() * 90) + 10);
   const base = parts.length === 1 ? parts[0] : parts[0][0] + parts.slice(1).join("");
+  const nbChiffres = Math.max(2, MIN_CODE_LENGTH - base.length);
+  let digits = "";
+  for (let i = 0; i < nbChiffres; i++) digits += Math.floor(Math.random() * 10);
   return base + digits;
 }
 async function loadCoachees(supabase, coachId) {

@@ -74,6 +74,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7b** | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés | 456 617 o | 4 762 |
 | **v7c** | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) | 456 615 o | 4 762 |
 | **v7d** | Sprint 1 : codes d'accès + 2 chiffres · icône iOS · polices auto-hébergées · ErrorBoundary · écran d'erreur réseau · confirmations maison · file hors-ligne au retour du réseau · durée de séance calculée | 468 587 o | 4 884 |
+| **v7e** | Code d'accès garanti à 8 caractères minimum (`MIN_CODE_LENGTH`) | 468 723 o | 4 894 |
 
 ## B.4 — État d'installation
 
@@ -623,7 +624,9 @@ Les codes se consultent et se modifient dans l'**espace coach → liste des coac
 
 ## K.1 — Convention de nommage des codes d'accès (décidée le 5 août 2026)
 
-**Première lettre du prénom + nom de famille + 2 chiffres aléatoires, le tout en majuscules, sans espace ni tiret.**
+**Première lettre du prénom + nom de famille + chiffres aléatoires, le tout en majuscules, sans espace ni tiret.**
+
+**Au moins 2 chiffres, et assez pour garantir 8 caractères au total** (constante `MIN_CODE_LENGTH`). Un nom court comme Greg Ledé donne `GLEDE` : avec 2 chiffres seulement, le code ferait 7 caractères, sous le plancher. L'app en ajoute alors un troisième. `GLEDE572`, `MDUPONT35`, `AMONCOMBLE16`.
 
 > **Pourquoi les 2 chiffres (décidé le 6 août 2026).** Le code d'accès est l'**unique secret** du compte : l'email et le mot de passe internes s'en déduisent mécaniquement. Sans chiffres, un code se devine à partir du seul nom de la personne (`MDUPONT` pour Marie Dupont) — or les noms des coachés finissent sur Instagram. Les 2 chiffres multiplient par 100 l'effort de devinette tout en restant dictables au téléphone. L'app les génère automatiquement à la création.
 
