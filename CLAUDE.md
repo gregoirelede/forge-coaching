@@ -868,7 +868,7 @@ Le dépôt ne contenait que `index.html`. L'arborescence de la Partie C.3 a ét�
 | `package.json` + `package-lock.json` | Déclarent esbuild, `npm install` puis `node build.mjs` |
 | `vendor/react*.production.min.js` | **React 18.3.1**, extraits de l'`index.html` de production |
 | `sql/schema-snapshot.sql` | Instantané de la base réelle, idempotent |
-| `edge-functions/*.ts` | Sources récupérées depuis Supabase, à l'identique du déployé |
+| `edge-functions/*.ts` | `create-coachee` et `update-coachee` : récupérées depuis Supabase, à l'identique du déployé. `push-config`, `send-push` et `_webpush.ts` *(v7h)* : écrites ici puis déployées — **le code est le même, les commentaires du déployé sont plus courts**. Vérifié le 8 août 2026 avec `get_edge_function`. Pas de redéploiement cosmétique : on ne touche pas à une fonction de production pour des commentaires, surtout sans pouvoir la tester à l'exécution depuis la session (le proxy bloque `supabase.co`) |
 | `guides/GUIDE-edge-function-windows.md` | Reconstitué depuis la Partie G.2 |
 | `.gitignore` | `node_modules/` |
 | `.claude/settings.json` | **Ajouté le 6 août 2026.** Autorise durablement les outils Supabase (le connecteur change d'identifiant entre sessions, l'autorisation cliquée ne survivait pas). Migrations et déploiement d'Edge Functions inclus ; opérations destructrices de projet bloquées. Voir `.claude/README.md` |
