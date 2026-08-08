@@ -85,6 +85,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7g** | Sprint 2 : mode sombre — 64 variables CSS, réglage Auto/Clair/Sombre dans Profil | 484 534 o | 5 114 |
 | **v7h** | Sprint 2 : notifications push — chiffrement maison RFC 8291/8292, 2 Edge Functions, réglage Notifications dans Profil | 491 361 o | 5 283 |
 | **v7i** | Envoi d'une notification depuis l'espace coach + vraie raison affichée quand une Edge Function refuse | 495 919 o | 5 380 |
+| **v7j** | Sprint 3 : onglet **Suivi** côté coach — assiduité, statuts À jour / À relancer / Décrochage | 505 162 o | 5 598 |
 
 ## B.4 — État d'installation
 
@@ -786,7 +787,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 |---|---|---|
 | **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
-| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | À faire |
+| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **En cours** — assiduité faite (v7j) |
 | **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | À faire |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
