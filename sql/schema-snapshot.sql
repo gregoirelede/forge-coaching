@@ -2,17 +2,18 @@
 --  FORGE COACHING — INSTANTANÉ DU SCHÉMA SUPABASE
 --
 --  Projet   : xlquzhwmdyyiugtezasg  ·  Postgres 17.6
---  Relevé le: 4 août 2026.
+--  Relevé le: 4 août 2026  ·  mis à jour le 8 août 2026 (notifications push).
 --
 --  NIVEAU DE CERTITUDE — à lire avant de se fier à ce fichier :
 --    · Tables, colonnes, contraintes, index : relevés par introspection directe
 --      de la base de production. Fiables.
---    · Section 4, POLICIES : les NOMS des 20 policies sont vérifiés (fournis par
---      le conseiller Supabase). Leurs conditions `USING` en revanche sont
---      RECONSTITUÉES d'après la règle générale de la Partie G.1 du CLAUDE.md,
---      et n'ont PAS été relevées en base. Elles sont plausibles, pas prouvées.
---      Ne pas s'en servir pour réécrire des policies sur la production sans les
---      avoir d'abord confrontées à `SELECT * FROM pg_policies`.
+--    · Section 4, POLICIES : DEPUIS LE 8 AOÛT 2026, relevées elles aussi par
+--      introspection (`SELECT ... FROM pg_policies`), plus reconstituées. Les
+--      conditions ci-dessous sont donc celles qui s'appliquent réellement.
+--      La version précédente de ce fichier les déduisait de la règle générale
+--      de la Partie G.1 : la déduction s'est révélée exacte, au détail près de
+--      la forme `(SELECT auth.uid())` introduite le 6 août pour les
+--      performances (voir NOTE-optimisation-rls.md).
 --
 --  À QUOI SERT CE FICHIER
 --  Les 4 fichiers d'origine (supabase-setup.sql, supabase-espace-coach.sql,
@@ -178,6 +179,30 @@ CREATE TABLE IF NOT EXISTS public.periodization_phases (
   created_at          timestamptz DEFAULT now()
 );
 
+-- push_subscriptions — un appareil abonné aux notifications. Un coaché peut en
+-- avoir plusieurs (téléphone + ordinateur) : pas d'unicité sur coachee_id.
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  coachee_id      uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  endpoint        text NOT NULL UNIQUE,
+  p256dh          text NOT NULL,
+  auth            text NOT NULL,
+  user_agent      text,
+  created_at      timestamptz DEFAULT now(),
+  last_success_at timestamptz,
+  failure_count   integer DEFAULT 0
+);
+
+-- push_config — la paire de clés VAPID du serveur, UNE SEULE LIGNE.
+-- Table volontairement SANS POLICY et sans GRANT : voir la section 3.
+CREATE TABLE IF NOT EXISTS public.push_config (
+  id            integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  vapid_public  text NOT NULL,
+  vapid_private text NOT NULL,
+  subject       text NOT NULL DEFAULT 'mailto:gregoire.lede777@gmail.com',
+  created_at    timestamptz DEFAULT now()
+);
+
 
 -- ─── 2. INDEX ─────────────────────────────────────────────────────────────────
 
@@ -190,6 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_recipes_coach          ON public.recipes_library 
 CREATE INDEX IF NOT EXISTS idx_sets_coachee_week      ON public.sets_logged          (coachee_id, week_id);
 CREATE INDEX IF NOT EXISTS idx_sets_session_exercise  ON public.sets_logged          (session_config_id, exercise_index);
 CREATE INDEX IF NOT EXISTS idx_weeks_coachee_number   ON public.weeks                (coachee_id, week_number);
+CREATE INDEX IF NOT EXISTS idx_push_subs_coachee      ON public.push_subscriptions   (coachee_id);
 
 
 -- ─── 3. RLS ACTIVÉE SUR TOUTES LES TABLES ─────────────────────────────────────
@@ -204,11 +230,21 @@ ALTER TABLE public.nutrition_profiles   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recipes_library      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.meal_plans           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.periodization_phases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_subscriptions   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_config          ENABLE ROW LEVEL SECURITY;
+
+-- push_config : RLS activée SANS AUCUNE POLICY, et aucun privilège pour les
+-- rôles de l'API publique. La clé privée VAPID signe les envois de
+-- notifications — quiconque la lit peut écrire au nom de Forge Coaching. Elle
+-- n'est lisible que par la clé service_role, qui ne vit que dans les Edge
+-- Functions. Le conseiller Supabase signale cette table en INFO
+-- (« RLS enabled, no policy ») : c'est voulu, ce n'est pas un oubli.
+REVOKE ALL ON public.push_config FROM anon, authenticated;
 
 
--- ─── 4. POLICIES (20, telles qu'elles existent en production) ─────────────────
+-- ─── 4. POLICIES (21, relevées en production le 8 août 2026) ─────────────────
 --
---  Principe : le coaché voit ses propres lignes (auth.uid() = coachee_id) ;
+--  Principe : le coaché voit ses propres lignes ((SELECT auth.uid()) = coachee_id) ;
 --  le coach voit celles de SES coachés (jointure sur profiles.coach_id).
 --  La création de comptes passe par les Edge Functions en service_role, qui
 --  contournent la RLS — d'où l'absence de policy INSERT sur profiles.
@@ -216,99 +252,107 @@ ALTER TABLE public.periodization_phases ENABLE ROW LEVEL SECURITY;
 -- profiles
 DROP POLICY IF EXISTS "own profile select" ON public.profiles;
 CREATE POLICY "own profile select" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
+  FOR SELECT USING ((SELECT auth.uid()) = id);
 
 DROP POLICY IF EXISTS "own profile update" ON public.profiles;
 CREATE POLICY "own profile update" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING ((SELECT auth.uid()) = id);
 
 DROP POLICY IF EXISTS "coach manages own coachees" ON public.profiles;
 CREATE POLICY "coach manages own coachees" ON public.profiles
-  FOR ALL USING (coach_id = auth.uid());
+  FOR ALL USING (coach_id = (SELECT auth.uid()));
 
 -- programs
 DROP POLICY IF EXISTS "own programs" ON public.programs;
 CREATE POLICY "own programs" ON public.programs
-  FOR ALL USING (auth.uid() = coachee_id);
+  FOR ALL USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach manages coachee programs" ON public.programs;
 CREATE POLICY "coach manages coachee programs" ON public.programs
   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p
-                         WHERE p.id = programs.coachee_id AND p.coach_id = auth.uid()));
+                         WHERE p.id = programs.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- weeks
 DROP POLICY IF EXISTS "own weeks" ON public.weeks;
 CREATE POLICY "own weeks" ON public.weeks
-  FOR ALL USING (auth.uid() = coachee_id);
+  FOR ALL USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach reads coachee weeks" ON public.weeks;
 CREATE POLICY "coach reads coachee weeks" ON public.weeks
   FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles p
-                            WHERE p.id = weeks.coachee_id AND p.coach_id = auth.uid()));
+                            WHERE p.id = weeks.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- sets_logged
 DROP POLICY IF EXISTS "own sets" ON public.sets_logged;
 CREATE POLICY "own sets" ON public.sets_logged
-  FOR ALL USING (auth.uid() = coachee_id);
+  FOR ALL USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach reads coachee sets" ON public.sets_logged;
 CREATE POLICY "coach reads coachee sets" ON public.sets_logged
   FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles p
-                            WHERE p.id = sets_logged.coachee_id AND p.coach_id = auth.uid()));
+                            WHERE p.id = sets_logged.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- exercises_library
 DROP POLICY IF EXISTS "coach manages own library" ON public.exercises_library;
 CREATE POLICY "coach manages own library" ON public.exercises_library
-  FOR ALL USING (coach_id = auth.uid());
+  FOR ALL USING (coach_id = (SELECT auth.uid()));
 
 -- weight_logs
 DROP POLICY IF EXISTS "own weight logs" ON public.weight_logs;
 CREATE POLICY "own weight logs" ON public.weight_logs
-  FOR ALL USING (auth.uid() = coachee_id);
+  FOR ALL USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach reads coachee weights" ON public.weight_logs;
 CREATE POLICY "coach reads coachee weights" ON public.weight_logs
   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p
-                         WHERE p.id = weight_logs.coachee_id AND p.coach_id = auth.uid()));
+                         WHERE p.id = weight_logs.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- nutrition_profiles
 DROP POLICY IF EXISTS "own nutrition profile" ON public.nutrition_profiles;
 CREATE POLICY "own nutrition profile" ON public.nutrition_profiles
-  FOR SELECT USING (auth.uid() = coachee_id);
+  FOR SELECT USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach manages coachee nutrition" ON public.nutrition_profiles;
 CREATE POLICY "coach manages coachee nutrition" ON public.nutrition_profiles
   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p
-                         WHERE p.id = nutrition_profiles.coachee_id AND p.coach_id = auth.uid()));
+                         WHERE p.id = nutrition_profiles.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- recipes_library
 DROP POLICY IF EXISTS "coach manages own recipes" ON public.recipes_library;
 CREATE POLICY "coach manages own recipes" ON public.recipes_library
-  FOR ALL USING (coach_id = auth.uid());
+  FOR ALL USING (coach_id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "coachee reads coach recipes" ON public.recipes_library;
 CREATE POLICY "coachee reads coach recipes" ON public.recipes_library
   FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles p
-                            WHERE p.id = auth.uid() AND p.coach_id = recipes_library.coach_id));
+                            WHERE p.id = (SELECT auth.uid()) AND p.coach_id = recipes_library.coach_id));
 
 -- meal_plans
 DROP POLICY IF EXISTS "own meal plans" ON public.meal_plans;
 CREATE POLICY "own meal plans" ON public.meal_plans
-  FOR SELECT USING (auth.uid() = coachee_id);
+  FOR SELECT USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach manages coachee meal plans" ON public.meal_plans;
 CREATE POLICY "coach manages coachee meal plans" ON public.meal_plans
   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p
-                         WHERE p.id = meal_plans.coachee_id AND p.coach_id = auth.uid()));
+                         WHERE p.id = meal_plans.coachee_id AND p.coach_id = (SELECT auth.uid())));
 
 -- periodization_phases
 DROP POLICY IF EXISTS "own phases" ON public.periodization_phases;
 CREATE POLICY "own phases" ON public.periodization_phases
-  FOR SELECT USING (auth.uid() = coachee_id);
+  FOR SELECT USING ((SELECT auth.uid()) = coachee_id);
 
 DROP POLICY IF EXISTS "coach manages coachee phases" ON public.periodization_phases;
 CREATE POLICY "coach manages coachee phases" ON public.periodization_phases
   FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles p
-                         WHERE p.id = periodization_phases.coachee_id AND p.coach_id = auth.uid()));
+                         WHERE p.id = periodization_phases.coachee_id AND p.coach_id = (SELECT auth.uid())));
+
+-- push_subscriptions
+-- Le coach n'a volontairement AUCUN accès direct : il n'en a pas besoin.
+-- L'envoi passe par l'Edge Function send-push, qui vérifie elle-même que le
+-- coaché lui appartient. Moins de portes ouvertes, moins de risques.
+DROP POLICY IF EXISTS "own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "own push subscriptions" ON public.push_subscriptions
+  FOR ALL USING ((SELECT auth.uid()) = coachee_id);
 
 -- FIN DE L'INSTANTANÉ.

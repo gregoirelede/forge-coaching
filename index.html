@@ -748,6 +748,124 @@ function useTheme() {
   }, []);
   return { theme, setTheme };
 }
+const estIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || "");
+const estInstallee = () => {
+  try {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  } catch (e) {
+    return false;
+  }
+};
+const pushDisponible = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+function cleVersOctets(base64url) {
+  const b64 = (base64url + "=".repeat((4 - base64url.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function usePushNotifications(supabase, userId, isDemo) {
+  const [etat, setEtat] = useState("inconnu");
+  const [occupe, setOccupe] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      if (isDemo || !supabase) {
+        setEtat("indisponible");
+        return;
+      }
+      if (!pushDisponible()) {
+        setEtat(estIOS() && !estInstallee() ? "ios-non-installee" : "indisponible");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        setEtat("refuse");
+        return;
+      }
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const abo = await reg.pushManager.getSubscription();
+        if (!annule) setEtat(abo ? "actif" : "inactif");
+      } catch (e) {
+        if (!annule) setEtat("inactif");
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [supabase, isDemo]);
+  const activer = useCallback(async () => {
+    setOccupe(true);
+    setMessage("");
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setEtat(perm === "denied" ? "refuse" : "inactif");
+        setMessage("Autorisation refus\xE9e. Tu peux la r\xE9tablir dans les r\xE9glages de ton t\xE9l\xE9phone.");
+        return;
+      }
+      const { data: conf, error: errConf } = await supabase.functions.invoke("push-config", { body: {} });
+      if (errConf || !(conf == null ? void 0 : conf.publicKey)) throw new Error("Cl\xE9 de notification indisponible");
+      const reg = await navigator.serviceWorker.ready;
+      let abo = await reg.pushManager.getSubscription();
+      if (!abo) {
+        abo = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          // exigé par les navigateurs
+          applicationServerKey: cleVersOctets(conf.publicKey)
+        });
+      }
+      const brut = abo.toJSON();
+      const { error } = await supabase.from("push_subscriptions").upsert({
+        coachee_id: userId,
+        endpoint: brut.endpoint,
+        p256dh: brut.keys.p256dh,
+        auth: brut.keys.auth,
+        user_agent: (navigator.userAgent || "").slice(0, 300)
+      }, { onConflict: "endpoint" });
+      if (error) throw error;
+      setEtat("actif");
+      setMessage("Notifications activ\xE9es sur cet appareil.");
+    } catch (e) {
+      setMessage((e == null ? void 0 : e.message) || "Activation impossible");
+    } finally {
+      setOccupe(false);
+    }
+  }, [supabase, userId]);
+  const desactiver = useCallback(async () => {
+    setOccupe(true);
+    setMessage("");
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const abo = await reg.pushManager.getSubscription();
+      if (abo) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", abo.endpoint);
+        await abo.unsubscribe();
+      }
+      setEtat("inactif");
+      setMessage("Notifications d\xE9sactiv\xE9es sur cet appareil.");
+    } catch (e) {
+      setMessage((e == null ? void 0 : e.message) || "D\xE9sactivation impossible");
+    } finally {
+      setOccupe(false);
+    }
+  }, [supabase]);
+  const tester = useCallback(async () => {
+    setOccupe(true);
+    setMessage("");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", { body: { test: true } });
+      if (error) throw error;
+      setMessage((data == null ? void 0 : data.envoyees) > 0 ? `Test envoy\xE9 sur ${data.envoyees} appareil${data.envoyees > 1 ? "s" : ""}.` : "Aucun appareil n'a re\xE7u le test.");
+    } catch (e) {
+      setMessage((e == null ? void 0 : e.message) || "Envoi impossible");
+    } finally {
+      setOccupe(false);
+    }
+  }, [supabase]);
+  return { etat, occupe, message, activer, desactiver, tester };
+}
 const settingsKey = (userId) => `forge_settings_${userId}`;
 function loadSettings(userId) {
   try {
@@ -1342,7 +1460,23 @@ function ProfilePage({ ctx }) {
       },
       lib
     );
-  }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Chronom\xE8tres de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, "D\xE9marrer un minuteur \xE0 la validation d'une s\xE9rie")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers, onChange: (v) => {
+  }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "13px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Notifications"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.push.etat === "actif" ? "Rappels de s\xE9ance et messages de ton coach" : ctx.push.etat === "refuse" ? "Bloqu\xE9es par ton t\xE9l\xE9phone" : ctx.push.etat === "ios-non-installee" ? "N\xE9cessite l'app install\xE9e sur l'\xE9cran d'accueil" : ctx.push.etat === "indisponible" ? "Non disponibles sur cet appareil" : "\xCAtre pr\xE9venu de tes s\xE9ances")), (ctx.push.etat === "actif" || ctx.push.etat === "inactif") && /* @__PURE__ */ React.createElement(
+    ToggleSwitch,
+    {
+      on: ctx.push.etat === "actif",
+      disabled: ctx.push.occupe,
+      onChange: (v) => v ? ctx.push.activer() : ctx.push.desactiver()
+    }
+  )), ctx.push.etat === "ios-non-installee" && /* @__PURE__ */ React.createElement("div", { style: { background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 10, padding: "9px 11px", marginTop: 9, fontSize: 10.5, color: T.warnText, lineHeight: 1.5, fontWeight: 600 } }, "Sur iPhone, Apple n'autorise les notifications que depuis une app install\xE9e. Appuie sur Partager, puis \xAB Sur l'\xE9cran d'accueil \xBB, et reviens ici."), ctx.push.etat === "actif" && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: ctx.push.tester,
+      disabled: ctx.push.occupe,
+      className: "pressable",
+      style: { marginTop: 9, width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, cursor: ctx.push.occupe ? "default" : "pointer", fontFamily: "inherit" }
+    },
+    ctx.push.occupe ? "ENVOI..." : "ENVOYER UN TEST"
+  ), ctx.push.message && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 } }, ctx.push.message)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Chronom\xE8tres de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, "D\xE9marrer un minuteur \xE0 la validation d'une s\xE9rie")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers, onChange: (v) => {
     ctx.updateSetting("restTimers", v);
     if (!v) ctx.updateSetting("restSound", false);
   } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), confirmUI, onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
@@ -1451,6 +1585,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   }, [userId]);
   const { timers, start, cancel } = useTimers(soundEnabledRef);
   const { theme, setTheme } = useTheme();
+  const push = usePushNotifications(supabase, userId, isDemo);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1666,6 +1801,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     updateSetting,
     theme,
     setTheme,
+    push,
     onLogout,
     isDemo
   };

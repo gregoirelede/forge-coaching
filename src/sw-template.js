@@ -111,6 +111,43 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
+// ── Réception d'une notification push ────────────────────────────────────────
+// Le contenu arrive chiffré depuis Apple ou Google ; le navigateur l'a déjà
+// déchiffré quand il nous le passe.
+self.addEventListener("push", (event) => {
+  const infos = { title: "Forge Coaching", body: "", url: "./" };
+  try {
+    if (event.data) Object.assign(infos, event.data.json());
+  } catch {
+    if (event.data) infos.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(infos.title, {
+      body: infos.body,
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
+      // Un même tag remplace la notification précédente au lieu d'empiler :
+      // un coaché qui n'ouvre pas l'app pendant trois jours n'aura pas trois
+      // rappels de séance en attente.
+      tag: infos.tag || "forge-coaching",
+      data: { url: infos.url },
+    })
+  );
+});
+
+// ── Clic sur la notification : on remet l'app au premier plan ───────────────
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const cible = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil((async () => {
+    const fenetres = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const f of fenetres) {
+      if ("focus" in f) { await f.focus(); return; }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(cible);
+  })());
+});
+
 // ── Bascule vers la nouvelle version, sur demande explicite de l'app ─────────
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();

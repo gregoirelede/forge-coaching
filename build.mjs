@@ -15,7 +15,7 @@
 //                         si un doute apparaît sur l'enveloppe HTML.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { transform } from "esbuild";
 
@@ -209,9 +209,13 @@ function verifierGabarit() {
 
   const reconstruit = assembleHtml(appJs);
   if (reconstruit === html) {
-    console.log(`Gabarit conforme : la reconstruction redonne ${OUT} à l'octet près (${html.length} octets).`);
+    // La comparaison porte sur le contenu entier : identique ici veut bien dire
+    // identique à l'octet près. La taille affichée, elle, est mesurée sur le
+    // fichier — html.length compterait des caractères, pas des octets.
+    console.log(`Gabarit conforme : la reconstruction redonne ${OUT} à l'octet près (${statSync(OUT).size} octets).`);
   } else {
-    console.error(`Gabarit NON conforme : ${reconstruit.length} octets reconstruits contre ${html.length} attendus.`);
+    const ecart = Buffer.byteLength(reconstruit, "utf8") - statSync(OUT).size;
+    console.error(`Gabarit NON conforme : ${ecart > 0 ? "+" : ""}${ecart} octets d'écart avec ${OUT}.`);
     process.exit(1);
   }
 }
@@ -250,7 +254,12 @@ async function main() {
   console.log(`sw.js     : version ${version}`);
 
   controler(html);
-  console.log(`\n${OUT} : ${html.length} octets — ${Math.round(html.length / 1024)} Ko`);
+  // ATTENTION : html.length compte des CARACTÈRES, pas des octets. Chaque
+  // accent en pèse deux en UTF-8, et il y en a des milliers dans une app en
+  // français — l'écart dépassait 350 octets. Or Greg compare ce nombre à celui
+  // qu'affiche GitHub, qui est en octets. On mesure donc le fichier réel.
+  const octets = statSync(OUT).size;
+  console.log(`\n${OUT} : ${octets} octets — ${Math.round(octets / 1024)} Ko`);
   console.log("Tous les contrôles sont passés.\n");
 }
 
