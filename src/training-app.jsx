@@ -277,6 +277,18 @@ function cleVersOctets(base64url) {
   return out;
 }
 
+// Quand une Edge Function répond autre chose que 200, supabase-js remonte un
+// message générique (« Edge Function returned a non-2xx status code ») et range
+// la vraie réponse dans error.context. Sans ça, « Aucun appareil abonné »
+// n'arriverait jamais jusqu'à l'écran.
+async function messageErreurFonction(error, repli) {
+  try {
+    const corps = await error?.context?.json();
+    if (corps?.error) return corps.error;
+  } catch { /* réponse illisible : on garde le repli */ }
+  return repli;
+}
+
 function usePushNotifications(supabase, userId, isDemo) {
   const [etat, setEtat] = useState("inconnu"); // inconnu | indisponible | ios-non-installee | refuse | inactif | actif
   const [occupe, setOccupe] = useState(false);
@@ -359,7 +371,7 @@ function usePushNotifications(supabase, userId, isDemo) {
     setOccupe(true); setMessage("");
     try {
       const { data, error } = await supabase.functions.invoke("send-push", { body: { test: true } });
-      if (error) throw error;
+      if (error) throw new Error(await messageErreurFonction(error, "Envoi impossible"));
       setMessage(data?.envoyees > 0
         ? `Test envoyé sur ${data.envoyees} appareil${data.envoyees > 1 ? "s" : ""}.`
         : "Aucun appareil n'a reçu le test.");
@@ -3004,6 +3016,90 @@ function CoachProgressView({ ctx, coachee }) {
   );
 }
 
+// ── Envoi d'une notification à un coaché, depuis l'espace coach ──────────────
+//
+//  Le coach ne peut PAS lire push_subscriptions : la RLS ne l'autorise que le
+//  coaché lui-même, et c'est volontaire (moins de portes, moins de risques).
+//  Impossible, donc, d'afficher ici « 2 appareils abonnés » avant l'envoi.
+//  C'est l'Edge Function qui tranche et renvoie « Aucun appareil abonné » si le
+//  coaché n'a pas activé ses notifications. Le coach a la réponse en un clic,
+//  sans qu'on ait eu à lui ouvrir un accès dont il n'a pas besoin.
+function CoachPushSender({ ctx, coachee }) {
+  const { supabase } = ctx;
+  const [ouvert, setOuvert]   = useState(false);
+  const [titre, setTitre]     = useState("");
+  const [texte, setTexte]     = useState("");
+  const [occupe, setOccupe]   = useState(false);
+  const [retour, setRetour]   = useState(null);   // { ok: bool, message: string }
+
+  const MAX_TITRE = 60;
+  const MAX_TEXTE = 160;   // au-delà, les téléphones tronquent de toute façon
+  const pret = titre.trim().length > 0 && texte.trim().length > 0 && !occupe;
+
+  async function envoyer() {
+    setOccupe(true); setRetour(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", {
+        body: { coacheeId: coachee.id, title: titre.trim(), body: texte.trim() },
+      });
+      if (error) throw new Error(await messageErreurFonction(error, "Envoi impossible"));
+      const n = data?.envoyees || 0;
+      setRetour({ ok: n > 0, message: n > 0
+        ? `Envoyé sur ${n} appareil${n > 1 ? "s" : ""}.`
+        : "Aucun appareil n'a reçu la notification." });
+      if (n > 0) { setTitre(""); setTexte(""); }
+    } catch (e) {
+      setRetour({ ok: false, message: e?.message || "Envoi impossible" });
+    } finally { setOccupe(false); }
+  }
+
+  if (!ouvert) {
+    return (
+      <button onClick={() => setOuvert(true)} className="pressable"
+        style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        Envoyer une notification
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>NOTIFICATION</div>
+        <button onClick={() => { setOuvert(false); setRetour(null); }}
+          style={{ background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+          Fermer
+        </button>
+      </div>
+      <div style={{ fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 12 }}>
+        Arrive sur le téléphone de {coachee.name}, même app fermée — s'il a activé
+        ses notifications de son côté.
+      </div>
+
+      <Field label={`TITRE (${titre.length}/${MAX_TITRE})`}>
+        <input value={titre} maxLength={MAX_TITRE} onChange={e => setTitre(e.target.value)}
+          placeholder="Nouvelle semaine" style={inputStyle}/>
+      </Field>
+      <Field label={`MESSAGE (${texte.length}/${MAX_TEXTE})`}>
+        <textarea value={texte} maxLength={MAX_TEXTE} rows={3} onChange={e => setTexte(e.target.value)}
+          placeholder="Ton programme de la semaine 12 est en ligne."
+          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }}/>
+      </Field>
+
+      <button onClick={envoyer} disabled={!pret} className="pressable"
+        style={{ width: "100%", marginTop: 4, padding: "13px", background: pret ? T.accent : T.surface2, color: pret ? T.accentText : T.textMuted, border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: pret ? "pointer" : "default", fontFamily: "inherit" }}>
+        {occupe ? "ENVOI..." : "ENVOYER"}
+      </button>
+
+      {retour && (
+        <div style={{ marginTop: 10, fontSize: 11, fontWeight: 600, lineHeight: 1.5, color: retour.ok ? T.accent : T.danger }}>
+          {retour.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page détail d'un coaché (3 sous-vues : Infos / Programme / Progression) ──
 function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
   const { supabase } = ctx;
@@ -3071,6 +3167,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
             <button onClick={toggleActive} disabled={busy} style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               {coachee.is_active === false ? "Réactiver ce coaché" : "Désactiver ce coaché"}
             </button>
+            <CoachPushSender ctx={ctx} coachee={coachee}/>
           </div>
         )}
         {tab === "programme" && <ProgramBuilder ctx={ctx} coachee={coachee} onClose={onBack}/>}
