@@ -28,6 +28,7 @@ machine. Sur la VM de travail, Chromium est déjà installé
 | `test-pwa.mjs` | Manifest, enregistrement du service worker, démarrage hors-ligne, **bannière de mise à jour** de bout en bout |
 | `test-theme.mjs` | Modes Clair / Sombre / Automatique, variables CSS, couleur de la barre d'état, contraste d'accessibilité |
 | `test-push-ui.mjs` | Le réglage Notifications dans Profil : activation, ce qui part en base, bouton de test, désactivation, cas iPhone, cas bloqué par le téléphone |
+| `test-push-coach.mjs` | L'envoi d'une notification depuis l'espace coach : garde-fous de saisie, ce qui part à l'Edge Function, et les trois issues (envoyé / aucun appareil abonné / refus du serveur) |
 | `test-push-sw.mjs` | Les gestionnaires `push` et `notificationclick` du `sw.js` **livré**, hors navigateur |
 | `test-push.mjs` | Qu'un message push injecté par le protocole de débogage réveille bien le service worker installé |
 

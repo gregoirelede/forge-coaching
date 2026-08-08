@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.0 · Build v7 (~445 Ko / 4 762 lignes)
+### Fichier de référence pour Claude Code · Version 1.2 · Build v7i (484 Ko / 5 380 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -84,6 +84,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7f** | Sprint 2 : PWA complète — manifest, service worker, bannière de mise à jour, démarrage hors-ligne | 472 501 o | 5 013 |
 | **v7g** | Sprint 2 : mode sombre — 64 variables CSS, réglage Auto/Clair/Sombre dans Profil | 484 534 o | 5 114 |
 | **v7h** | Sprint 2 : notifications push — chiffrement maison RFC 8291/8292, 2 Edge Functions, réglage Notifications dans Profil | 491 361 o | 5 283 |
+| **v7i** | Envoi d'une notification depuis l'espace coach + vraie raison affichée quand une Edge Function refuse | 495 919 o | 5 380 |
 
 ## B.4 — État d'installation
 
@@ -96,6 +97,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 - [x] Service worker : démarrage hors-ligne + bannière de mise à jour *(v7f)*
 - [x] Mode sombre Auto / Clair / Sombre *(v7g)*
 - [x] Notifications push, réglage dans Profil *(v7h)*
+- [x] Envoi d'une notification par le coach, depuis la fiche d'un coaché *(v7i)*
 
 **Optionnel, non fait :**
 - [ ] Clé API Anthropic (`sk-ant-...`) pour la génération de recettes par IA — le bouton "IA" de la page Recettes reste inactif sans elle. Compte sur `console.anthropic.com`, 5 $ de crédit suffisent pour des centaines de générations.
@@ -639,7 +641,12 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
 - **Liste des coachés** : création (code d'accès + offre, via `create-coachee`), **édition** (nom / offre / code d'accès, via `update-coachee`), désactivation par `is_active` — **jamais de suppression d'historique**.
 - **Bibliothèque d'exercices** : CRUD complet.
 - **Constructeur de programme** : planning hebdomadaire, exercices, séries, reps par série.
-- **Détail coaché** : onglets Infos · Progression (lecture) · Nutrition · Périodisation.
+- **Détail coaché** : onglets Infos · Programme · Périodisation · Nutrition · Progression (lecture).
+  L'onglet **Infos** porte aussi l'**envoi d'une notification** *(v7i)* : titre (60 car.) + message
+  (160 car.), le bouton reste inerte tant que les deux ne sont pas remplis. Le coach ne peut pas
+  savoir à l'avance si le coaché a activé ses notifications — la RLS lui interdit de lire
+  `push_subscriptions`, volontairement — donc c'est le serveur qui répond « Aucun appareil abonné »
+  le cas échéant. La saisie est conservée en cas d'échec.
 - **Bibliothèque de recettes** : CRUD + bouton "IA" (API Anthropic) pour aider à remplir la bibliothèque.
 - **Périodisation** : appliquer un des 4 modèles depuis une date de début, créer/éditer des phases manuellement, frise + courbe de poids, propositions de transition.
 
@@ -808,12 +815,17 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **5 août 2026** — v7c, 456 615 octets, 4 762 lignes |
-| Contenu de ce build | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) |
-| Build précédent | 4 août 2026 — v7b, 456 617 octets. Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés |
+| Dernier build déployé | **8 août 2026** — v7i, 495 919 octets, 5 380 lignes |
+| Contenu de ce build | Envoi d'une notification depuis l'espace coach ; la vraie raison d'un refus d'Edge Function remonte enfin à l'écran |
+| Build précédent | 8 août 2026 — v7h, 491 361 octets. Notifications push : chiffrement maison, 2 Edge Functions, réglage dans Profil |
 | Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
+>
+> **Comment le vérifier vraiment (règle n°11).** Un `success` sur le workflow prouve que Pages a
+> publié, pas que c'est la bonne version. Le contrôle qui tranche : comparer la taille de
+> `index.html` sur `main` (via l'API GitHub) à celle du build local. Si les deux nombres sont
+> égaux, ce qui est en ligne est bien ce qui a été construit.
 
 ## N.3 — Secrets
 

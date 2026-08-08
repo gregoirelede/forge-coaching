@@ -764,6 +764,15 @@ function cleVersOctets(base64url) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+async function messageErreurFonction(error, repli) {
+  var _a;
+  try {
+    const corps = await ((_a = error == null ? void 0 : error.context) == null ? void 0 : _a.json());
+    if (corps == null ? void 0 : corps.error) return corps.error;
+  } catch (e) {
+  }
+  return repli;
+}
 function usePushNotifications(supabase, userId, isDemo) {
   const [etat, setEtat] = useState("inconnu");
   const [occupe, setOccupe] = useState(false);
@@ -856,7 +865,7 @@ function usePushNotifications(supabase, userId, isDemo) {
     setMessage("");
     try {
       const { data, error } = await supabase.functions.invoke("send-push", { body: { test: true } });
-      if (error) throw error;
+      if (error) throw new Error(await messageErreurFonction(error, "Envoi impossible"));
       setMessage((data == null ? void 0 : data.envoyees) > 0 ? `Test envoy\xE9 sur ${data.envoyees} appareil${data.envoyees > 1 ? "s" : ""}.` : "Aucun appareil n'a re\xE7u le test.");
     } catch (e) {
       setMessage((e == null ? void 0 : e.message) || "Envoi impossible");
@@ -2454,6 +2463,87 @@ function CoachProgressView({ ctx, coachee }) {
     })));
   })), sheetExercise && /* @__PURE__ */ React.createElement(ExerciseSheet, { exercise: sheetExercise, allSetLogs, allCompletedSets, onClose: () => setSheetExercise(null) }));
 }
+function CoachPushSender({ ctx, coachee }) {
+  const { supabase } = ctx;
+  const [ouvert, setOuvert] = useState(false);
+  const [titre, setTitre] = useState("");
+  const [texte, setTexte] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const [retour, setRetour] = useState(null);
+  const MAX_TITRE = 60;
+  const MAX_TEXTE = 160;
+  const pret = titre.trim().length > 0 && texte.trim().length > 0 && !occupe;
+  async function envoyer() {
+    setOccupe(true);
+    setRetour(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", {
+        body: { coacheeId: coachee.id, title: titre.trim(), body: texte.trim() }
+      });
+      if (error) throw new Error(await messageErreurFonction(error, "Envoi impossible"));
+      const n = (data == null ? void 0 : data.envoyees) || 0;
+      setRetour({ ok: n > 0, message: n > 0 ? `Envoy\xE9 sur ${n} appareil${n > 1 ? "s" : ""}.` : "Aucun appareil n'a re\xE7u la notification." });
+      if (n > 0) {
+        setTitre("");
+        setTexte("");
+      }
+    } catch (e) {
+      setRetour({ ok: false, message: (e == null ? void 0 : e.message) || "Envoi impossible" });
+    } finally {
+      setOccupe(false);
+    }
+  }
+  if (!ouvert) {
+    return /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setOuvert(true),
+        className: "pressable",
+        style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }
+      },
+      "Envoyer une notification"
+    );
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 } }, "NOTIFICATION"), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        setOuvert(false);
+        setRetour(null);
+      },
+      style: { background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }
+    },
+    "Fermer"
+  )), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 12 } }, "Arrive sur le t\xE9l\xE9phone de ", coachee.name, ", m\xEAme app ferm\xE9e \u2014 s'il a activ\xE9 ses notifications de son c\xF4t\xE9."), /* @__PURE__ */ React.createElement(Field, { label: `TITRE (${titre.length}/${MAX_TITRE})` }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      value: titre,
+      maxLength: MAX_TITRE,
+      onChange: (e) => setTitre(e.target.value),
+      placeholder: "Nouvelle semaine",
+      style: inputStyle
+    }
+  )), /* @__PURE__ */ React.createElement(Field, { label: `MESSAGE (${texte.length}/${MAX_TEXTE})` }, /* @__PURE__ */ React.createElement(
+    "textarea",
+    {
+      value: texte,
+      maxLength: MAX_TEXTE,
+      rows: 3,
+      onChange: (e) => setTexte(e.target.value),
+      placeholder: "Ton programme de la semaine 12 est en ligne.",
+      style: __spreadProps(__spreadValues({}, inputStyle), { resize: "vertical", lineHeight: 1.5 })
+    }
+  )), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: envoyer,
+      disabled: !pret,
+      className: "pressable",
+      style: { width: "100%", marginTop: 4, padding: "13px", background: pret ? T.accent : T.surface2, color: pret ? T.accentText : T.textMuted, border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: pret ? "pointer" : "default", fontFamily: "inherit" }
+    },
+    occupe ? "ENVOI..." : "ENVOYER"
+  ), retour && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, fontSize: 11, fontWeight: 600, lineHeight: 1.5, color: retour.ok ? T.accent : T.danger } }, retour.message));
+}
 function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
   const { supabase } = ctx;
   const { confirm, confirmUI } = useConfirm();
@@ -2470,7 +2560,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
     setBusy(false);
     onBack();
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditOpen(true), style: { width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "\xC9diter les infos"), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9")), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })), editOpen && /* @__PURE__ */ React.createElement(EditCoacheeModal, { supabase, coachee, onClose: () => setEditOpen(false), onSaved: async () => {
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditOpen(true), style: { width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "\xC9diter les infos"), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9"), /* @__PURE__ */ React.createElement(CoachPushSender, { ctx, coachee })), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })), editOpen && /* @__PURE__ */ React.createElement(EditCoacheeModal, { supabase, coachee, onClose: () => setEditOpen(false), onSaved: async () => {
     setEditOpen(false);
     await onChanged();
     onBack();
