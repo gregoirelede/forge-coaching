@@ -780,6 +780,22 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 
 # PARTIE M — BACKLOG & PROCHAINES ÉTAPES
 
+## M.1 — Où en est le plan en 4 sprints
+
+| Sprint | Contenu | État |
+|---|---|---|
+| **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
+| **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
+| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | À faire |
+| **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | À faire |
+
+> **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
+> Le plan gratuit de Supabase n'en fait aucune (voir O.7). À prendre le jour du premier client
+> payant — perdre les données d'un client qui paie ne se rattrape ni techniquement, ni
+> commercialement.
+
+## M.2 — Points d'attention et pistes
+
 **Point d'attention ouvert :** la barre de navigation coaché compte **6 onglets** pour un Premium. C'est le maximum raisonnable sur mobile. Piste si ça devient trop dense à l'usage : intégrer Parcours dans l'écran d'accueil plutôt qu'en onglet dédié. À trancher à l'usage.
 
 **Non fait, envisageable plus tard :** graphiques et analytics avancés côté coach · messagerie intégrée · publication sur les stores · ajout de catégories musculaires · paiement en ligne / gestion des abonnements.
