@@ -226,6 +226,35 @@ function analyseVideo(url) {
   return { type: "lien", src: u, source: hote };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  BILAN HEBDOMADAIRE — la boucle de coaching
+//
+//  Jusqu'ici l'information ne circulait que dans un sens : le coach envoie un
+//  programme, le coaché le suit. Le bilan referme la boucle — le coaché fait le
+//  point une fois par semaine, le coach répond.
+//
+//  Quatre curseurs et un mot libre. Pas davantage : un questionnaire long ne se
+//  remplit qu'une fois. Tout est facultatif, y compris les curseurs — un bilan à
+//  moitié rempli vaut mieux qu'un bilan jamais envoyé.
+// ═══════════════════════════════════════════════════════════════════════════════
+const BILAN_CRITERES = [
+  { cle: "energie",      label: "Énergie",      bas: "À plat",      haut: "En forme" },
+  { cle: "sommeil",      label: "Sommeil",      bas: "Mauvais",     haut: "Très bon" },
+  { cle: "motivation",   label: "Motivation",   bas: "En baisse",   haut: "À fond" },
+  { cle: "recuperation", label: "Récupération", bas: "Courbaturé",  haut: "Frais" },
+];
+const BILAN_NOTE_MAX = 500;
+
+// La fonctionnalité s'appuie sur une table ajoutée en v7l. Tant que la
+// migration sql/2026-08-08-bilan-hebdomadaire.sql n'est pas jouée, PostgREST
+// répond « relation does not exist » (code 42P01). Ce n'est pas une panne :
+// c'est une fonctionnalité pas encore activée, et l'app doit s'effacer sans
+// bruit plutôt qu'afficher une erreur au coaché.
+function tableAbsente(error) {
+  if (!error) return false;
+  return error.code === "42P01" || /does not exist|schema cache/i.test(error.message || "");
+}
+
 // Calcule la semaine de coaching en cours à partir de la date de création du compte.
 // Semaine 1 = la semaine de la création. Figée : ne dépend que du temps écoulé.
 function currentWeekFromDate(createdAtISO) {
@@ -982,6 +1011,7 @@ function HomePage({ ctx }) {
           </div>
         ))}
       </div>
+      <BilanCard ctx={ctx}/>
       <div style={{ padding: "8px 18px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub }}>CETTE SEMAINE</div>
@@ -1250,6 +1280,175 @@ function WorkoutPage({ ctx }) {
   );
 }
 
+// ── Portail : sortir une feuille de sa page ─────────────────────────────────
+//
+//  PIÈGE DE LA PARTIE L, DEUXIÈME VARIANTE. On savait qu'un parent avec
+//  `transform` casse `position: fixed`. Une ANIMATION en fait autant : la
+//  classe `.fade-in`, posée sur chaque page, anime `transform` avec
+//  `animation-fill-mode: forwards`. L'élément conserve donc un `transform`
+//  après l'animation, ce qui crée un contexte d'empilement permanent.
+//
+//  Conséquence concrète : une feuille rendue à l'intérieur d'une page a beau
+//  demander z-index 301, elle reste prisonnière de ce contexte — et la barre
+//  d'onglets (z-index 100, mais dans le contexte du dessus) repasse par-dessus
+//  ses boutons du bas. Le bouton ENVOYER devenait littéralement incliquable.
+//
+//  On rend donc les feuilles directement dans <body>, hors de toute page.
+function Portail({ children }) {
+  return ReactDOM.createPortal(children, document.body);
+}
+
+// ── Carte « Bilan de la semaine » sur l'accueil du coaché ───────────────────
+function BilanCard({ ctx }) {
+  const { supabase, userId, currentWeek, isDemo } = ctx;
+  const [bilan, setBilan] = useState(null);      // null = pas encore chargé
+  const [dispo, setDispo] = useState(true);      // false = migration pas jouée
+  const [ouvert, setOuvert] = useState(false);
+
+  const recharger = useCallback(async () => {
+    if (isDemo || !supabase) { setDispo(false); return; }
+    const { data, error } = await supabase
+      .from("weekly_reviews").select("*")
+      .eq("coachee_id", userId).eq("week_number", currentWeek).maybeSingle();
+    if (error) { setDispo(!tableAbsente(error)); return; }
+    setBilan(data || false);   // false = chargé, mais aucun bilan cette semaine
+  }, [supabase, userId, currentWeek, isDemo]);
+
+  useEffect(() => { recharger(); }, [recharger]);
+
+  if (!dispo || bilan === null) return null;
+
+  const rempli = bilan !== false;
+  const reponse = rempli && bilan.coach_reply;
+
+  return (
+    <>
+      <div style={{ padding: "0 18px 4px" }}>
+        <div onClick={() => setOuvert(true)} className="quick-card"
+          style={{ background: reponse ? T.accentLight : T.surface, border: `1px solid ${reponse ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 13 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: reponse ? T.accent : T.accentLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name={reponse ? "check" : "calendar"} size={18} color={reponse ? T.accentText : T.accent}/>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+              {reponse ? "Ton coach t'a répondu" : rempli ? "Bilan de la semaine envoyé" : "Bilan de la semaine"}
+            </div>
+            <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+              {reponse ? `Semaine ${currentWeek} — appuie pour lire`
+               : rempli ? "Tu peux encore le modifier"
+               : "Comment s'est passée ta semaine ?"}
+            </div>
+          </div>
+          <Icon name="chevronRight" size={18} color={T.borderStrong}/>
+        </div>
+      </div>
+      {ouvert && (
+        <BilanSheet ctx={ctx} bilan={rempli ? bilan : null} semaine={currentWeek}
+          onClose={() => setOuvert(false)} onSaved={async () => { await recharger(); setOuvert(false); }}/>
+      )}
+    </>
+  );
+}
+
+// ── Feuille de saisie du bilan ──────────────────────────────────────────────
+function BilanSheet({ ctx, bilan, semaine, onClose, onSaved }) {
+  const { supabase, userId } = ctx;
+  const [valeurs, setValeurs] = useState(() => {
+    const v = {};
+    BILAN_CRITERES.forEach(c => { v[c.cle] = bilan?.[c.cle] ?? null; });
+    return v;
+  });
+  const [note, setNote]     = useState(bilan?.note || "");
+  const [occupe, setOccupe] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  // Un bilan entièrement vide n'a rien à dire : on n'enregistre pas du néant.
+  const quelqueChose = Object.values(valeurs).some(v => v != null) || note.trim().length > 0;
+
+  async function envoyer() {
+    setOccupe(true); setErreur("");
+    try {
+      const { error } = await supabase.from("weekly_reviews").upsert({
+        coachee_id: userId,
+        week_number: semaine,
+        ...valeurs,
+        note: note.trim() || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "coachee_id,week_number" });
+      if (error) throw error;
+      await onSaved();
+    } catch (e) {
+      setErreur(e?.message || "Enregistrement impossible");
+      setOccupe(false);
+    }
+  }
+
+  return (
+    <Portail>
+      <div className="sheet-backdrop" onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
+      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+        <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 21, color: T.text, letterSpacing: 2, marginBottom: 4 }}>BILAN · SEMAINE {semaine}</div>
+          <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 18, lineHeight: 1.5 }}>
+            Tout est facultatif. Même incomplet, ça aide ton coach à ajuster.
+          </div>
+
+          {bilan?.coach_reply && (
+            <div style={{ background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
+              <div style={{ fontSize: 9.5, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 5 }}>RÉPONSE DE TON COACH</div>
+              <div style={{ fontSize: 12.5, color: T.accentDark, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{bilan.coach_reply}</div>
+            </div>
+          )}
+
+          {BILAN_CRITERES.map(c => (
+            <div key={c.cle} style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
+                <span style={{ fontSize: 10, color: T.textSub, letterSpacing: 1.2, fontWeight: 800 }}>{c.label.toUpperCase()}</span>
+                <span style={{ fontSize: 10, color: T.textMuted }}>
+                  {valeurs[c.cle] == null ? "—" : valeurs[c.cle] <= 2 ? c.bas : valeurs[c.cle] >= 4 ? c.haut : "Correct"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[1, 2, 3, 4, 5].map(n => {
+                  const actif = valeurs[c.cle] === n;
+                  return (
+                    <button key={n} className="pressable"
+                      onClick={() => setValeurs(v => ({ ...v, [c.cle]: v[c.cle] === n ? null : n }))}
+                      aria-label={`${c.label} : ${n} sur 5`}
+                      style={{ flex: 1, padding: "11px 0", background: actif ? T.accent : T.surface, color: actif ? T.accentText : T.textSub, border: `1.5px solid ${actif ? T.accent : T.border}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", transition: "background .15s, border-color .15s" }}>
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <Field label={`UN MOT POUR TON COACH (${note.length}/${BILAN_NOTE_MAX})`}>
+            <textarea value={note} maxLength={BILAN_NOTE_MAX} rows={4}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Une douleur, une contrainte d'horaire, une question..."
+              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5, fontSize: 13 }}/>
+          </Field>
+
+          <div style={{ minHeight: 18, textAlign: "center" }}>
+            {erreur && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600 }}>{erreur}</div>}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Fermer</button>
+          <button onClick={envoyer} disabled={!quelqueChose || occupe}
+            style={{ flex: 2, padding: "14px", background: !quelqueChose || occupe ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !quelqueChose || occupe ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: !quelqueChose || occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+            {occupe ? "..." : bilan ? "METTRE À JOUR" : "ENVOYER"}
+          </button>
+        </div>
+      </div>
+    </Portail>
+  );
+}
+
 // ── Lecteur de démonstration ────────────────────────────────────────────────
 //  Une feuille qui remonte du bas, comme les autres du projet. La vidéo est
 //  chargée à l'ouverture seulement : tant que le coaché n'a rien demandé, rien
@@ -1257,7 +1456,7 @@ function WorkoutPage({ ctx }) {
 function VideoSheet({ titre, url, onClose }) {
   const v = analyseVideo(url);
   return (
-    <>
+    <Portail>
       <div className="sheet-backdrop" onClick={onClose}
         style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
       <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
@@ -1289,7 +1488,7 @@ function VideoSheet({ titre, url, onClose }) {
           )}
         </div>
       </div>
-    </>
+    </Portail>
   );
 }
 
@@ -3392,6 +3591,108 @@ function CoachProgressView({ ctx, coachee }) {
   );
 }
 
+// ── Vue coach : les bilans hebdomadaires d'un coaché ────────────────────────
+function CoachBilansView({ ctx, coachee }) {
+  const { supabase } = ctx;
+  const [bilans, setBilans] = useState(null);
+  const [dispo, setDispo]   = useState(true);
+  const [brouillons, setBrouillons] = useState({});   // { bilanId: texte }
+  const [occupe, setOccupe] = useState(null);         // id en cours d'envoi
+
+  const recharger = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("weekly_reviews").select("*")
+      .eq("coachee_id", coachee.id)
+      .order("week_number", { ascending: false });
+    if (error) { setDispo(!tableAbsente(error)); setBilans([]); return; }
+    setBilans(data || []);
+  }, [supabase, coachee.id]);
+
+  useEffect(() => { recharger(); }, [recharger]);
+
+  async function repondre(b) {
+    const texte = (brouillons[b.id] ?? "").trim();
+    if (!texte) return;
+    setOccupe(b.id);
+    try {
+      await supabase.from("weekly_reviews")
+        .update({ coach_reply: texte, coach_replied_at: new Date().toISOString() })
+        .eq("id", b.id);
+      setBrouillons(d => { const n = { ...d }; delete n[b.id]; return n; });
+      await recharger();
+    } finally { setOccupe(null); }
+  }
+
+  if (!dispo) return (
+    <div style={{ padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 }}>
+      Les bilans ne sont pas encore activés en base.<br/>
+      Joue <span style={{ fontWeight: 700 }}>sql/2026-08-08-bilan-hebdomadaire.sql</span> dans Supabase.
+    </div>
+  );
+  if (bilans === null) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (bilans.length === 0) return (
+    <div style={{ padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 }}>
+      {coachee.name} n'a pas encore envoyé de bilan.
+    </div>
+  );
+
+  return (
+    <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {bilans.map(b => {
+        const enAttente = !b.coach_reply;
+        return (
+          <div key={b.id} style={{ background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 11 }}>
+              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5 }}>SEMAINE {b.week_number}</div>
+              {enAttente && (
+                <span style={{ background: T.warnBg, color: T.warnText, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800 }}>
+                  SANS RÉPONSE
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 6, marginBottom: b.note ? 11 : 0 }}>
+              {BILAN_CRITERES.map(c => (
+                <div key={c.cle} style={{ flex: 1, textAlign: "center", background: T.bg, borderRadius: 9, padding: "8px 2px" }}>
+                  <div style={{ fontFamily: "'Bebas Neue'", fontSize: 18, lineHeight: 1, color: b[c.cle] == null ? T.textMuted : b[c.cle] <= 2 ? "var(--cmp-down-text)" : b[c.cle] >= 4 ? "var(--cmp-up-text)" : T.textSub }}>
+                    {b[c.cle] == null ? "—" : b[c.cle]}
+                  </div>
+                  <div style={{ fontSize: 7.5, color: T.textMuted, letterSpacing: .4, fontWeight: 700, marginTop: 4 }}>{c.label.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+
+            {b.note && (
+              <div style={{ background: T.bg, borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: T.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+                {b.note}
+              </div>
+            )}
+
+            {b.coach_reply ? (
+              <div style={{ marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 9, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 4 }}>TA RÉPONSE</div>
+                <div style={{ fontSize: 12, color: T.accentDark, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{b.coach_reply}</div>
+              </div>
+            ) : (
+              <div style={{ marginTop: 11 }}>
+                <textarea rows={2} value={brouillons[b.id] ?? ""}
+                  onChange={e => setBrouillons(d => ({ ...d, [b.id]: e.target.value }))}
+                  placeholder="Répondre à ce bilan..."
+                  style={{ ...inputStyle, fontSize: 12.5, resize: "vertical", lineHeight: 1.5 }}/>
+                <button onClick={() => repondre(b)}
+                  disabled={!(brouillons[b.id] ?? "").trim() || occupe === b.id} className="pressable"
+                  style={{ width: "100%", marginTop: 8, padding: "10px", background: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accent : T.surface2, color: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accentText : T.textMuted, border: "none", borderRadius: 10, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? "pointer" : "default", fontFamily: "inherit" }}>
+                  {occupe === b.id ? "ENVOI..." : "RÉPONDRE"}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Envoi d'une notification à un coaché, depuis l'espace coach ──────────────
 //
 //  Le coach ne peut PAS lire push_subscriptions : la RLS ne l'autorise que le
@@ -3511,7 +3812,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
       </div>
 
       <div style={{ padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        {[["infos", "Infos"], ["programme", "Programme"], ["periodisation", "Périodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => (
+        {[["infos", "Infos"], ["bilans", "Bilans"], ["programme", "Programme"], ["periodisation", "Périodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             {label}
           </button>
@@ -3546,6 +3847,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
             <CoachPushSender ctx={ctx} coachee={coachee}/>
           </div>
         )}
+        {tab === "bilans" && <CoachBilansView ctx={ctx} coachee={coachee}/>}
         {tab === "programme" && <ProgramBuilder ctx={ctx} coachee={coachee} onClose={onBack}/>}
         {tab === "periodisation" && <CoachPeriodizationView ctx={ctx} coachee={coachee}/>}
         {tab === "nutrition" && <CoachNutritionView ctx={ctx} coachee={coachee}/>}

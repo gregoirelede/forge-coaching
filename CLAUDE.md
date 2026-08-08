@@ -87,6 +87,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7i** | Envoi d'une notification depuis l'espace coach + vraie raison affichée quand une Edge Function refuse | 495 919 o | 5 380 |
 | **v7j** | Sprint 3 : onglet **Suivi** côté coach — assiduité, statuts À jour / À relancer / Décrochage | 505 162 o | 5 598 |
 | **v7k** | Sprint 3 : vidéos de démonstration sur les exercices (YouTube / Vimeo / fichier) | 512 965 o | 5 758 |
+| **v7l** | Sprint 3 : **bilan hebdomadaire** — le coaché fait le point, le coach répond. Correctif : les feuilles passent par un portail | 528 369 o | 6 060 |
 
 ## B.4 — État d'installation
 
@@ -139,7 +140,7 @@ forge-coaching/
 ├── build.mjs                           ← script de build (Parties E et O)
 ├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   ├── training-app.jsx                ← SOURCE UNIQUE (5 758 lignes)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (6 060 lignes)
 │   ├── theme.css                       ← 64 variables CSS, clair + sombre
 │   ├── sw-template.js                  ← gabarit du service worker
 │   └── README.md
@@ -154,6 +155,7 @@ forge-coaching/
 │   ├── 2026-08-06-optimisation-rls.sql
 │   ├── 2026-08-08-notifications-push.sql
 │   ├── 2026-08-08-videos-exercices.sql
+│   ├── 2026-08-08-bilan-hebdomadaire.sql
 │   ├── NOTE-optimisation-rls.md
 │   └── README.md
 ├── edge-functions/
@@ -166,7 +168,7 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
-├── tests/                              ← 9 séries de tests, `npm test`
+├── tests/                              ← 10 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -504,6 +506,33 @@ created_at           timestamptz DEFAULT now()
 Index : `idx_phases_coachee ON periodization_phases(coachee_id, phase_order)`
 Contrainte métier : les phases d'un coaché **ne se chevauchent jamais** et sont idéalement contiguës.
 
+### `weekly_reviews` *(v7l)* — la boucle de coaching
+```sql
+id                uuid PK
+coachee_id        uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL
+week_number       int NOT NULL
+energie           smallint CHECK (1..5)      -- NULL = pas répondu
+sommeil           smallint CHECK (1..5)
+motivation        smallint CHECK (1..5)
+recuperation      smallint CHECK (1..5)
+note              text                       -- mot libre du coaché
+coach_reply       text                       -- réponse du coach, même ligne
+coach_replied_at  timestamptz
+created_at        timestamptz DEFAULT now()
+updated_at        timestamptz DEFAULT now()
+UNIQUE (coachee_id, week_number)
+```
+Index : `idx_bilans_coachee ON weekly_reviews(coachee_id, week_number DESC)`
+
+> **Pourquoi `week_number` et pas `week_id`.** La numérotation des semaines est continue depuis
+> le début du coaching (règle J.4) et se calcule depuis `profiles.created_at`. Or la ligne dans
+> `weeks` n'est créée qu'au premier log de série : dépendre d'elle rendrait impossible le bilan
+> d'une semaine où le coaché n'a rien fait — précisément la semaine sur laquelle un coach a le
+> plus besoin d'un retour.
+>
+> Une ligne par coaché et par semaine (`UNIQUE`) : le coaché peut revenir corriger son bilan
+> dans la semaine sans en créer un second.
+
 ### `push_subscriptions` *(v7h)*
 ```sql
 id               uuid PK
@@ -652,6 +681,8 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
 - **Parcours** *(toutes offres)* — frise de périodisation en lecture seule, phase en cours mise en avant (semaine X/Y + compte à rebours "N semaines restantes"), détail au clic, courbe de poids superposée. Pour un Essentiel : type et objectif affichés, **cibles caloriques chiffrées masquées**.
 - **Nutrition** *(Premium)* — cibles kcal + macros, plan de repas de la semaine, saisie de la pesée. **Lecture seule** hors pesée : toute la configuration se fait côté coach.
 - **Progrès** — exercices groupés par muscle en accordéon, pastille colorée, record kg, nombre de semaines loguées, mini-graphique au clic.
+- **Accueil** — porte la carte **Bilan de la semaine** *(v7l)* : elle invite à faire le point,
+  confirme quand c'est envoyé, et passe en vert quand le coach a répondu.
 - **Profil** — infos + **Réglages** (voir I.3).
 
 ## I.2 — Côté coach
@@ -674,6 +705,9 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
   seule démonstration filmée le remplirait.
 - **Constructeur de programme** : planning hebdomadaire, exercices, séries, reps par série.
 - **Détail coaché** : onglets Infos · Programme · Périodisation · Nutrition · Progression (lecture).
+  L'onglet **Bilans** *(v7l)* liste les bilans hebdomadaires du coaché, du plus récent au plus
+  ancien, avec les quatre curseurs résumés et le mot libre. Un bilan sans réponse est marqué
+  « SANS RÉPONSE » ; répondre se fait sur place et la réponse remonte aussitôt côté coaché.
   L'onglet **Infos** porte aussi l'**envoi d'une notification** *(v7i)* : titre (60 car.) + message
   (160 car.), le bouton reste inerte tant que les deux ne sont pas remplis. Le coach ne peut pas
   savoir à l'avance si le coaché a activé ses notifications — la RLS lui interdit de lire
@@ -801,6 +835,14 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 # PARTIE L — BUGS CORRIGÉS (ne pas réintroduire)
 
 - **Modales mal positionnées** : un parent avec `transform` crée un bloc conteneur qui casse `position: fixed`.
+- **Feuilles dont les boutons du bas sont incliquables (trouvé le 8 août 2026, v7l).** Même piège
+  que le précédent, deuxième variante : la classe `.fade-in` posée sur chaque page anime
+  `transform` avec `animation-fill-mode: forwards`. L'élément garde donc un `transform` après
+  l'animation, ce qui crée un **contexte d'empilement permanent**. Une feuille rendue à
+  l'intérieur d'une page a beau demander `z-index: 301`, elle y reste prisonnière, et la barre
+  d'onglets (z-index 100, mais dans le contexte du dessus) repasse par-dessus ses boutons du bas.
+  **Solution : rendre les feuilles dans `<body>` via le composant `Portail`** (React
+  `createPortal`). Toute nouvelle feuille doit l'utiliser.
 - **Inputs `type="date"` qui débordent** sur iOS Safari.
 - **Champ "séries" se réinitialisant à 1** pendant l'édition.
 - **Badges de technique invisibles** côté coaché.
@@ -818,7 +860,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 |---|---|---|
 | **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
-| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **En cours** — assiduité faite (v7j) |
+| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Presque fini** — assiduité (v7j), vidéos (v7k), bilan hebdomadaire (v7l). Reste : commentaires de séance |
 | **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | À faire |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
