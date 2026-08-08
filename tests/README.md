@@ -31,6 +31,8 @@ machine. Sur la VM de travail, Chromium est déjà installé
 | `test-push-coach.mjs` | L'envoi d'une notification depuis l'espace coach : garde-fous de saisie, ce qui part à l'Edge Function, et les trois issues (envoyé / aucun appareil abonné / refus du serveur) |
 | `test-push-sw.mjs` | Les gestionnaires `push` et `notificationclick` du `sw.js` **livré**, hors navigateur |
 | `test-push.mjs` | Qu'un message push injecté par le protocole de débogage réveille bien le service worker installé |
+| `test-suivi.mjs` | L'onglet Suivi : quatre coachés aux comportements distincts, classement par urgence, compteurs, et les deux règles de calcul du taux |
+| `test-videos.mjs` | Reconnaissance des liens vidéo (dont `javascript:` et `data:`, refusés), lecteur côté coaché, et le fonctionnement **avant** que la migration SQL soit jouée |
 
 Le chiffrement des notifications a son propre test, à côté du code qu'il
 vérifie : `node edge-functions/_webpush.test.mjs`.

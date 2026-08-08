@@ -86,6 +86,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7h** | Sprint 2 : notifications push — chiffrement maison RFC 8291/8292, 2 Edge Functions, réglage Notifications dans Profil | 491 361 o | 5 283 |
 | **v7i** | Envoi d'une notification depuis l'espace coach + vraie raison affichée quand une Edge Function refuse | 495 919 o | 5 380 |
 | **v7j** | Sprint 3 : onglet **Suivi** côté coach — assiduité, statuts À jour / À relancer / Décrochage | 505 162 o | 5 598 |
+| **v7k** | Sprint 3 : vidéos de démonstration sur les exercices (YouTube / Vimeo / fichier) | 512 965 o | 5 758 |
 
 ## B.4 — État d'installation
 
@@ -138,7 +139,7 @@ forge-coaching/
 ├── build.mjs                           ← script de build (Parties E et O)
 ├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   ├── training-app.jsx                ← SOURCE UNIQUE (5 283 lignes)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (5 758 lignes)
 │   ├── theme.css                       ← 64 variables CSS, clair + sombre
 │   ├── sw-template.js                  ← gabarit du service worker
 │   └── README.md
@@ -152,6 +153,7 @@ forge-coaching/
 │   ├── 2026-08-06-index-cles-etrangeres.sql
 │   ├── 2026-08-06-optimisation-rls.sql
 │   ├── 2026-08-08-notifications-push.sql
+│   ├── 2026-08-08-videos-exercices.sql
 │   ├── NOTE-optimisation-rls.md
 │   └── README.md
 ├── edge-functions/
@@ -164,6 +166,7 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
+├── tests/                              ← 9 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -412,9 +415,15 @@ coach_id    uuid REFERENCES profiles(id) NOT NULL
 name        text NOT NULL
 muscle      text NOT NULL      -- doit correspondre à une clé de muscleColors
 notes       text
+video_url   text               -- v7k : YouTube, Vimeo ou fichier .mp4. NULL = pas de vidéo
 created_at  timestamptz DEFAULT now()
 UNIQUE (coach_id, name)
 ```
+> **La vidéo vit dans la bibliothèque, pas dans le programme.** Le programme d'un coaché ne
+> stocke que `library_exercise_id`. Conséquence voulue : le coach corrige une vidéo une seule
+> fois, et tous ses coachés voient la correction, sans qu'aucun programme soit retouché.
+> Contrepartie : le coaché doit pouvoir **lire** `exercises_library` — d'où la policy ajoutée
+> en v7k (voir G.1).
 
 ### `weight_logs`
 ```sql
@@ -540,6 +549,13 @@ RLS activée sur **toutes** les tables, sans exception.
   ```
 - **Bibliothèques du coach** (`exercises_library`, `recipes_library`) : écriture si `coach_id = auth.uid()` ; lecture seule pour les coachés rattachés à ce coach.
 
+> **`exercises_library` : la lecture coaché existe enfin (v7k).** Elle était décrite ici depuis
+> le début mais n'avait jamais été créée en base — c'était le constat n°1 de la Partie O.4. Les
+> vidéos de démonstration l'ont rendue nécessaire : sans elle, le coaché ne peut pas suivre le
+> `library_exercise_id` de son programme jusqu'à la fiche de l'exercice. Ce qu'elle ouvre
+> exactement : lire les exercices de **son** coach — nom, muscle, notes, vidéo. Rien d'autre,
+> aucune écriture, et **aucune policy existante n'a été touchée**.
+
 ## G.2 — Edge Functions
 
 | Fonction | `verify_jwt` | Rôle |
@@ -630,6 +646,9 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
 
 - **Séances** — 3 sous-onglets : `SEMAINE` (séances du jour, onglets de jours intégrés, saisie kg/reps par série, chronomètres, badges de technique), `ORGANISATION ENTRAINEMENTS` (structure hebdomadaire), `CONSIGNES` (consignes du coach : label coloré + titre + texte).
   Bandeau "semaine N en cours" en haut.
+  Un exercice qui a une vidéo de démonstration affiche **Voir la démonstration** une fois déplié
+  *(v7k)*. La vidéo n'est chargée qu'au clic : rien ne part sur le réseau tant que le coaché
+  n'a rien demandé — il est peut-être en salle, en 4G, entre deux séries.
 - **Parcours** *(toutes offres)* — frise de périodisation en lecture seule, phase en cours mise en avant (semaine X/Y + compte à rebours "N semaines restantes"), détail au clic, courbe de poids superposée. Pour un Essentiel : type et objectif affichés, **cibles caloriques chiffrées masquées**.
 - **Nutrition** *(Premium)* — cibles kcal + macros, plan de repas de la semaine, saisie de la pesée. **Lecture seule** hors pesée : toute la configuration se fait côté coach.
 - **Progrès** — exercices groupés par muscle en accordéon, pastille colorée, record kg, nombre de semaines loguées, mini-graphique au clic.
@@ -639,8 +658,20 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
 
 Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion → login email + mot de passe.
 
+- **Suivi** *(v7j)* — l'onglet qui répond à « qui dois-je relancer aujourd'hui ». Trois statuts :
+  À jour (séance dans les 4 jours), À relancer (5 à 9 jours), Décrochage (10 jours et plus),
+  plus « Jamais démarré » qui n'est pas le même problème. Liste triée par urgence. Par coaché :
+  séances de la semaine, taux sur les 4 semaines écoulées, jours depuis la dernière séance.
+  Deux règles de calcul à connaître : une séance compte dès la **première** série validée, et le
+  taux **ignore la semaine en cours** — la compter ferait chuter tout le monde un lundi matin.
+
 - **Liste des coachés** : création (code d'accès + offre, via `create-coachee`), **édition** (nom / offre / code d'accès, via `update-coachee`), désactivation par `is_active` — **jamais de suppression d'historique**.
-- **Bibliothèque d'exercices** : CRUD complet.
+- **Bibliothèque d'exercices** : CRUD complet, avec un champ **vidéo de démonstration** *(v7k)*.
+  Coller un lien suffit : YouTube (toutes ses formes, Shorts compris), Vimeo, ou un fichier
+  `.mp4`/`.webm`. L'app dit tout de suite ce qu'elle a reconnu. Un lien non reconnu mais valide
+  n'est jamais encastré de force — il s'ouvrira dans le navigateur, plutôt qu'afficher un cadre
+  vide et muet. Rien n'est hébergé par Forge Coaching : le plan gratuit Supabase offre 1 Go, une
+  seule démonstration filmée le remplirait.
 - **Constructeur de programme** : planning hebdomadaire, exercices, séries, reps par série.
 - **Détail coaché** : onglets Infos · Programme · Périodisation · Nutrition · Progression (lecture).
   L'onglet **Infos** porte aussi l'**envoi d'une notification** *(v7i)* : titre (60 car.) + message
@@ -915,7 +946,7 @@ Le schéma décrit est exact, à deux colonnes près, présentes en base mais ab
 
 Constats de lecture, à trancher plus tard. La Partie J.2 interdit de toucher aux policies sans discussion, donc **rien n'a été changé**.
 
-1. **`exercises_library` n'a qu'une seule policy** (`coach manages own library`, `coach_id = auth.uid()`). La règle G.1 annonce une lecture seule pour les coachés rattachés ; elle n'existe pas en base. Sans conséquence tant que le coaché lit ses exercices depuis le JSON du programme et jamais depuis la bibliothèque. `recipes_library`, elle, a bien sa policy de lecture coaché.
+1. ~~**`exercises_library` n'a qu'une seule policy**~~ — **RÉGLÉ le 8 août 2026 (v7k).** La policy de lecture coaché annoncée par G.1 a été créée, parce que les vidéos de démonstration en avaient besoin : le coaché doit pouvoir suivre le `library_exercise_id` de son programme jusqu'à la fiche de l'exercice. Migration `sql/2026-08-08-videos-exercices.sql`.
 2. **`weight_logs` → `coach reads coachee weights` est en `FOR ALL`**, pas en `SELECT`. Le nom suggère une lecture seule, la policy accorde l'écriture. Sans danger aujourd'hui (seul le coach concerné est visé), mais l'intitulé induit en erreur.
 
 ## O.5 — Vérification de la base au 4 août 2026

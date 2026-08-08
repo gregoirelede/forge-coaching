@@ -693,6 +693,34 @@ function estimateSessionMinutes(session) {
   });
   return Math.max(15, Math.round(seconds / 60 / 5) * 5);
 }
+function analyseVideo(url) {
+  const u = (url || "").trim();
+  if (!u) return null;
+  let parsee;
+  try {
+    parsee = new URL(u);
+  } catch (e) {
+    return null;
+  }
+  if (parsee.protocol !== "https:" && parsee.protocol !== "http:") return null;
+  const hote = parsee.hostname.replace(/^www\./, "");
+  if (hote === "youtube.com" || hote === "m.youtube.com") {
+    const id = parsee.searchParams.get("v") || (parsee.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/) || [])[1];
+    if (id) return { type: "embed", src: `https://www.youtube-nocookie.com/embed/${id}`, source: "YouTube" };
+  }
+  if (hote === "youtu.be") {
+    const id = parsee.pathname.slice(1).split("/")[0];
+    if (id) return { type: "embed", src: `https://www.youtube-nocookie.com/embed/${id}`, source: "YouTube" };
+  }
+  if (hote === "vimeo.com" || hote === "player.vimeo.com") {
+    const id = (parsee.pathname.match(/(\d{6,})/) || [])[1];
+    if (id) return { type: "embed", src: `https://player.vimeo.com/video/${id}`, source: "Vimeo" };
+  }
+  if (/\.(mp4|webm|mov|m4v)$/i.test(parsee.pathname)) {
+    return { type: "fichier", src: u, source: "Vid\xE9o" };
+  }
+  return { type: "lien", src: u, source: hote };
+}
 function currentWeekFromDate(createdAtISO) {
   if (!createdAtISO) return 1;
   const start = new Date(createdAtISO);
@@ -1318,10 +1346,11 @@ function HomePage({ ctx }) {
   }, style: { flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1.5 } }, w.day.slice(0, 3)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 2, lineHeight: 1.1, marginTop: 6, minHeight: 36 } }, w.sess.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 9, color: T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 11, color: T.textMuted }), /* @__PURE__ */ React.createElement("span", null, w.sess.exercises.length, " exos")))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Progression", subtitle: "Suis ton \xE9volution semaine par semaine", onClick: () => navigate("progress") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Lis les conventions de ton programme", onClick: () => navigate("profile", "consignes") })));
 }
 function WorkoutPage({ ctx }) {
-  var _a;
+  var _a, _b;
   const { appData, viewedWeek, setViewedWeek, currentWeek, activeSessionId, setActiveSessionId, activeSessions, allCompletedSets, allSetLogs, toggleSet, updateLog, timers, cancel, workoutSubView, setWorkoutSubView, openExerciseSheet } = ctx;
   const { week, sessions } = appData;
   const [expandedEx, setExpandedEx] = useState(null);
+  const [videoOuverte, setVideoOuverte] = useState(null);
   const activeSession = activeSessions.find((s) => s.id === activeSessionId) || activeSessions[0];
   const isDone = (ei, si) => !!allCompletedSets[tKey(viewedWeek, activeSession.id, ei, si)];
   const getTimer = (ei, si) => timers[tKey(viewedWeek, activeSession.id, ei, si)];
@@ -1363,6 +1392,7 @@ function WorkoutPage({ ctx }) {
       setExpandedEx(null);
     }, style: { background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "8px 14px", borderRadius: 12, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: 0.8, flexShrink: 0, cursor: "pointer", boxShadow: isActive ? `0 2px 8px ${T.accent}30` : `0 1px 4px ${T.shadow}` } }, (weekDay == null ? void 0 : weekDay.day) || s.name);
   }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18, boxShadow: `0 2px 16px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 5 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 25, color: T.accent, letterSpacing: 3, lineHeight: 1 } }, activeSession.name), viewedWeek !== currentWeek && /* @__PURE__ */ React.createElement("span", { style: { background: viewedWeek < currentWeek ? T.warnBg : T.surface2, color: viewedWeek < currentWeek ? T.warnText : T.textSub, fontSize: 8, fontWeight: 900, letterSpacing: 1, padding: "2px 7px", borderRadius: 6, border: `1px solid ${viewedWeek < currentWeek ? T.warnBorder : T.border}` } }, viewedWeek < currentWeek ? "ARCHIVE \xB7 \xC9DITABLE" : "FUTURE")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textSub, letterSpacing: 1 } }, (_a = week.find((w) => w.sessionId === activeSession.id)) == null ? void 0 : _a.day, "\xA0\xB7\xA0", activeSession.exercises.length, " EXERCICES\xA0\xB7\xA0", totalSets, " S\xC9RIES")), /* @__PURE__ */ React.createElement("div", { style: { background: T.accentLight, color: T.accent, fontFamily: "'Bebas Neue'", fontSize: 26, letterSpacing: 2, padding: "4px 14px", borderRadius: 10, lineHeight: 1.2 } }, pct, "%")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 10, color: T.textMuted, marginBottom: 6, letterSpacing: 1 } }, /* @__PURE__ */ React.createElement("span", null, "PROGRESSION"), /* @__PURE__ */ React.createElement("span", { style: { color: T.accent, fontWeight: 800 } }, totalDone, " / ", totalSets, " s\xE9ries")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: T.surface2, borderRadius: 3, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, #064E3B, #0D9488)`, borderRadius: 3, transition: "width .4s ease" } }))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, activeSession.exercises.map((ex, exIdx) => {
+    var _a2;
     const isOpen = expandedEx === exIdx;
     const mStyle = muscleColors[ex.muscle] || { bg: T.surface2, text: T.textSub };
     const doneSets = ex.reps.filter((_, si) => isDone(exIdx, si)).length;
@@ -1374,7 +1404,7 @@ function WorkoutPage({ ctx }) {
         "Superset": { bg: "var(--p-decharge-bg)", text: "var(--p-decharge-tx)", label: "SUPERSET" }
       }[ex.technique];
       return tStyle ? /* @__PURE__ */ React.createElement("span", { style: { background: tStyle.bg, color: tStyle.text, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: 0.5 } }, tStyle.label) : null;
-    })(), ex.commentaire && /* @__PURE__ */ React.createElement("span", { style: { background: T.warnBg, color: T.warnText, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 } }, ex.commentaire))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: allDone ? T.accent : T.textMuted } }, doneSets, "/", ex.series)), /* @__PURE__ */ React.createElement(Icon, { name: isOpen ? "chevronDown" : "chevronRight", size: 16, color: T.borderStrong }))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { padding: "0 12px 12px", borderTop: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("button", { onClick: () => openExerciseSheet(ex), className: "pressable", style: { width: "100%", marginTop: 10, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "trending", size: 13 }), " Voir l'historique de cet exercice"), ex.technique && (() => {
+    })(), ex.commentaire && /* @__PURE__ */ React.createElement("span", { style: { background: T.warnBg, color: T.warnText, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 } }, ex.commentaire))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "right", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: allDone ? T.accent : T.textMuted } }, doneSets, "/", ex.series)), /* @__PURE__ */ React.createElement(Icon, { name: isOpen ? "chevronDown" : "chevronRight", size: 16, color: T.borderStrong }))), isOpen && /* @__PURE__ */ React.createElement("div", { style: { padding: "0 12px 12px", borderTop: `1px solid ${T.border}` } }, ((_a2 = ctx.videosExercices) == null ? void 0 : _a2[ex.library_exercise_id]) && /* @__PURE__ */ React.createElement("button", { onClick: () => setVideoOuverte({ titre: ex.exercice, url: ctx.videosExercices[ex.library_exercise_id] }), className: "pressable", style: { width: "100%", marginTop: 10, background: T.accentLight, border: `1px solid ${T.accentA38}`, color: T.accentDark, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 13, color: T.accentDark }), " Voir la d\xE9monstration"), /* @__PURE__ */ React.createElement("button", { onClick: () => openExerciseSheet(ex), className: "pressable", style: { width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "trending", size: 13 }), " Voir l'historique de cet exercice"), ex.technique && (() => {
       const tInfo = {
         "RP": { bg: "var(--cmp-up-bg)", border: "var(--cmp-up-text)", text: "var(--cmp-up-text)", label: "REST-PAUSE (RP)", desc: "\xC0 l'\xE9chec, repose la charge 30 s, puis encha\xEEne une s\xE9rie suppl\xE9mentaire." },
         "DS": { bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", text: "var(--p-seche-tx)", label: "DROP SET (DS)", desc: "\xC0 l'\xE9chec, 30 s de repos, baisse la charge de 30-40% puis repars jusqu'\xE0 l'\xE9chec." },
@@ -1389,12 +1419,54 @@ function WorkoutPage({ ctx }) {
       const wCmp = getCmp(exIdx, setIdx, "weight", log.weight);
       const rCmp = getCmp(exIdx, setIdx, "actualReps", log.actualReps);
       return /* @__PURE__ */ React.createElement("div", { key: setIdx, style: { background: done ? (timer == null ? void 0 : timer.done) ? T.accentLight : T.setDoneBg : T.bg, border: `1px solid ${done ? (timer == null ? void 0 : timer.done) ? T.accentA38 : T.accentA20 : T.border}`, borderRadius: 10, overflow: "hidden", transition: "all .15s" } }, /* @__PURE__ */ React.createElement("div", { className: "pressable", onClick: () => toggleSet(activeSession.id, exIdx, setIdx, ex.repos, ex.exercice), style: { display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: done ? T.accent : T.surface, border: `1.5px solid ${done ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? T.accentText : T.textSub, fontWeight: 900, transition: "all .2s" } }, done ? /* @__PURE__ */ React.createElement(Icon, { name: "check", size: 14, stroke: 3, color: T.accentText }) : setIdx + 1), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: done ? T.textSub : T.text } }, "S\xE9rie ", setIdx + 1, " \u2014 "), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800, color: done ? T.accent : T.text } }, rep, " reps")), done && timer ? /* @__PURE__ */ React.createElement(InlineTimer, { t: timer, onCancel: (e) => {
-        var _a2;
-        (_a2 = e == null ? void 0 : e.stopPropagation) == null ? void 0 : _a2.call(e);
+        var _a3;
+        (_a3 = e == null ? void 0 : e.stopPropagation) == null ? void 0 : _a3.call(e);
         cancel(key);
       } }) : !done ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, background: T.surface2, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${T.border}` } }, ex.repos) : null), done && /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { display: "flex", alignItems: "center", gap: 10, padding: "8px 11px 10px", borderTop: `1px solid ${T.accent}20`, background: T.accentLightA53, animation: "popIn .2s ease", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: 0.8, whiteSpace: "nowrap" } }, "LOG"), /* @__PURE__ */ React.createElement(SetLog, { weight: log.weight, actualReps: log.actualReps, weightCmp: wCmp, repsCmp: rCmp, onWeightChange: (v) => updateLog(key, "weight", v), onRepsChange: (v) => updateLog(key, "actualReps", v) })));
     }))));
-  })), activeSession.abdosCardio.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "ABDOS / CARDIO"), activeSession.abdosCardio.map((item, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < activeSession.abdosCardio.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: T.accent, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text } }, item))))));
+  })), ((_b = activeSession.abdosCardio) == null ? void 0 : _b.length) > 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "ABDOS / CARDIO"), activeSession.abdosCardio.map((item, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < activeSession.abdosCardio.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: T.accent, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text } }, item))))), videoOuverte && /* @__PURE__ */ React.createElement(VideoSheet, { titre: videoOuverte.titre, url: videoOuverte.url, onClose: () => setVideoOuverte(null) }));
+}
+function VideoSheet({ titre, url, onClose }) {
+  const v = analyseVideo(url);
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "sheet-backdrop",
+      onClick: onClose,
+      style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }
+    }
+  ), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 19, color: T.text, letterSpacing: 1.5, lineHeight: 1.1, minWidth: 0 } }, titre), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0, flexShrink: 0 } }, "Fermer")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px calc(18px + env(safe-area-inset-bottom))", overflowY: "auto" } }, !v ? /* @__PURE__ */ React.createElement("div", { style: { padding: "26px 4px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 } }, "Cette vid\xE9o n'est pas lisible. Signale-le \xE0 ton coach.") : v.type === "embed" ? /* @__PURE__ */ React.createElement("div", { style: { position: "relative", paddingTop: "56.25%", borderRadius: 12, overflow: "hidden", background: "#000" } }, /* @__PURE__ */ React.createElement(
+    "iframe",
+    {
+      src: v.src,
+      title: titre,
+      allowFullScreen: true,
+      allow: "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen",
+      referrerPolicy: "strict-origin-when-cross-origin",
+      style: { position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }
+    }
+  )) : v.type === "fichier" ? /* @__PURE__ */ React.createElement(
+    "video",
+    {
+      src: v.src,
+      controls: true,
+      playsInline: true,
+      preload: "metadata",
+      style: { width: "100%", borderRadius: 12, background: "#000", display: "block" }
+    }
+  ) : /* @__PURE__ */ React.createElement(
+    "a",
+    {
+      href: v.src,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      className: "pressable",
+      style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", background: T.accent, color: T.accentText, borderRadius: 12, fontSize: 12.5, fontWeight: 800, letterSpacing: 0.5, textDecoration: "none" }
+    },
+    /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 15, color: T.accentText }),
+    " Ouvrir sur ",
+    v.source
+  ))));
 }
 function ProgressPage({ ctx }) {
   const { appData, allCompletedSets, allSetLogs, openExerciseSheet } = ctx;
@@ -1595,6 +1667,28 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const { timers, start, cancel } = useTimers(soundEnabledRef);
   const { theme, setTheme } = useTheme();
   const push = usePushNotifications(supabase, userId, isDemo);
+  const [videosExercices, setVideosExercices] = useState({});
+  useEffect(() => {
+    if (isDemo || !supabase || !(appData == null ? void 0 : appData.client)) return;
+    let annule = false;
+    (async () => {
+      try {
+        const { data: profil } = await supabase.from("profiles").select("coach_id").eq("id", userId).single();
+        if (!(profil == null ? void 0 : profil.coach_id)) return;
+        const { data } = await supabase.from("exercises_library").select("*").eq("coach_id", profil.coach_id);
+        if (annule || !data) return;
+        const map = {};
+        data.forEach((ex) => {
+          if (ex.video_url) map[ex.id] = ex.video_url;
+        });
+        setVideosExercices(map);
+      } catch (e) {
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [supabase, userId, isDemo, appData == null ? void 0 : appData.client]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1812,7 +1906,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     setTheme,
     push,
     onLogout,
-    isDemo
+    isDemo,
+    videosExercices
   };
   return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", color: T.text, overflowX: "hidden" } }, /* @__PURE__ */ React.createElement("style", null, `
         /* Polices auto-h\xE9berg\xE9es : les @font-face sont d\xE9clar\xE9es dans le gabarit HTML (build.mjs) \u2014 RGPD + hors-ligne */
@@ -2262,6 +2357,7 @@ function CoachLibraryPage({ ctx }) {
   const [name, setName] = useState("");
   const [muscle, setMuscle] = useState(MUSCLE_OPTIONS[0]);
   const [notes, setNotes] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   function openEditor(ex) {
@@ -2269,6 +2365,7 @@ function CoachLibraryPage({ ctx }) {
     setName((ex == null ? void 0 : ex.name) || "");
     setMuscle((ex == null ? void 0 : ex.muscle) || MUSCLE_OPTIONS[0]);
     setNotes((ex == null ? void 0 : ex.notes) || "");
+    setVideoUrl((ex == null ? void 0 : ex.video_url) || "");
     setError("");
   }
   async function handleSave() {
@@ -2277,10 +2374,10 @@ function CoachLibraryPage({ ctx }) {
     setError("");
     try {
       if (editing.id) {
-        const { error: error2 } = await supabase.from("exercises_library").update({ name: name.trim(), muscle, notes: notes.trim() || null }).eq("id", editing.id);
+        const { error: error2 } = await supabase.from("exercises_library").update({ name: name.trim(), muscle, notes: notes.trim() || null, video_url: videoUrl.trim() || null }).eq("id", editing.id);
         if (error2) throw error2;
       } else {
-        const { error: error2 } = await supabase.from("exercises_library").insert({ coach_id: coachId, name: name.trim(), muscle, notes: notes.trim() || null });
+        const { error: error2 } = await supabase.from("exercises_library").insert({ coach_id: coachId, name: name.trim(), muscle, notes: notes.trim() || null, video_url: videoUrl.trim() || null });
         if (error2) throw error2.code === "23505" ? new Error("Un exercice avec ce nom existe d\xE9j\xE0") : error2;
       }
       await reloadLibrary();
@@ -2302,11 +2399,26 @@ function CoachLibraryPage({ ctx }) {
   });
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "BIBLIOTH\xC8QUE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, library.length, " exercices")), /* @__PURE__ */ React.createElement("button", { onClick: () => openEditor(null), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ AJOUTER")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px" } }, /* @__PURE__ */ React.createElement("input", { type: "text", value: search, onChange: (e) => setSearch(e.target.value), placeholder: "Rechercher un exercice...", style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 14 } }, Object.keys(grouped).length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, "Aucun exercice trouv\xE9.") : Object.entries(grouped).map(([m, exs]) => {
     const mStyle = muscleColors[m] || { bg: T.surface2, text: T.textSub };
-    return /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "3px 10px", borderRadius: 20, fontWeight: 800 } }, m)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, exs.map((ex) => /* @__PURE__ */ React.createElement("div", { key: ex.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.name), ex.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, ex.notes)), /* @__PURE__ */ React.createElement("button", { onClick: () => openEditor(ex), style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 } }, "Modifier"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleDelete(ex), style: { background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 } }, "\xD7")))));
+    return /* @__PURE__ */ React.createElement("div", { key: m }, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "3px 10px", borderRadius: 20, fontWeight: 800 } }, m)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, exs.map((ex) => /* @__PURE__ */ React.createElement("div", { key: ex.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, ex.name), ex.video_url && /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 13, color: T.accent })), ex.notes && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, ex.notes)), /* @__PURE__ */ React.createElement("button", { onClick: () => openEditor(ex), style: { background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 } }, "Modifier"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleDelete(ex), style: { background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 } }, "\xD7")))));
   }))), editing && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setEditing(null), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 } }), /* @__PURE__ */ React.createElement("div", { style: { overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 18 } }, editing.id ? "MODIFIER L'EXERCICE" : "NOUVEL EXERCICE"), /* @__PURE__ */ React.createElement(Field, { label: "NOM DE L'EXERCICE" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: name, onChange: (e) => {
     setName(e.target.value);
     setError("");
-  }, placeholder: "Ex : D\xE9velopp\xE9 couch\xE9", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "MUSCLE" }, /* @__PURE__ */ React.createElement("select", { value: muscle, onChange: (e) => setMuscle(e.target.value), style: inputStyle }, MUSCLE_OPTIONS.map((m) => /* @__PURE__ */ React.createElement("option", { key: m, value: m }, m)))), /* @__PURE__ */ React.createElement(Field, { label: "NOTES (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: notes, onChange: (e) => setNotes(e.target.value), placeholder: "Ex : CUFF, sangle de tirage...", style: inputStyle })), /* @__PURE__ */ React.createElement("div", { style: { minHeight: 20, textAlign: "center" } }, error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600 } }, error))), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setEditing(null), style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving || !name.trim(), style: { flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: saving || !name.trim() ? "default" : "pointer" } }, saving ? "..." : "ENREGISTRER")))));
+  }, placeholder: "Ex : D\xE9velopp\xE9 couch\xE9", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "MUSCLE" }, /* @__PURE__ */ React.createElement("select", { value: muscle, onChange: (e) => setMuscle(e.target.value), style: inputStyle }, MUSCLE_OPTIONS.map((m) => /* @__PURE__ */ React.createElement("option", { key: m, value: m }, m)))), /* @__PURE__ */ React.createElement(Field, { label: "NOTES (optionnel)" }, /* @__PURE__ */ React.createElement("input", { type: "text", value: notes, onChange: (e) => setNotes(e.target.value), placeholder: "Ex : CUFF, sangle de tirage...", style: inputStyle })), /* @__PURE__ */ React.createElement(Field, { label: "VID\xC9O DE D\xC9MONSTRATION (optionnel)" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "url",
+      inputMode: "url",
+      value: videoUrl,
+      onChange: (e) => setVideoUrl(e.target.value),
+      placeholder: "Colle un lien YouTube ou Vimeo",
+      style: inputStyle
+    }
+  ), (() => {
+    if (!videoUrl.trim()) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 6, lineHeight: 1.5 } }, "Tes coach\xE9s la verront depuis leur s\xE9ance, sur l'exercice concern\xE9.");
+    const v = analyseVideo(videoUrl);
+    if (!v) return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.danger, marginTop: 6, fontWeight: 600 } }, "Ce lien n'est pas valide. Il doit commencer par https://");
+    return /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.accent, marginTop: 6, fontWeight: 600 } }, v.type === "embed" ? `Vid\xE9o ${v.source} reconnue, elle sera lue dans l'app.` : v.type === "fichier" ? "Fichier vid\xE9o reconnu, il sera lu dans l'app." : `Lien vers ${v.source} \u2014 il s'ouvrira dans le navigateur.`);
+  })()), /* @__PURE__ */ React.createElement("div", { style: { minHeight: 20, textAlign: "center" } }, error && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600 } }, error))), /* @__PURE__ */ React.createElement("div", { style: { flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setEditing(null), style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: handleSave, disabled: saving || !name.trim(), style: { flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: saving || !name.trim() ? "default" : "pointer" } }, saving ? "..." : "ENREGISTRER")))));
 }
 function ProgramBuilder({ ctx, coachee, onClose }) {
   const { supabase, library, coachees } = ctx;

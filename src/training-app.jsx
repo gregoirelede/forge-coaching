@@ -176,6 +176,56 @@ function estimateSessionMinutes(session) {
   return Math.max(15, Math.round(seconds / 60 / 5) * 5);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  VIDÉOS DE DÉMONSTRATION
+//
+//  Le coach colle le lien qu'il a sous la main — YouTube, Vimeo, ou un fichier
+//  vidéo. On en déduit comment l'afficher, sans jamais rien lui demander de plus.
+//
+//  Aucune vidéo n'est hébergée par Forge Coaching : le plan gratuit de Supabase
+//  offre 1 Go de stockage, une seule démonstration filmée le remplirait vite. Un
+//  lien vers une plateforme qui fait déjà ce métier coûte zéro et ne casse pas.
+// ═══════════════════════════════════════════════════════════════════════════════
+function analyseVideo(url) {
+  const u = (url || "").trim();
+  if (!u) return null;
+
+  // On refuse tout ce qui n'est pas http(s) : un javascript: dans un iframe
+  // s'exécuterait dans la page. Le coach est de confiance, pas le presse-papier.
+  let parsee;
+  try { parsee = new URL(u); } catch { return null; }
+  if (parsee.protocol !== "https:" && parsee.protocol !== "http:") return null;
+
+  const hote = parsee.hostname.replace(/^www\./, "");
+
+  // YouTube — trois formes de lien pour la même vidéo
+  if (hote === "youtube.com" || hote === "m.youtube.com") {
+    const id = parsee.searchParams.get("v")
+      || (parsee.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/) || [])[1];
+    if (id) return { type: "embed", src: `https://www.youtube-nocookie.com/embed/${id}`, source: "YouTube" };
+  }
+  if (hote === "youtu.be") {
+    const id = parsee.pathname.slice(1).split("/")[0];
+    if (id) return { type: "embed", src: `https://www.youtube-nocookie.com/embed/${id}`, source: "YouTube" };
+  }
+
+  // Vimeo
+  if (hote === "vimeo.com" || hote === "player.vimeo.com") {
+    const id = (parsee.pathname.match(/(\d{6,})/) || [])[1];
+    if (id) return { type: "embed", src: `https://player.vimeo.com/video/${id}`, source: "Vimeo" };
+  }
+
+  // Fichier vidéo servi directement
+  if (/\.(mp4|webm|mov|m4v)$/i.test(parsee.pathname)) {
+    return { type: "fichier", src: u, source: "Vidéo" };
+  }
+
+  // Lien valide mais non reconnu : on ne tente pas de l'encastrer — un site
+  // qui refuse l'iframe afficherait un cadre vide sans expliquer pourquoi.
+  // On propose de l'ouvrir dans le navigateur, ce qui marche toujours.
+  return { type: "lien", src: u, source: hote };
+}
+
 // Calcule la semaine de coaching en cours à partir de la date de création du compte.
 // Semaine 1 = la semaine de la création. Figée : ne dépend que du temps écoulé.
 function currentWeekFromDate(createdAtISO) {
@@ -966,6 +1016,7 @@ function WorkoutPage({ ctx }) {
   const { appData, viewedWeek, setViewedWeek, currentWeek, activeSessionId, setActiveSessionId, activeSessions, allCompletedSets, allSetLogs, toggleSet, updateLog, timers, cancel, workoutSubView, setWorkoutSubView, openExerciseSheet } = ctx;
   const { week, sessions } = appData;
   const [expandedEx, setExpandedEx] = useState(null);
+  const [videoOuverte, setVideoOuverte] = useState(null);   // { titre, url }
   const activeSession = activeSessions.find(s => s.id === activeSessionId) || activeSessions[0];
 
   const isDone   = (ei, si) => !!allCompletedSets[tKey(viewedWeek, activeSession.id, ei, si)];
@@ -1114,7 +1165,12 @@ function WorkoutPage({ ctx }) {
               </div>
               {isOpen && (
                 <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${T.border}` }}>
-                  <button onClick={() => openExerciseSheet(ex)} className="pressable" style={{ width: "100%", marginTop: 10, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  {ctx.videosExercices?.[ex.library_exercise_id] && (
+                    <button onClick={() => setVideoOuverte({ titre: ex.exercice, url: ctx.videosExercices[ex.library_exercise_id] })} className="pressable" style={{ width: "100%", marginTop: 10, background: T.accentLight, border: `1px solid ${T.accentA38}`, color: T.accentDark, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Icon name="play" size={13} color={T.accentDark}/> Voir la démonstration
+                    </button>
+                  )}
+                  <button onClick={() => openExerciseSheet(ex)} className="pressable" style={{ width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="trending" size={13}/> Voir l'historique de cet exercice
                   </button>
                   {ex.technique && (() => {
@@ -1175,7 +1231,7 @@ function WorkoutPage({ ctx }) {
         })}
       </div>
 
-      {activeSession.abdosCardio.length > 0 && (
+      {activeSession.abdosCardio?.length > 0 && (
         <div style={{ padding: "14px 18px 0" }}>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` }}>
             <div style={{ fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 }}>ABDOS / CARDIO</div>
@@ -1188,7 +1244,52 @@ function WorkoutPage({ ctx }) {
           </div>
         </div>
       )}
+
+      {videoOuverte && <VideoSheet titre={videoOuverte.titre} url={videoOuverte.url} onClose={() => setVideoOuverte(null)}/>}
     </div>
+  );
+}
+
+// ── Lecteur de démonstration ────────────────────────────────────────────────
+//  Une feuille qui remonte du bas, comme les autres du projet. La vidéo est
+//  chargée à l'ouverture seulement : tant que le coaché n'a rien demandé, rien
+//  ne part sur le réseau — il est peut-être en salle, en 4G, entre deux séries.
+function VideoSheet({ titre, url, onClose }) {
+  const v = analyseVideo(url);
+  return (
+    <>
+      <div className="sheet-backdrop" onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
+      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+        <div style={{ padding: "0 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 19, color: T.text, letterSpacing: 1.5, lineHeight: 1.1, minWidth: 0 }}>{titre}</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0, flexShrink: 0 }}>Fermer</button>
+        </div>
+        <div style={{ padding: "0 18px calc(18px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
+          {!v ? (
+            <div style={{ padding: "26px 4px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 }}>
+              Cette vidéo n'est pas lisible. Signale-le à ton coach.
+            </div>
+          ) : v.type === "embed" ? (
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 12, overflow: "hidden", background: "#000" }}>
+              <iframe src={v.src} title={titre} allowFullScreen
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                referrerPolicy="strict-origin-when-cross-origin"
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}/>
+            </div>
+          ) : v.type === "fichier" ? (
+            <video src={v.src} controls playsInline preload="metadata"
+              style={{ width: "100%", borderRadius: 12, background: "#000", display: "block" }}/>
+          ) : (
+            <a href={v.src} target="_blank" rel="noopener noreferrer" className="pressable"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", background: T.accent, color: T.accentText, borderRadius: 12, fontSize: 12.5, fontWeight: 800, letterSpacing: .5, textDecoration: "none" }}>
+              <Icon name="play" size={15} color={T.accentText}/> Ouvrir sur {v.source}
+            </a>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1655,6 +1756,36 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   // Notifications push — abonnement de CET appareil
   const push = usePushNotifications(supabase, userId, isDemo);
 
+  // ── Vidéos de démonstration ────────────────────────────────────────────────
+  //  Le programme ne stocke que library_exercise_id : on va chercher les liens
+  //  dans la bibliothèque du coach. Ainsi, corriger une vidéo une fois côté
+  //  coach la corrige pour tout le monde, sans retoucher aucun programme.
+  //
+  //  CE CHARGEMENT NE DOIT JAMAIS EMPÊCHER L'APP DE DÉMARRER. Il est donc à
+  //  part, après coup, et son échec est silencieux : tant que la migration
+  //  sql/2026-08-08-videos-exercices.sql n'est pas jouée, la RLS renvoie zéro
+  //  ligne — il n'y a simplement pas de vidéos, et la séance s'affiche comme
+  //  avant.
+  const [videosExercices, setVideosExercices] = useState({});
+  useEffect(() => {
+    if (isDemo || !supabase || !appData?.client) return;
+    let annule = false;
+    (async () => {
+      try {
+        const { data: profil } = await supabase
+          .from("profiles").select("coach_id").eq("id", userId).single();
+        if (!profil?.coach_id) return;
+        const { data } = await supabase
+          .from("exercises_library").select("*").eq("coach_id", profil.coach_id);
+        if (annule || !data) return;
+        const map = {};
+        data.forEach(ex => { if (ex.video_url) map[ex.id] = ex.video_url; });
+        setVideosExercices(map);
+      } catch { /* pas de vidéos, l'app fonctionne pareil */ }
+    })();
+    return () => { annule = true; };
+  }, [supabase, userId, isDemo, appData?.client]);
+
   // ── Chargement initial : profil + programme + logs ────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -1896,7 +2027,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     settings, updateSetting,
     theme, setTheme,
     push,
-    onLogout, isDemo,
+    onLogout, isDemo, videosExercices,
   };
 
   return (
@@ -2607,6 +2738,7 @@ function CoachLibraryPage({ ctx }) {
   const [name, setName] = useState("");
   const [muscle, setMuscle] = useState(MUSCLE_OPTIONS[0]);
   const [notes, setNotes] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -2615,6 +2747,7 @@ function CoachLibraryPage({ ctx }) {
     setName(ex?.name || "");
     setMuscle(ex?.muscle || MUSCLE_OPTIONS[0]);
     setNotes(ex?.notes || "");
+    setVideoUrl(ex?.video_url || "");
     setError("");
   }
 
@@ -2624,12 +2757,12 @@ function CoachLibraryPage({ ctx }) {
     try {
       if (editing.id) {
         const { error } = await supabase.from("exercises_library")
-          .update({ name: name.trim(), muscle, notes: notes.trim() || null })
+          .update({ name: name.trim(), muscle, notes: notes.trim() || null, video_url: videoUrl.trim() || null })
           .eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("exercises_library")
-          .insert({ coach_id: coachId, name: name.trim(), muscle, notes: notes.trim() || null });
+          .insert({ coach_id: coachId, name: name.trim(), muscle, notes: notes.trim() || null, video_url: videoUrl.trim() || null });
         if (error) throw error.code === "23505" ? new Error("Un exercice avec ce nom existe déjà") : error;
       }
       await reloadLibrary();
@@ -2684,7 +2817,10 @@ function CoachLibraryPage({ ctx }) {
                 {exs.map(ex => (
                   <div key={ex.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ex.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ex.name}</div>
+                        {ex.video_url && <Icon name="play" size={13} color={T.accent}/>}
+                      </div>
                       {ex.notes && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{ex.notes}</div>}
                     </div>
                     <button onClick={() => openEditor(ex)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 }}>Modifier</button>
@@ -2715,6 +2851,30 @@ function CoachLibraryPage({ ctx }) {
               </Field>
               <Field label="NOTES (optionnel)">
                 <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ex : CUFF, sangle de tirage..." style={inputStyle}/>
+              </Field>
+              <Field label="VIDÉO DE DÉMONSTRATION (optionnel)">
+                <input type="url" inputMode="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
+                  placeholder="Colle un lien YouTube ou Vimeo" style={inputStyle}/>
+                {(() => {
+                  if (!videoUrl.trim()) return (
+                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 6, lineHeight: 1.5 }}>
+                      Tes coachés la verront depuis leur séance, sur l'exercice concerné.
+                    </div>
+                  );
+                  const v = analyseVideo(videoUrl);
+                  if (!v) return (
+                    <div style={{ fontSize: 10.5, color: T.danger, marginTop: 6, fontWeight: 600 }}>
+                      Ce lien n'est pas valide. Il doit commencer par https://
+                    </div>
+                  );
+                  return (
+                    <div style={{ fontSize: 10.5, color: T.accent, marginTop: 6, fontWeight: 600 }}>
+                      {v.type === "embed"   ? `Vidéo ${v.source} reconnue, elle sera lue dans l'app.`
+                       : v.type === "fichier" ? "Fichier vidéo reconnu, il sera lu dans l'app."
+                       : `Lien vers ${v.source} — il s'ouvrira dans le navigateur.`}
+                    </div>
+                  );
+                })()}
               </Field>
               <div style={{ minHeight: 20, textAlign: "center" }}>
                 {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600 }}>{error}</div>}
