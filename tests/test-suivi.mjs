@@ -135,7 +135,7 @@ const bloc = (label) => p.evaluate((l) => {
   return t ? t.parentElement.innerText : null;
 }, label);
 ok(/1\s*\nDÉCROCHAGE/.test(await bloc("DÉCROCHAGE") || ""), "1 en décrochage (Chloé, 15 jours)");
-ok(/1\s*\nÀ RELANCER/.test(await bloc("À RELANCER") || ""), "1 à relancer (Bruno, 7 jours)");
+ok(/1\s*\nÀ RELANCER/.test(await bloc("À RELANCER") || ""), "1 à relancer (Bruno, 8 jours)");
 ok(/1\s*\nÀ JOUR/.test(await bloc("À JOUR") || ""), "1 à jour (Alice, hier)");
 ok(/2 coachés à relancer/.test(page), "le sous-titre résume l'urgence du jour");
 
