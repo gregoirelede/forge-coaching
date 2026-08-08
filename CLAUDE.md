@@ -159,6 +159,7 @@ forge-coaching/
 │   ├── 2026-08-08-bilan-hebdomadaire.sql
 │   ├── 2026-08-08-notes-de-seance.sql
 │   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
+│   ├── VERIFIER-SPRINT-3.sql           ← contrôle en lecture seule, 8 lignes de verdict
 │   ├── NOTE-optimisation-rls.md
 │   └── README.md
 ├── edge-functions/

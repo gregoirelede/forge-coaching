@@ -54,6 +54,7 @@ fichier est idempotent, le relancer ne fait rien de plus.
 | `2026-08-08-bilan-hebdomadaire.sql` | Table `weekly_reviews` |
 | `2026-08-08-notes-de-seance.sql` | Table `session_notes` |
 | `SPRINT-3-A-JOUER.sql` | Les trois réunies, pour n'avoir qu'un seul copier-coller |
+| `VERIFIER-SPRINT-3.sql` | **Ne modifie rien.** Dit en 8 lignes si tout est en place, et affiche l'état RLS des 14 tables |
 
 **Le code déployé n'attend pas ces migrations pour fonctionner.** Tant qu'elles
 ne sont pas jouées, les trois fonctionnalités restent simplement invisibles côté
