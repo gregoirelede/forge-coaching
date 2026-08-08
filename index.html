@@ -2130,6 +2130,124 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
     loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " CR\xC9ATION...") : "CR\xC9ER LE COACH\xC9"
   )))));
 }
+const SUIVI_SEMAINES = 8;
+const SUIVI_FENETRE = 4;
+async function loadAssiduite(supabase, coachees) {
+  var _a, _b;
+  const ids = coachees.map((c) => c.id);
+  if (ids.length === 0) return {};
+  const depuis = /* @__PURE__ */ new Date();
+  depuis.setDate(depuis.getDate() - SUIVI_SEMAINES * 7);
+  const [{ data: series }, { data: programmes }] = await Promise.all([
+    supabase.from("sets_logged").select("coachee_id, session_config_id, logged_at, week:week_id(week_number)").in("coachee_id", ids).eq("completed", true).gte("logged_at", depuis.toISOString()),
+    supabase.from("programs").select("coachee_id, week_structure").in("coachee_id", ids).eq("is_active", true)
+  ]);
+  const prevues = {};
+  (programmes || []).forEach((p) => {
+    prevues[p.coachee_id] = (p.week_structure || []).filter((j) => j.sessionId != null).length;
+  });
+  const faites = {};
+  const derniere = {};
+  (series || []).forEach((s) => {
+    var _a2, _b2, _c;
+    const num = (_a2 = s.week) == null ? void 0 : _a2.week_number;
+    if (!num) return;
+    ((_c = faites[_b2 = s.coachee_id] || (faites[_b2] = {}))[num] || (_c[num] = /* @__PURE__ */ new Set())).add(s.session_config_id);
+    const d = s.logged_at;
+    if (d && (!derniere[s.coachee_id] || d > derniere[s.coachee_id])) derniere[s.coachee_id] = d;
+  });
+  const resultat = {};
+  for (const c of coachees) {
+    const semaineEnCours = currentWeekFromDate(c.created_at);
+    const parSemaine = faites[c.id] || {};
+    const attenduParSemaine = prevues[c.id] || 0;
+    let realisees = 0, attendues = 0;
+    for (let n = Math.max(1, semaineEnCours - SUIVI_FENETRE); n < semaineEnCours; n++) {
+      realisees += ((_a = parSemaine[n]) == null ? void 0 : _a.size) || 0;
+      attendues += attenduParSemaine;
+    }
+    const dernier = derniere[c.id] ? new Date(derniere[c.id]) : null;
+    const joursDepuis = dernier ? Math.floor((Date.now() - dernier.getTime()) / 864e5) : null;
+    resultat[c.id] = {
+      semaineEnCours,
+      faitesCetteSemaine: ((_b = parSemaine[semaineEnCours]) == null ? void 0 : _b.size) || 0,
+      prevuesParSemaine: attenduParSemaine,
+      taux: attendues > 0 ? Math.round(realisees / attendues * 100) : null,
+      joursDepuis,
+      jamaisEntraine: dernier === null,
+      statut: statutAssiduite(joursDepuis, attenduParSemaine)
+    };
+  }
+  return resultat;
+}
+function statutAssiduite(joursDepuis, prevuesParSemaine) {
+  if (prevuesParSemaine === 0) return "sans_programme";
+  if (joursDepuis === null) return "jamais";
+  if (joursDepuis <= 4) return "a_jour";
+  if (joursDepuis <= 9) return "a_relancer";
+  return "decrochage";
+}
+const STATUTS = {
+  a_jour: { label: "\xC0 jour", bg: "var(--cmp-up-bg)", tx: "var(--cmp-up-text)", ordre: 3 },
+  a_relancer: { label: "\xC0 relancer", bg: "var(--warn-bg)", tx: "var(--warn-text)", ordre: 1 },
+  decrochage: { label: "D\xE9crochage", bg: "var(--cmp-down-bg)", tx: "var(--cmp-down-text)", ordre: 0 },
+  jamais: { label: "Jamais d\xE9marr\xE9", bg: "var(--surface2)", tx: "var(--text-sub)", ordre: 2 },
+  sans_programme: { label: "Sans programme", bg: "var(--surface2)", tx: "var(--text-muted)", ordre: 4 }
+};
+function CoachFollowUpPage({ ctx }) {
+  const { supabase, coachees, openCoachee } = ctx;
+  const [assiduite, setAssiduite] = useState(null);
+  const [erreur, setErreur] = useState("");
+  const actifs = useMemo(() => coachees.filter((c) => c.is_active !== false), [coachees]);
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      try {
+        const a = await loadAssiduite(supabase, actifs);
+        if (!annule) setAssiduite(a);
+      } catch (e) {
+        if (!annule) setErreur((e == null ? void 0 : e.message) || "Chargement impossible");
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [supabase, actifs]);
+  if (erreur) return /* @__PURE__ */ React.createElement("div", { style: { padding: "40px 24px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 } }, erreur);
+  if (!assiduite) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
+  const tri\u00E9s = [...actifs].sort((a, b) => {
+    var _a, _b, _c, _d;
+    const sa = STATUTS[(_a = assiduite[a.id]) == null ? void 0 : _a.statut] || STATUTS.sans_programme;
+    const sb = STATUTS[(_b = assiduite[b.id]) == null ? void 0 : _b.statut] || STATUTS.sans_programme;
+    if (sa.ordre !== sb.ordre) return sa.ordre - sb.ordre;
+    return b.id === a.id ? 0 : (((_c = assiduite[b.id]) == null ? void 0 : _c.joursDepuis) || 0) - (((_d = assiduite[a.id]) == null ? void 0 : _d.joursDepuis) || 0);
+  });
+  const compte = (s) => actifs.filter((c) => {
+    var _a;
+    return ((_a = assiduite[c.id]) == null ? void 0 : _a.statut) === s;
+  }).length;
+  const aRelancer = compte("a_relancer") + compte("decrochage");
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "SUIVI"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, aRelancer === 0 ? "Tout le monde est \xE0 jour." : `${aRelancer} coach\xE9${aRelancer > 1 ? "s" : ""} \xE0 relancer`)), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 8 } }, [["decrochage", "D\xC9CROCHAGE"], ["a_relancer", "\xC0 RELANCER"], ["a_jour", "\xC0 JOUR"]].map(([id, label]) => {
+    const s = STATUTS[id];
+    const n = compte(id);
+    return /* @__PURE__ */ React.createElement("div", { key: id, style: { flex: 1, background: n > 0 ? s.bg : T.surface, border: `1px solid ${n > 0 ? "transparent" : T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 24, color: n > 0 ? s.tx : T.textMuted, lineHeight: 1 } }, n), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: n > 0 ? s.tx : T.textMuted, letterSpacing: 0.8, fontWeight: 800, marginTop: 4 } }, label));
+  })), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, tri\u00E9s.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, "Aucun coach\xE9 actif \xE0 suivre."), tri\u00E9s.map((c, i) => {
+    const a = assiduite[c.id] || {};
+    const s = STATUTS[a.statut] || STATUTS.sans_programme;
+    const pct = a.prevuesParSemaine > 0 ? Math.min(100, Math.round(a.faitesCetteSemaine / a.prevuesParSemaine * 100)) : 0;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: c.id,
+        onClick: () => openCoachee(c),
+        className: "quick-card",
+        style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "13px 15px", cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }
+      },
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 3 } }, a.jamaisEntraine ? "Aucune s\xE9ance enregistr\xE9e" : a.joursDepuis === 0 ? "Derni\xE8re s\xE9ance aujourd'hui" : a.joursDepuis === 1 ? "Derni\xE8re s\xE9ance hier" : `Derni\xE8re s\xE9ance il y a ${a.joursDepuis} jours`)), /* @__PURE__ */ React.createElement("span", { style: { background: s.bg, color: s.tx, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800, letterSpacing: 0.3, flexShrink: 0 } }, s.label)),
+      a.prevuesParSemaine > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "SEMAINE ", a.semaineEnCours, " \xB7 ", a.faitesCetteSemaine, "/", a.prevuesParSemaine, " S\xC9ANCES"), a.taux !== null && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, a.taux, "% SUR ", SUIVI_FENETRE, " SEM.")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: T.surface2, borderRadius: 3, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { width: `${pct}%`, height: "100%", background: pct >= 100 ? T.accent : s.tx, borderRadius: 3, transition: "width .4s ease" } })))
+    );
+  })));
+}
 function CoachListPage({ ctx }) {
   const { coachees, openCoachee, setShowNewModal } = ctx;
   const [filter, setFilter] = useState("actifs");
@@ -2604,6 +2722,7 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
 function CoachTabBar({ activePage, onNavigate }) {
   const tabs = [
     { id: "coachees", label: "Coach\xE9s", icon: "profile" },
+    { id: "suivi", label: "Suivi", icon: "trending" },
     { id: "library", label: "Exercices", icon: "workout" },
     { id: "recipes", label: "Recettes", icon: "clock" }
   ];
@@ -2672,7 +2791,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
       `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 } }, "FORGE \xB7 COACH")), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, title: "D\xE9connexion", style: { background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "logout", size: 18, color: T.textMuted }))), selectedCoachee ? /* @__PURE__ */ React.createElement(CoacheeDetailPage, { ctx, coachee: selectedCoachee, onBack: () => {
     setSelectedCoachee(null);
     reloadCoachees();
-  }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), page === "recipes" && /* @__PURE__ */ React.createElement(CoachRecipesPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
+  }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "suivi" && /* @__PURE__ */ React.createElement(CoachFollowUpPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), page === "recipes" && /* @__PURE__ */ React.createElement(CoachRecipesPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
 }
 const ACTIVITY_FACTORS = [
   { value: 1.2, label: "S\xE9dentaire (bureau, peu de pas)" },

@@ -2330,6 +2330,222 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SUIVI D'ASSIDUITÉ — qui s'entraîne, qui décroche
+//
+//  Aucune table nouvelle : tout se déduit de sets_logged, qui existe depuis le
+//  début. Une séance est comptée comme FAITE dès qu'au moins une série y a été
+//  validée — pas besoin qu'elle soit terminée. Un coaché qui commence puis
+//  s'arrête s'est quand même entraîné ce jour-là.
+//
+//  POURQUOI ON BORNE À 8 SEMAINES : la requête ramène les séries de tous les
+//  coachés d'un coup. Sans borne, elle grossirait indéfiniment avec l'ancienneté
+//  du coaching — 673 séries aujourd'hui, des dizaines de milliers dans deux ans,
+//  pour un écran qui ne parle que du comportement récent.
+// ═══════════════════════════════════════════════════════════════════════════════
+const SUIVI_SEMAINES = 8;          // profondeur d'historique chargée
+const SUIVI_FENETRE  = 4;          // sur combien de semaines on calcule le taux
+
+async function loadAssiduite(supabase, coachees) {
+  const ids = coachees.map(c => c.id);
+  if (ids.length === 0) return {};
+
+  const depuis = new Date();
+  depuis.setDate(depuis.getDate() - SUIVI_SEMAINES * 7);
+
+  const [{ data: series }, { data: programmes }] = await Promise.all([
+    supabase.from("sets_logged")
+      .select("coachee_id, session_config_id, logged_at, week:week_id(week_number)")
+      .in("coachee_id", ids).eq("completed", true)
+      .gte("logged_at", depuis.toISOString()),
+    supabase.from("programs")
+      .select("coachee_id, week_structure")
+      .in("coachee_id", ids).eq("is_active", true),
+  ]);
+
+  // Nombre de séances prévues par semaine, coaché par coaché
+  const prevues = {};
+  (programmes || []).forEach(p => {
+    prevues[p.coachee_id] = (p.week_structure || []).filter(j => j.sessionId != null).length;
+  });
+
+  // Séances distinctes réalisées, par coaché et par semaine
+  const faites = {};       // { coacheeId: { numSemaine: Set(sessionId) } }
+  const derniere = {};     // { coacheeId: date la plus récente }
+  (series || []).forEach(s => {
+    const num = s.week?.week_number;
+    if (!num) return;
+    ((faites[s.coachee_id] ||= {})[num] ||= new Set()).add(s.session_config_id);
+    const d = s.logged_at;
+    if (d && (!derniere[s.coachee_id] || d > derniere[s.coachee_id])) derniere[s.coachee_id] = d;
+  });
+
+  const resultat = {};
+  for (const c of coachees) {
+    const semaineEnCours = currentWeekFromDate(c.created_at);
+    const parSemaine = faites[c.id] || {};
+    const attenduParSemaine = prevues[c.id] || 0;
+
+    // Taux sur les semaines ÉCOULÉES uniquement : compter la semaine en cours
+    // pénaliserait un coaché un lundi matin, alors qu'il n'a encore rien raté.
+    let realisees = 0, attendues = 0;
+    for (let n = Math.max(1, semaineEnCours - SUIVI_FENETRE); n < semaineEnCours; n++) {
+      realisees += (parSemaine[n]?.size || 0);
+      attendues += attenduParSemaine;
+    }
+
+    const dernier = derniere[c.id] ? new Date(derniere[c.id]) : null;
+    const joursDepuis = dernier
+      ? Math.floor((Date.now() - dernier.getTime()) / 86400000)
+      : null;
+
+    resultat[c.id] = {
+      semaineEnCours,
+      faitesCetteSemaine: parSemaine[semaineEnCours]?.size || 0,
+      prevuesParSemaine: attenduParSemaine,
+      taux: attendues > 0 ? Math.round((realisees / attendues) * 100) : null,
+      joursDepuis,
+      jamaisEntraine: dernier === null,
+      statut: statutAssiduite(joursDepuis, attenduParSemaine),
+    };
+  }
+  return resultat;
+}
+
+// Trois états, choisis pour être actionnables : un coach veut savoir qui
+// relancer aujourd'hui, pas contempler un pourcentage.
+function statutAssiduite(joursDepuis, prevuesParSemaine) {
+  if (prevuesParSemaine === 0) return "sans_programme";
+  if (joursDepuis === null) return "jamais";
+  if (joursDepuis <= 4) return "a_jour";
+  if (joursDepuis <= 9) return "a_relancer";
+  return "decrochage";
+}
+
+const STATUTS = {
+  a_jour:         { label: "À jour",        bg: "var(--cmp-up-bg)",   tx: "var(--cmp-up-text)",   ordre: 3 },
+  a_relancer:     { label: "À relancer",    bg: "var(--warn-bg)",     tx: "var(--warn-text)",     ordre: 1 },
+  decrochage:     { label: "Décrochage",    bg: "var(--cmp-down-bg)", tx: "var(--cmp-down-text)", ordre: 0 },
+  jamais:         { label: "Jamais démarré",bg: "var(--surface2)",    tx: "var(--text-sub)",      ordre: 2 },
+  sans_programme: { label: "Sans programme",bg: "var(--surface2)",    tx: "var(--text-muted)",    ordre: 4 },
+};
+
+// ── Page coach : SUIVI ──
+function CoachFollowUpPage({ ctx }) {
+  const { supabase, coachees, openCoachee } = ctx;
+  const [assiduite, setAssiduite] = useState(null);
+  const [erreur, setErreur] = useState("");
+
+  const actifs = useMemo(() => coachees.filter(c => c.is_active !== false), [coachees]);
+
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      try {
+        const a = await loadAssiduite(supabase, actifs);
+        if (!annule) setAssiduite(a);
+      } catch (e) {
+        if (!annule) setErreur(e?.message || "Chargement impossible");
+      }
+    })();
+    return () => { annule = true; };
+  }, [supabase, actifs]);
+
+  if (erreur) return (
+    <div style={{ padding: "40px 24px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
+      {erreur}
+    </div>
+  );
+  if (!assiduite) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+
+  const triés = [...actifs].sort((a, b) => {
+    const sa = STATUTS[assiduite[a.id]?.statut] || STATUTS.sans_programme;
+    const sb = STATUTS[assiduite[b.id]?.statut] || STATUTS.sans_programme;
+    if (sa.ordre !== sb.ordre) return sa.ordre - sb.ordre;
+    return (b.id === a.id ? 0 : (assiduite[b.id]?.joursDepuis || 0) - (assiduite[a.id]?.joursDepuis || 0));
+  });
+
+  const compte = (s) => actifs.filter(c => assiduite[c.id]?.statut === s).length;
+  const aRelancer = compte("a_relancer") + compte("decrochage");
+
+  return (
+    <div style={{ paddingBottom: 100 }} className="fade-in">
+      <div style={{ padding: "22px 18px 14px" }}>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>SUIVI</div>
+        <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>
+          {aRelancer === 0
+            ? "Tout le monde est à jour."
+            : `${aRelancer} coaché${aRelancer > 1 ? "s" : ""} à relancer`}
+        </div>
+      </div>
+
+      <div style={{ padding: "0 18px 14px", display: "flex", gap: 8 }}>
+        {[["decrochage", "DÉCROCHAGE"], ["a_relancer", "À RELANCER"], ["a_jour", "À JOUR"]].map(([id, label]) => {
+          const s = STATUTS[id];
+          const n = compte(id);
+          return (
+            <div key={id} style={{ flex: 1, background: n > 0 ? s.bg : T.surface, border: `1px solid ${n > 0 ? "transparent" : T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 24, color: n > 0 ? s.tx : T.textMuted, lineHeight: 1 }}>{n}</div>
+              <div style={{ fontSize: 8, color: n > 0 ? s.tx : T.textMuted, letterSpacing: .8, fontWeight: 800, marginTop: 4 }}>{label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {triés.length === 0 && (
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+            Aucun coaché actif à suivre.
+          </div>
+        )}
+        {triés.map((c, i) => {
+          const a = assiduite[c.id] || {};
+          const s = STATUTS[a.statut] || STATUTS.sans_programme;
+          const pct = a.prevuesParSemaine > 0
+            ? Math.min(100, Math.round((a.faitesCetteSemaine / a.prevuesParSemaine) * 100)) : 0;
+          return (
+            <div key={c.id} onClick={() => openCoachee(c)} className="quick-card"
+              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "13px 15px", cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{c.name}</div>
+                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 3 }}>
+                    {a.jamaisEntraine ? "Aucune séance enregistrée"
+                     : a.joursDepuis === 0 ? "Dernière séance aujourd'hui"
+                     : a.joursDepuis === 1 ? "Dernière séance hier"
+                     : `Dernière séance il y a ${a.joursDepuis} jours`}
+                  </div>
+                </div>
+                <span style={{ background: s.bg, color: s.tx, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800, letterSpacing: .3, flexShrink: 0 }}>
+                  {s.label}
+                </span>
+              </div>
+
+              {a.prevuesParSemaine > 0 && (
+                <div style={{ marginTop: 11 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: .5 }}>
+                      SEMAINE {a.semaineEnCours} · {a.faitesCetteSemaine}/{a.prevuesParSemaine} SÉANCES
+                    </span>
+                    {a.taux !== null && (
+                      <span style={{ fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: .5 }}>
+                        {a.taux}% SUR {SUIVI_FENETRE} SEM.
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ height: 6, background: T.surface2, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? T.accent : s.tx, borderRadius: 3, transition: "width .4s ease" }}/>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Page : liste des coachés ──
 function CoachListPage({ ctx }) {
   const { coachees, openCoachee, setShowNewModal } = ctx;
@@ -3246,6 +3462,7 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
 function CoachTabBar({ activePage, onNavigate }) {
   const tabs = [
     { id: "coachees", label: "Coachés", icon: "profile" },
+    { id: "suivi",    label: "Suivi",     icon: "trending" },
     { id: "library",  label: "Exercices", icon: "workout" },
     { id: "recipes",  label: "Recettes",  icon: "clock" },
   ];
@@ -3332,6 +3549,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
       ) : (
         <>
           {page === "coachees" && <CoachListPage ctx={ctx}/>}
+          {page === "suivi"    && <CoachFollowUpPage ctx={ctx}/>}
           {page === "library"  && <CoachLibraryPage ctx={ctx}/>}
           {page === "recipes"  && <CoachRecipesPage ctx={ctx}/>}
           <CoachTabBar activePage={page} onNavigate={setPage}/>
