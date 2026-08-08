@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.2 · Build v7i (484 Ko / 5 380 lignes)
+### Fichier de référence pour Claude Code · Version 1.3 · Build v7m (522 Ko / 6 200 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -933,9 +933,10 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **8 août 2026** — v7i, 495 919 octets, 5 380 lignes |
-| Contenu de ce build | Envoi d'une notification depuis l'espace coach ; la vraie raison d'un refus d'Edge Function remonte enfin à l'écran |
-| Build précédent | 8 août 2026 — v7h, 491 361 octets. Notifications push : chiffrement maison, 2 Edge Functions, réglage dans Profil |
+| Dernier build déployé | **8 août 2026** — v7m, 534 919 octets, 6 200 lignes |
+| Contenu de ce build | Notes de séance. **Sprint 3 terminé** : assiduité (v7j), vidéos (v7k), bilan hebdomadaire (v7l), notes de séance (v7m) |
+| Build précédent | 8 août 2026 — v7l, 528 369 octets. Bilan hebdomadaire + correctif des feuilles rendues dans un portail |
+| **En attente** | Les 3 migrations du Sprint 3 ne sont **pas** appliquées en base : le connecteur Supabase a refusé lecture comme écriture toute la session. Greg doit jouer `sql/SPRINT-3-A-JOUER.sql`. Le code déployé fonctionne sans — les 3 fonctionnalités restent simplement invisibles jusque-là |
 | Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
