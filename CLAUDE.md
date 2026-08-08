@@ -26,11 +26,16 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 1. Lire les parties concernées de training-app.jsx
 2. Modifier training-app.jsx (source unique de vérité)
 3. Vérifier la syntaxe : esbuild en dry-run
-4. Builder index.html
-5. Vérifier (greps de contrôle, Partie E) + annoncer la taille
-6. Me donner : ordre des opérations + parcours de test
-7. Commit + push
+4. Builder :            npm run build
+5. Contrôles auto (Partie E) — le build les fait — + annoncer la taille
+6. Jouer la série de tests : npm test    (voir tests/README.md)
+7. Me donner : ordre des opérations + parcours de test restant sur téléphone
+8. Commit + push + fusion dans main + vérification du déploiement
 ```
+
+> **`npm test` n'est pas facultatif.** L'app est en production. La série ouvre
+> l'app dans un vrai navigateur et rejoue les parcours : connexion, PWA, thèmes,
+> notifications. Elle a déjà rattrapé des régressions silencieuses.
 
 ---
 
@@ -74,27 +79,28 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | v7a | **Calendrier de périodisation** : frise, 4 modèles, onglet Parcours | ~435 Ko | 4 575 |
 | **v7b** | Fix "semaine en cours" · Réglages chronos/sonnerie · Édition des coachés | 456 617 o | 4 762 |
 | **v7c** | Placeholder de l'écran de connexion aligné sur la convention de codes (Partie K.1) | 456 615 o | 4 762 |
-| **v7d** | Sprint 1 : codes d'accès + 2 chiffres · icône iOS · polices auto-hébergées · ErrorBoundary · écran d'erreur réseau · confirmations maison · file hors-ligne au retour du réseau · durée de séance calculée | 468 587 o | 4 884 |
+| **v7d** | Sprint 1 : codes d'accès + 2 chiffres · icône iOS · polices auto-hébergées · ErrorBoundary · écran d'erreur réseau · confirmations maison · file hors-ligne au retour du réseau · durée de séance calculée | 468 593 o | 4 884 |
 | **v7e** | Code d'accès garanti à 8 caractères minimum (`MIN_CODE_LENGTH`) | 468 723 o | 4 894 |
-| **v7f** | Sprint 2 : PWA complète — manifest, service worker, bannière de mise à jour, démarrage hors-ligne | 472 495 o | 5 013 |
+| **v7f** | Sprint 2 : PWA complète — manifest, service worker, bannière de mise à jour, démarrage hors-ligne | 472 501 o | 5 013 |
 | **v7g** | Sprint 2 : mode sombre — 64 variables CSS, réglage Auto/Clair/Sombre dans Profil | 484 534 o | 5 114 |
+| **v7h** | Sprint 2 : notifications push — chiffrement maison RFC 8291/8292, 2 Edge Functions, réglage Notifications dans Profil | 491 361 o | 5 283 |
 
 ## B.4 — État d'installation
 
 **Déployé et fonctionnel :**
-- [x] `index.html` v7b en ligne sur GitHub Pages
-- [x] `supabase-setup.sql` (schéma initial)
-- [x] `supabase-espace-coach.sql`
-- [x] `supabase-diete.sql`
-- [x] `supabase-periodisation.sql`
-- [x] Edge Function `create-coachee` déployée
-- [x] Edge Function `update-coachee` déployée
+- [x] `index.html` **v7h** en ligne sur GitHub Pages
+- [x] Schéma complet en base — 12 tables, RLS active sur les 12 (voir `sql/schema-snapshot.sql`)
+- [x] Edge Functions `create-coachee` et `update-coachee` déployées
+- [x] Edge Functions `push-config` et `send-push` déployées *(v7h)*
 - [x] PWA installable iOS (Safari → Partager → Sur l'écran d'accueil) et Android (Chrome → bannière)
+- [x] Service worker : démarrage hors-ligne + bannière de mise à jour *(v7f)*
+- [x] Mode sombre Auto / Clair / Sombre *(v7g)*
+- [x] Notifications push, réglage dans Profil *(v7h)*
 
 **Optionnel, non fait :**
 - [ ] Clé API Anthropic (`sk-ant-...`) pour la génération de recettes par IA — le bouton "IA" de la page Recettes reste inactif sans elle. Compte sur `console.anthropic.com`, 5 $ de crédit suffisent pour des centaines de générations.
 
-> Si un doute subsiste sur l'état réel de la base, la vérité est dans Supabase → Table Editor. Les 10 tables de la Partie G doivent toutes exister.
+> Si un doute subsiste sur l'état réel de la base, la vérité est dans Supabase → Table Editor. Les **12** tables de la Partie G doivent toutes exister (10 d'origine + `push_subscriptions` et `push_config`, ajoutées en v7h).
 
 ---
 
@@ -106,7 +112,8 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 - **Supabase JS** chargé depuis le **CDN jsDelivr** via une balise `<script>` classique, exposé en `window.supabaseJs`.
 - Le JS de l'app est **pré-compilé avec esbuild** puis inliné.
 - Aucune dépendance npm au runtime. Aucun bundler côté navigateur.
-- **Service worker** (`sw.js`, généré au build depuis `src/sw-template.js`) : cache l'app pour le démarrage hors-ligne et détecte les mises à jour. Il n'intercepte **jamais** Supabase ni le CDN — aucune donnée de coaché, aucun jeton ne transite par le cache.
+- **Service worker** (`sw.js`, généré au build depuis `src/sw-template.js`) : cache l'app pour le démarrage hors-ligne, détecte les mises à jour, et reçoit les notifications push. Il n'intercepte **jamais** Supabase ni le CDN — aucune donnée de coaché, aucun jeton ne transite par le cache.
+- **Notifications push** : chiffrement écrit à la main dans `edge-functions/_webpush.ts` (RFC 8291 + RFC 8292, WebCrypto pur, zéro dépendance). Détail et justification en Partie G.2.
 
 ## C.2 — Les quatre pièges déjà rencontrés — ne jamais les reproduire
 
@@ -117,31 +124,51 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 
 ## C.3 — Structure du repo
 
+Arborescence **réelle** au 8 août 2026 (relevée sur le dépôt, pas une intention) :
+
 ```
 forge-coaching/
-├── index.html                          ← LE fichier déployé (build)
+├── index.html                          ← LE fichier déployé (produit par le build)
+├── sw.js                               ← service worker (produit par le build)
+├── manifest.webmanifest                ← PWA installable
 ├── CLAUDE.md                           ← ce document
+├── build.mjs                           ← script de build (Parties E et O)
+├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   └── training-app.jsx                ← SOURCE UNIQUE (~4 762 lignes)
-├── build.mjs                           ← script de build (Partie E)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (5 283 lignes)
+│   ├── theme.css                       ← 64 variables CSS, clair + sombre
+│   ├── sw-template.js                  ← gabarit du service worker
+│   └── README.md
 ├── vendor/
-│   ├── react.production.min.js         ← React 18 UMD
-│   └── react-dom.production.min.js     ← ReactDOM 18 UMD
+│   ├── react.production.min.js         ← React 18.3.1 UMD
+│   └── react-dom.production.min.js     ← ReactDOM 18.3.1 UMD
+├── fonts/                              ← 14 .woff2 auto-hébergés (DM Sans, Bebas Neue)
+├── icons/                              ← icon-192, icon-512, apple-touch-icon
 ├── sql/
-│   ├── supabase-setup.sql
-│   ├── supabase-espace-coach.sql
-│   ├── supabase-diete.sql
-│   └── supabase-periodisation.sql
+│   ├── schema-snapshot.sql             ← instantané du schéma réel
+│   ├── 2026-08-06-index-cles-etrangeres.sql
+│   ├── 2026-08-06-optimisation-rls.sql
+│   ├── 2026-08-08-notifications-push.sql
+│   ├── NOTE-optimisation-rls.md
+│   └── README.md
 ├── edge-functions/
 │   ├── create-coachee.ts
-│   └── update-coachee.ts
-└── guides/
-    ├── GUIDE-edge-function-windows.md
-    ├── GUIDE-diete.md
-    └── GUIDE-periodisation.md
+│   ├── update-coachee.ts
+│   ├── push-config.ts                  ← v7h
+│   ├── send-push.ts                    ← v7h
+│   ├── _webpush.ts                     ← chiffrement RFC 8291/8292, sans dépendance
+│   └── _webpush.test.mjs               ← rejoue le protocole à l'envers
+├── guides/
+│   ├── GUIDE-edge-function-windows.md
+│   └── README.md
+└── .claude/
+    ├── settings.json                   ← autorisations durables (voir O.1)
+    └── README.md
 ```
 
-> Si le repo actuel ne suit pas encore cette arborescence, la mettre en place est une bonne première tâche — mais `index.html` doit **impérativement rester à la racine**, sinon GitHub Pages ne le sert plus.
+> `index.html` doit **impérativement rester à la racine**, sinon GitHub Pages ne le sert plus.
+> Même chose pour `sw.js` : un service worker ne contrôle que son propre dossier et ceux
+> en dessous. Rangé dans un sous-dossier, il ne verrait plus l'app.
 
 ---
 
@@ -319,7 +346,7 @@ Ordre à respecter, ce piège s'est déjà produit :
 
 ---
 
-# PARTIE G — SCHÉMA SUPABASE COMPLET (10 tables)
+# PARTIE G — SCHÉMA SUPABASE COMPLET (12 tables)
 
 ### `profiles` — extension de `auth.users`
 ```sql
@@ -465,6 +492,39 @@ created_at           timestamptz DEFAULT now()
 Index : `idx_phases_coachee ON periodization_phases(coachee_id, phase_order)`
 Contrainte métier : les phases d'un coaché **ne se chevauchent jamais** et sont idéalement contiguës.
 
+### `push_subscriptions` *(v7h)*
+```sql
+id               uuid PK
+coachee_id       uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL
+endpoint         text NOT NULL UNIQUE   -- adresse de l'appareil chez Apple/Google
+p256dh           text NOT NULL          -- clé publique de l'appareil
+auth             text NOT NULL          -- secret d'authentification de l'appareil
+user_agent       text
+created_at       timestamptz DEFAULT now()
+last_success_at  timestamptz
+failure_count    int DEFAULT 0
+```
+Index : `idx_push_subs_coachee ON push_subscriptions(coachee_id)`
+Un coaché peut avoir **plusieurs appareils** (iPhone + ordinateur) : pas d'unicité sur `coachee_id`.
+Le coach n'y a **aucun accès direct** — l'envoi passe par `send-push`, qui vérifie l'appartenance.
+
+### `push_config` *(v7h)* — la seule table sans policy, volontairement
+```sql
+id             int PK DEFAULT 1 CHECK (id = 1)   -- une seule ligne, jamais plus
+vapid_public   text NOT NULL
+vapid_private  text NOT NULL
+subject        text NOT NULL DEFAULT 'mailto:gregoire.lede777@gmail.com'
+created_at     timestamptz DEFAULT now()
+```
+> **À ne pas « corriger ».** La clé privée VAPID signe les envois : qui la lit peut écrire au
+> nom de Forge Coaching. La table est donc protégée deux fois — RLS activée **sans aucune
+> policy**, et **aucun privilège** pour `anon`/`authenticated`. Seule la clé `service_role`,
+> qui ne vit que dans les Edge Functions, y accède. Le conseiller Supabase la signalera
+> éternellement en INFO (« RLS enabled, no policy ») : **c'est le comportement voulu**.
+>
+> La paire de clés n'est écrite nulle part dans le dépôt : elle est générée côté serveur par
+> `push-config` au premier abonnement. Personne — ni Greg, ni Claude — ne l'a jamais en main.
+
 ## G.1 — Règle RLS générale
 
 RLS activée sur **toutes** les tables, sans exception.
@@ -479,12 +539,26 @@ RLS activée sur **toutes** les tables, sans exception.
 
 ## G.2 — Edge Functions
 
-| Fonction | Rôle |
-|---|---|
-| `create-coachee` | Crée le compte Auth + le profil d'un nouveau coaché |
-| `update-coachee` | Modifie nom, offre et code d'accès (le code change les identifiants Auth) |
+| Fonction | `verify_jwt` | Rôle |
+|---|---|---|
+| `create-coachee` | non | Crée le compte Auth + le profil d'un nouveau coaché |
+| `update-coachee` | non | Modifie nom, offre et code d'accès (le code change les identifiants Auth) |
+| `push-config` *(v7h)* | non | Renvoie la clé **publique** VAPID. Génère la paire au premier appel |
+| `send-push` *(v7h)* | **oui** | Envoie une notification. `{test:true}` = à soi-même ; `{coacheeId,title,body}` = coach → son coaché |
 
-Les deux utilisent la clé `service_role` **exclusivement côté serveur**.
+Toutes utilisent la clé `service_role` **exclusivement côté serveur**.
+`create-coachee` et `update-coachee` sont en `verify_jwt: false` mais vérifient elles-mêmes le
+jeton de l'appelant et son `role = 'coach'` — le contrôle est fait, simplement à la main.
+`push-config` est réellement publique : elle ne divulgue que la clé publique, faite pour être
+connue de tous les navigateurs.
+
+**Le chiffrement des notifications est écrit à la main** (`edge-functions/_webpush.ts`, sans
+aucune dépendance) : RFC 8291 pour le contenu (ECDH + HKDF + AES-GCM) et RFC 8292 pour la
+signature VAPID (ES256), en WebCrypto pur. Motif : les registres de modules (`esm.sh`, `jsr.io`,
+`deno.land`) sont injoignables depuis la VM de travail, et embarquer une bibliothèque
+invérifiable dans le chemin qui manipule la clé privée aurait été pire. Le fichier
+`_webpush.test.mjs` rejoue le protocole à l'envers — il chiffre, puis déchiffre comme le ferait
+le navigateur — et vérifie la signature ES256 avec la clé publique correspondante.
 
 **Redéploiement (PowerShell Windows, Supabase CLI installé via Scoop) :**
 ```powershell
@@ -569,14 +643,34 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
 - **Bibliothèque de recettes** : CRUD + bouton "IA" (API Anthropic) pour aider à remplir la bibliothèque.
 - **Périodisation** : appliquer un des 4 modèles depuis une date de début, créer/éditer des phases manuellement, frise + courbe de poids, propositions de transition.
 
-## I.3 — Réglages coaché (v7b)
+## I.3 — Réglages coaché (v7b, complété en v7g et v7h)
 
 Dans Profil, stockés en **localStorage sur l'appareil de chaque coaché** — rien en base :
 - **Apparence** : Automatique / Clair / Sombre. « Automatique » suit le réglage du téléphone, en direct.
 - **Chronomètres** actifs ou non.
 - **Sonnerie de fin de repos** — modifiable uniquement si les chronomètres sont actifs (grisée sinon).
 
+**Exception, le seul réglage qui vit en base : les Notifications (v7h).** Un abonnement push
+appartient à un **appareil**, pas à un compte — il doit donc être connu du serveur pour qu'il
+puisse envoyer. La ligne va dans `push_subscriptions`, une par appareil. L'interrupteur reflète
+l'état de l'appareil en cours, pas un préférence globale : couper les notifications sur son
+téléphone ne les coupe pas sur son ordinateur.
+
+Le réglage prend cinq formes selon ce que permet l'appareil :
+
+| État | Ce que voit le coaché |
+|---|---|
+| `inactif` | « Être prévenu de tes séances » + interrupteur |
+| `actif` | « Rappels de séance et messages de ton coach » + bouton **ENVOYER UN TEST** |
+| `refuse` | « Bloquées par ton téléphone » — pas d'interrupteur, il échouerait |
+| `ios-non-installee` | Encart expliquant la règle d'Apple et la marche à suivre |
+| `indisponible` | « Non disponibles sur cet appareil » |
+
 > Sur iPhone, la sonnerie passe par le son du navigateur : téléphone non silencieux + au moins une interaction préalable avec l'app (règle iOS).
+>
+> **Sur iPhone, les notifications n'existent QUE si l'app est installée sur l'écran d'accueil.**
+> C'est une règle d'Apple, pas une limite de l'app : Safari n'expose même pas `PushManager` hors
+> installation. D'où l'encart d'explication plutôt qu'un bouton qui échouerait sans dire pourquoi.
 
 ## I.4 — Modèles de périodisation (`PERIODIZATION_TEMPLATES`, constante en dur)
 
@@ -750,6 +844,7 @@ Le dépôt ne contenait que `index.html`. L'arborescence de la Partie C.3 a ét�
 | `guides/GUIDE-edge-function-windows.md` | Reconstitué depuis la Partie G.2 |
 | `.gitignore` | `node_modules/` |
 | `.claude/settings.json` | **Ajouté le 6 août 2026.** Autorise durablement les outils Supabase (le connecteur change d'identifiant entre sessions, l'autorisation cliquée ne survivait pas). Migrations et déploiement d'Edge Functions inclus ; opérations destructrices de projet bloquées. Voir `.claude/README.md` |
+| `tests/` + `npm test` | **Ajouté le 8 août 2026.** 6 séries de tests qui ouvrent l'app dans un vrai Chromium et rejouent les parcours. Elles vivaient jusque-là dans le dossier temporaire de la session, donc perdues à chaque fois : elles sont maintenant dans le dépôt. Voir `tests/README.md` |
 
 ## O.2 — Corrections apportées à la Partie E
 
@@ -766,6 +861,19 @@ Le dépôt ne contenait que `index.html`. L'arborescence de la Partie C.3 a ét�
 **Preuve que le pipeline est juste :** `node build.mjs` lancé sur `src/training-app.jsx` redonne un `index.html` de **456 617 octets, identique à l'octet près** à celui qui tourne en production. C'est le test de non-régression de référence : après toute modification du build, on doit pouvoir retrouver cette égalité en repartant de la source v7b.
 
 `node build.mjs --verifier-gabarit` reste disponible : il reprend le code applicatif de l'`index.html` existant, le repasse dans le gabarit et compare octet par octet, sans avoir besoin de la source.
+
+**Correctif du 8 août 2026 — la taille annoncée par le build était fausse.** Le script
+affichait `html.length`, qui compte des **caractères**, pas des octets. Dans une app en
+français chaque accent en pèse deux en UTF-8, et l'écart grandissait avec le texte ajouté :
+6 octets en v7d, 351 en v7h (491 010 annoncés contre 491 361 réels). Or la règle n°6 veut
+que Greg compare ce nombre à celui affiché par GitHub, qui est en octets. Le build mesure
+désormais le fichier réel (`statSync(OUT).size`).
+
+Les tailles du journal (Partie B.3) ont été **reprises sur les fichiers réellement
+committés**, pas sur la sortie du build. Deux entrées étaient fausses, de 6 octets chacune,
+et ont été corrigées : **v7d 468 587 → 468 593** et **v7f 472 495 → 472 501**. Les autres
+(v7b, v7c, v7e, v7g) étaient justes : elles avaient été relevées avec `ls`, pas avec le
+build.
 
 ## O.3 — Corrections apportées à la Partie G
 

@@ -246,6 +246,131 @@ function useTheme() {
   return { theme, setTheme };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  NOTIFICATIONS PUSH
+//
+//  L'abonnement se fait sur DEMANDE EXPLICITE, depuis les réglages. On ne
+//  demande jamais l'autorisation au premier lancement : c'est le meilleur moyen
+//  de se faire refuser définitivement par la majorité des gens.
+//
+//  Sur iPhone, les notifications n'existent QUE si l'app a été installée sur
+//  l'écran d'accueil. C'est une règle d'Apple, pas une limite de l'app — d'où le
+//  message d'explication plutôt qu'un bouton qui échouerait sans dire pourquoi.
+// ═══════════════════════════════════════════════════════════════════════════════
+const estIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || "");
+const estInstallee = () => {
+  try {
+    return window.matchMedia("(display-mode: standalone)").matches
+        || window.navigator.standalone === true;
+  } catch { return false; }
+};
+const pushDisponible = () =>
+  "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+// La clé publique VAPID voyage en base64url ; l'API du navigateur veut des octets.
+function cleVersOctets(base64url) {
+  const b64 = (base64url + "=".repeat((4 - (base64url.length % 4)) % 4))
+    .replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function usePushNotifications(supabase, userId, isDemo) {
+  const [etat, setEtat] = useState("inconnu"); // inconnu | indisponible | ios-non-installee | refuse | inactif | actif
+  const [occupe, setOccupe] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // État de départ : autorisation du navigateur + abonnement déjà en place ?
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      if (isDemo || !supabase) { setEtat("indisponible"); return; }
+      if (!pushDisponible()) {
+        setEtat(estIOS() && !estInstallee() ? "ios-non-installee" : "indisponible");
+        return;
+      }
+      if (Notification.permission === "denied") { setEtat("refuse"); return; }
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const abo = await reg.pushManager.getSubscription();
+        if (!annule) setEtat(abo ? "actif" : "inactif");
+      } catch { if (!annule) setEtat("inactif"); }
+    })();
+    return () => { annule = true; };
+  }, [supabase, isDemo]);
+
+  const activer = useCallback(async () => {
+    setOccupe(true); setMessage("");
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setEtat(perm === "denied" ? "refuse" : "inactif");
+        setMessage("Autorisation refusée. Tu peux la rétablir dans les réglages de ton téléphone.");
+        return;
+      }
+      // Clé publique du serveur (créée au premier appel, côté Supabase)
+      const { data: conf, error: errConf } = await supabase.functions.invoke("push-config", { body: {} });
+      if (errConf || !conf?.publicKey) throw new Error("Clé de notification indisponible");
+
+      const reg = await navigator.serviceWorker.ready;
+      let abo = await reg.pushManager.getSubscription();
+      if (!abo) {
+        abo = await reg.pushManager.subscribe({
+          userVisibleOnly: true,                         // exigé par les navigateurs
+          applicationServerKey: cleVersOctets(conf.publicKey),
+        });
+      }
+      const brut = abo.toJSON();
+      const { error } = await supabase.from("push_subscriptions").upsert({
+        coachee_id: userId,
+        endpoint: brut.endpoint,
+        p256dh: brut.keys.p256dh,
+        auth: brut.keys.auth,
+        user_agent: (navigator.userAgent || "").slice(0, 300),
+      }, { onConflict: "endpoint" });
+      if (error) throw error;
+
+      setEtat("actif");
+      setMessage("Notifications activées sur cet appareil.");
+    } catch (e) {
+      setMessage(e?.message || "Activation impossible");
+    } finally { setOccupe(false); }
+  }, [supabase, userId]);
+
+  const desactiver = useCallback(async () => {
+    setOccupe(true); setMessage("");
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const abo = await reg.pushManager.getSubscription();
+      if (abo) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", abo.endpoint);
+        await abo.unsubscribe();
+      }
+      setEtat("inactif");
+      setMessage("Notifications désactivées sur cet appareil.");
+    } catch (e) {
+      setMessage(e?.message || "Désactivation impossible");
+    } finally { setOccupe(false); }
+  }, [supabase]);
+
+  const tester = useCallback(async () => {
+    setOccupe(true); setMessage("");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", { body: { test: true } });
+      if (error) throw error;
+      setMessage(data?.envoyees > 0
+        ? `Test envoyé sur ${data.envoyees} appareil${data.envoyees > 1 ? "s" : ""}.`
+        : "Aucun appareil n'a reçu le test.");
+    } catch (e) {
+      setMessage(e?.message || "Envoi impossible");
+    } finally { setOccupe(false); }
+  }, [supabase]);
+
+  return { etat, occupe, message, activer, desactiver, tester };
+}
+
 // Réglages coaché stockés localement (par appareil)
 const settingsKey = (userId) => `forge_settings_${userId}`;
 function loadSettings(userId) {
@@ -1254,6 +1379,47 @@ function ProfilePage({ ctx }) {
                 })}
               </div>
             </div>
+            {/* Notifications push — abonnement de cet appareil */}
+            <div style={{ padding: "13px 0", borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</div>
+                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+                    {ctx.push.etat === "actif"      ? "Rappels de séance et messages de ton coach"
+                     : ctx.push.etat === "refuse"   ? "Bloquées par ton téléphone"
+                     : ctx.push.etat === "ios-non-installee" ? "Nécessite l'app installée sur l'écran d'accueil"
+                     : ctx.push.etat === "indisponible" ? "Non disponibles sur cet appareil"
+                     : "Être prévenu de tes séances"}
+                  </div>
+                </div>
+                {(ctx.push.etat === "actif" || ctx.push.etat === "inactif") && (
+                  <ToggleSwitch
+                    on={ctx.push.etat === "actif"}
+                    disabled={ctx.push.occupe}
+                    onChange={v => v ? ctx.push.activer() : ctx.push.desactiver()}/>
+                )}
+              </div>
+
+              {ctx.push.etat === "ios-non-installee" && (
+                <div style={{ background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 10, padding: "9px 11px", marginTop: 9, fontSize: 10.5, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
+                  Sur iPhone, Apple n'autorise les notifications que depuis une app installée.
+                  Appuie sur Partager, puis « Sur l'écran d'accueil », et reviens ici.
+                </div>
+              )}
+
+              {ctx.push.etat === "actif" && (
+                <button onClick={ctx.push.tester} disabled={ctx.push.occupe} className="pressable"
+                  style={{ marginTop: 9, width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: ctx.push.occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+                  {ctx.push.occupe ? "ENVOI..." : "ENVOYER UN TEST"}
+                </button>
+              )}
+
+              {ctx.push.message && (
+                <div style={{ fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 }}>
+                  {ctx.push.message}
+                </div>
+              )}
+            </div>
             {/* Chronomètres de repos */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -1474,6 +1640,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const { timers, start, cancel } = useTimers(soundEnabledRef);
   // Thème clair/sombre — stocké localement, comme les chronos et la sonnerie
   const { theme, setTheme } = useTheme();
+  // Notifications push — abonnement de CET appareil
+  const push = usePushNotifications(supabase, userId, isDemo);
 
   // ── Chargement initial : profil + programme + logs ────────────────────────
   useEffect(() => {
@@ -1715,6 +1883,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     weighedToday, refreshWeighedToday,
     settings, updateSetting,
     theme, setTheme,
+    push,
     onLogout, isDemo,
   };
 
