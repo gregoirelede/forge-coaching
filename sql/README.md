@@ -36,3 +36,27 @@ Toute nouvelle migration arrive ici sous la forme d'un fichier daté, par exempl
 Supabase → projet **Forge Coaching** → **SQL Editor** → **New query** → coller le
 contenu du fichier → **Run**. Vérifier ensuite dans **Table Editor** que le résultat
 est celui attendu.
+
+## Sprint 3 — migrations à jouer (8 août 2026)
+
+Trois migrations ont été écrites pendant le Sprint 3 mais **n'ont pas pu être
+appliquées depuis la session** : le connecteur Supabase a refusé toute écriture
+comme toute lecture (« MCP tool call requires approval », sans que la demande
+d'approbation ne parvienne jamais).
+
+Pour les appliquer, ouvrir Supabase → SQL Editor → New query, coller
+`SPRINT-3-A-JOUER.sql` en entier, et cliquer Run. Une seule fois suffit ; le
+fichier est idempotent, le relancer ne fait rien de plus.
+
+| Fichier | Ce qu'il ajoute |
+|---|---|
+| `2026-08-08-videos-exercices.sql` | Colonne `video_url` sur `exercises_library` + la policy de lecture coaché que la règle G.1 décrivait depuis toujours |
+| `2026-08-08-bilan-hebdomadaire.sql` | Table `weekly_reviews` |
+| `2026-08-08-notes-de-seance.sql` | Table `session_notes` |
+| `SPRINT-3-A-JOUER.sql` | Les trois réunies, pour n'avoir qu'un seul copier-coller |
+
+**Le code déployé n'attend pas ces migrations pour fonctionner.** Tant qu'elles
+ne sont pas jouées, les trois fonctionnalités restent simplement invisibles côté
+coaché — aucune erreur, aucun message technique. Côté coach, l'onglet Retours
+indique quel fichier jouer. C'est vérifié par un cas de test dédié dans chacune
+des trois séries concernées.

@@ -1275,7 +1275,104 @@ function WorkoutPage({ ctx }) {
         </div>
       )}
 
+      <NoteSeance ctx={ctx} session={activeSession} semaine={viewedWeek}/>
+
       {videoOuverte && <VideoSheet titre={videoOuverte.titre} url={videoOuverte.url} onClose={() => setVideoOuverte(null)}/>}
+    </div>
+  );
+}
+
+// ── Note de séance : le mot du coaché sur CETTE séance ──────────────────────
+//
+//  Le bilan hebdomadaire dit comment s'est passée la semaine ; ceci dit ce qui
+//  s'est passé sur une séance précise. Une note par séance et par semaine,
+//  modifiable — pas un fil de discussion : personne ne tient une conversation
+//  depuis la salle, entre deux séries.
+function NoteSeance({ ctx, session, semaine }) {
+  const { supabase, userId, isDemo } = ctx;
+  const [note, setNote]     = useState(null);   // null = pas chargé
+  const [dispo, setDispo]   = useState(true);
+  const [ouvert, setOuvert] = useState(false);
+  const [texte, setTexte]   = useState("");
+  const [occupe, setOccupe] = useState(false);
+
+  const cle = `${semaine}-${session?.id}`;
+
+  useEffect(() => {
+    if (isDemo || !supabase || !session) { setDispo(false); return; }
+    let annule = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("session_notes").select("*")
+        .eq("coachee_id", userId).eq("week_number", semaine)
+        .eq("session_config_id", session.id).maybeSingle();
+      if (annule) return;
+      if (error) { setDispo(!tableAbsente(error)); return; }
+      setNote(data || false);
+      setTexte(data?.note || "");
+      setOuvert(false);
+    })();
+    return () => { annule = true; };
+  }, [supabase, userId, semaine, session, isDemo, cle]);
+
+  if (!dispo || note === null || !session) return null;
+
+  async function enregistrer() {
+    const t = texte.trim();
+    setOccupe(true);
+    try {
+      if (!t && note) {
+        // Vider le champ efface la note : le coaché n'a pas à vivre avec un
+        // mot qu'il regrette d'avoir laissé.
+        await supabase.from("session_notes").delete().eq("id", note.id);
+        setNote(false);
+      } else if (t) {
+        await supabase.from("session_notes").upsert({
+          coachee_id: userId, week_number: semaine,
+          session_config_id: session.id, session_name: session.name,
+          note: t, updated_at: new Date().toISOString(),
+        }, { onConflict: "coachee_id,week_number,session_config_id" });
+        setNote({ note: t });
+      }
+      setOuvert(false);
+    } finally { setOccupe(false); }
+  }
+
+  const aUneNote = note !== false;
+
+  return (
+    <div style={{ padding: "14px 18px 0" }}>
+      {!ouvert ? (
+        <div onClick={() => setOuvert(true)} className="quick-card"
+          style={{ background: aUneNote ? T.surface : "transparent", border: `1px ${aUneNote ? "solid" : "dashed"} ${aUneNote ? T.border : T.borderStrong}`, borderRadius: 13, padding: aUneNote ? "13px 15px" : "11px 15px", cursor: "pointer" }}>
+          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: aUneNote ? 6 : 0 }}>
+            {aUneNote ? "TA NOTE SUR CETTE SÉANCE" : "+ AJOUTER UNE NOTE SUR CETTE SÉANCE"}
+          </div>
+          {aUneNote && (
+            <div style={{ fontSize: 12.5, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{note.note}</div>
+          )}
+        </div>
+      ) : (
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "13px 15px" }}>
+          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: 8 }}>
+            NOTE SUR CETTE SÉANCE
+          </div>
+          <textarea rows={3} value={texte} maxLength={400} autoFocus
+            onChange={e => setTexte(e.target.value)}
+            placeholder="Épaule sensible, salle bondée, exercice remplacé..."
+            style={{ ...inputStyle, fontSize: 12.5, resize: "vertical", lineHeight: 1.5 }}/>
+          <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
+            <button onClick={() => { setTexte(note?.note || ""); setOuvert(false); }}
+              style={{ flex: 1, padding: "10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              Annuler
+            </button>
+            <button onClick={enregistrer} disabled={occupe} className="pressable"
+              style={{ flex: 2, padding: "10px", background: occupe ? T.surface2 : T.accent, color: occupe ? T.textMuted : T.accentText, border: "none", borderRadius: 10, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+              {occupe ? "..." : !texte.trim() && aUneNote ? "SUPPRIMER LA NOTE" : "ENREGISTRER"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3591,10 +3688,27 @@ function CoachProgressView({ ctx, coachee }) {
   );
 }
 
+// Les notes de séance d'une semaine, telles que le coach les lit.
+function NotesDeSeance({ notes }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {notes.map(n => (
+        <div key={n.id} style={{ background: T.bg, borderLeft: `2px solid ${T.borderStrong}`, borderRadius: "0 8px 8px 0", padding: "8px 11px" }}>
+          <div style={{ fontSize: 8.5, color: T.textMuted, letterSpacing: 1, fontWeight: 800, marginBottom: 3 }}>
+            {(n.session_name || `SÉANCE ${n.session_config_id}`).toUpperCase()}
+          </div>
+          <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.note}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Vue coach : les bilans hebdomadaires d'un coaché ────────────────────────
 function CoachBilansView({ ctx, coachee }) {
   const { supabase } = ctx;
   const [bilans, setBilans] = useState(null);
+  const [notes, setNotes]   = useState([]);      // notes de séance, toutes semaines
   const [dispo, setDispo]   = useState(true);
   const [brouillons, setBrouillons] = useState({});   // { bilanId: texte }
   const [occupe, setOccupe] = useState(null);         // id en cours d'envoi
@@ -3606,6 +3720,14 @@ function CoachBilansView({ ctx, coachee }) {
       .order("week_number", { ascending: false });
     if (error) { setDispo(!tableAbsente(error)); setBilans([]); return; }
     setBilans(data || []);
+
+    // Les notes de séance vivent dans une autre table : leur absence ne doit
+    // pas empêcher d'afficher les bilans, et réciproquement.
+    const { data: n, error: eN } = await supabase
+      .from("session_notes").select("*")
+      .eq("coachee_id", coachee.id)
+      .order("week_number", { ascending: false });
+    setNotes(eN ? [] : (n || []));
   }, [supabase, coachee.id]);
 
   useEffect(() => { recharger(); }, [recharger]);
@@ -3630,15 +3752,31 @@ function CoachBilansView({ ctx, coachee }) {
     </div>
   );
   if (bilans === null) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
-  if (bilans.length === 0) return (
+
+  // Une carte par semaine, qu'elle porte un bilan, des notes de séance, ou les
+  // deux. Un coaché peut très bien laisser un mot sur une séance sans remplir
+  // son bilan — ce retour-là ne doit pas se perdre.
+  const semaines = [...new Set([...bilans.map(b => b.week_number), ...notes.map(n => n.week_number)])]
+    .sort((a, b) => b - a);
+
+  if (semaines.length === 0) return (
     <div style={{ padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 }}>
-      {coachee.name} n'a pas encore envoyé de bilan.
+      {coachee.name} n'a pas encore envoyé de retour.
     </div>
   );
 
   return (
     <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {bilans.map(b => {
+      {semaines.map(num => {
+        const b = bilans.find(x => x.week_number === num);
+        const notesSem = notes.filter(n => n.week_number === num);
+        if (!b) return (
+          <div key={`n${num}`} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5, marginBottom: 4 }}>SEMAINE {num}</div>
+            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 10 }}>Pas de bilan, mais des notes de séance</div>
+            <NotesDeSeance notes={notesSem}/>
+          </div>
+        );
         const enAttente = !b.coach_reply;
         return (
           <div key={b.id} style={{ background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px" }}>
@@ -3667,6 +3805,8 @@ function CoachBilansView({ ctx, coachee }) {
                 {b.note}
               </div>
             )}
+
+            {notesSem.length > 0 && <div style={{ marginTop: 11 }}><NotesDeSeance notes={notesSem}/></div>}
 
             {b.coach_reply ? (
               <div style={{ marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 10, padding: "10px 12px" }}>
@@ -3812,7 +3952,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
       </div>
 
       <div style={{ padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        {[["infos", "Infos"], ["bilans", "Bilans"], ["programme", "Programme"], ["periodisation", "Périodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => (
+        {[["infos", "Infos"], ["bilans", "Retours"], ["programme", "Programme"], ["periodisation", "Périodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             {label}
           </button>

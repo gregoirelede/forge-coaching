@@ -172,7 +172,7 @@ console.log("\n─── Le coach répond ───");
   const { ctx, p } = await ouvrir("coach", "envoye");
   await p.locator("text=Marie Dupont").first().click();
   await p.waitForTimeout(700);
-  await p.locator("text=Bilans").last().click();
+  await p.locator("text=Retours").last().click();   // l'onglet réunit bilans et notes de séance (v7m)
   await p.waitForTimeout(800);
 
   const vue = await p.locator("body").innerText();
@@ -234,7 +234,7 @@ console.log("\n─── Avant que la migration SQL soit jouée ───");
   const { ctx, p, erreurs } = await ouvrir("coach", "table_absente");
   await p.locator("text=Marie Dupont").first().click();
   await p.waitForTimeout(700);
-  await p.locator("text=Bilans").last().click();
+  await p.locator("text=Retours").last().click();   // l'onglet réunit bilans et notes de séance (v7m)
   await p.waitForTimeout(800);
   const vue = await p.locator("body").innerText();
   ok(erreurs.length === 0, `aucune erreur JS côté coach (${erreurs.length})`);
