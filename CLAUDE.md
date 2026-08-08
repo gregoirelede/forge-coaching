@@ -88,6 +88,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7j** | Sprint 3 : onglet **Suivi** côté coach — assiduité, statuts À jour / À relancer / Décrochage | 505 162 o | 5 598 |
 | **v7k** | Sprint 3 : vidéos de démonstration sur les exercices (YouTube / Vimeo / fichier) | 512 965 o | 5 758 |
 | **v7l** | Sprint 3 : **bilan hebdomadaire** — le coaché fait le point, le coach répond. Correctif : les feuilles passent par un portail | 528 369 o | 6 060 |
+| **v7m** | Sprint 3 : **notes de séance** — un mot du coaché sur une séance précise, lu par le coach à côté du bilan. **Sprint 3 terminé** | 534 919 o | 6 200 |
 
 ## B.4 — État d'installation
 
@@ -140,7 +141,7 @@ forge-coaching/
 ├── build.mjs                           ← script de build (Parties E et O)
 ├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   ├── training-app.jsx                ← SOURCE UNIQUE (6 060 lignes)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (6 200 lignes)
 │   ├── theme.css                       ← 64 variables CSS, clair + sombre
 │   ├── sw-template.js                  ← gabarit du service worker
 │   └── README.md
@@ -156,6 +157,8 @@ forge-coaching/
 │   ├── 2026-08-08-notifications-push.sql
 │   ├── 2026-08-08-videos-exercices.sql
 │   ├── 2026-08-08-bilan-hebdomadaire.sql
+│   ├── 2026-08-08-notes-de-seance.sql
+│   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
 │   ├── NOTE-optimisation-rls.md
 │   └── README.md
 ├── edge-functions/
@@ -168,7 +171,7 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
-├── tests/                              ← 10 séries de tests, `npm test`
+├── tests/                              ← 11 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -533,6 +536,27 @@ Index : `idx_bilans_coachee ON weekly_reviews(coachee_id, week_number DESC)`
 > Une ligne par coaché et par semaine (`UNIQUE`) : le coaché peut revenir corriger son bilan
 > dans la semaine sans en créer un second.
 
+### `session_notes` *(v7m)* — le mot du coaché sur UNE séance
+```sql
+id                uuid PK
+coachee_id        uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL
+week_number       int NOT NULL
+session_config_id int NOT NULL      -- id de la séance dans le programme (1..5)
+session_name      text              -- figé à l'écriture : le programme peut être renommé
+note              text NOT NULL
+created_at        timestamptz DEFAULT now()
+updated_at        timestamptz DEFAULT now()
+UNIQUE (coachee_id, week_number, session_config_id)
+```
+Index : `idx_notes_seance_coachee ON session_notes(coachee_id, week_number DESC)`
+
+> **Pourquoi une table à part du bilan.** Le bilan dit comment s'est passée *la semaine* ; une
+> note dit ce qui s'est passé sur *une séance* — « épaule sensible au 3e set », « salle bondée,
+> squat remplacé ». Deux granularités, deux besoins.
+>
+> Le coach y a un accès **en lecture seule** : une note de séance est la parole du coaché, le
+> coach répond dans le bilan de la semaine. Une seule conversation par semaine, pas cinq.
+
 ### `push_subscriptions` *(v7h)*
 ```sql
 id               uuid PK
@@ -675,6 +699,8 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
 
 - **Séances** — 3 sous-onglets : `SEMAINE` (séances du jour, onglets de jours intégrés, saisie kg/reps par série, chronomètres, badges de technique), `ORGANISATION ENTRAINEMENTS` (structure hebdomadaire), `CONSIGNES` (consignes du coach : label coloré + titre + texte).
   Bandeau "semaine N en cours" en haut.
+  En bas de chaque séance, le coaché peut laisser une **note de séance** *(v7m)* : un mot sur
+  cette séance-là, modifiable, et effacé s'il vide le champ.
   Un exercice qui a une vidéo de démonstration affiche **Voir la démonstration** une fois déplié
   *(v7k)*. La vidéo n'est chargée qu'au clic : rien ne part sur le réseau tant que le coaché
   n'a rien demandé — il est peut-être en salle, en 4G, entre deux séries.
@@ -705,9 +731,11 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
   seule démonstration filmée le remplirait.
 - **Constructeur de programme** : planning hebdomadaire, exercices, séries, reps par série.
 - **Détail coaché** : onglets Infos · Programme · Périodisation · Nutrition · Progression (lecture).
-  L'onglet **Bilans** *(v7l)* liste les bilans hebdomadaires du coaché, du plus récent au plus
+  L'onglet **Retours** *(v7l, v7m)* liste les bilans hebdomadaires du coaché, du plus récent au plus
   ancien, avec les quatre curseurs résumés et le mot libre. Un bilan sans réponse est marqué
   « SANS RÉPONSE » ; répondre se fait sur place et la réponse remonte aussitôt côté coaché.
+  Les **notes de séance** de la semaine sont affichées juste en dessous du bilan correspondant.
+  Une semaine qui n'a que des notes, sans bilan, apparaît quand même — ce retour-là ne se perd pas.
   L'onglet **Infos** porte aussi l'**envoi d'une notification** *(v7i)* : titre (60 car.) + message
   (160 car.), le bouton reste inerte tant que les deux ne sont pas remplis. Le coach ne peut pas
   savoir à l'avance si le coaché a activé ses notifications — la RLS lui interdit de lire
@@ -860,7 +888,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 |---|---|---|
 | **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
-| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Presque fini** — assiduité (v7j), vidéos (v7k), bilan hebdomadaire (v7l). Reste : commentaires de séance |
+| **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Fait** (v7j–v7m) |
 | **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | À faire |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**

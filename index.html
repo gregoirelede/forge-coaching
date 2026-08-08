@@ -1435,7 +1435,102 @@ function WorkoutPage({ ctx }) {
         cancel(key);
       } }) : !done ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, background: T.surface2, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0, border: `1px solid ${T.border}` } }, ex.repos) : null), done && /* @__PURE__ */ React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { display: "flex", alignItems: "center", gap: 10, padding: "8px 11px 10px", borderTop: `1px solid ${T.accent}20`, background: T.accentLightA53, animation: "popIn .2s ease", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: 0.8, whiteSpace: "nowrap" } }, "LOG"), /* @__PURE__ */ React.createElement(SetLog, { weight: log.weight, actualReps: log.actualReps, weightCmp: wCmp, repsCmp: rCmp, onWeightChange: (v) => updateLog(key, "weight", v), onRepsChange: (v) => updateLog(key, "actualReps", v) })));
     }))));
-  })), ((_b = activeSession.abdosCardio) == null ? void 0 : _b.length) > 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "ABDOS / CARDIO"), activeSession.abdosCardio.map((item, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < activeSession.abdosCardio.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: T.accent, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text } }, item))))), videoOuverte && /* @__PURE__ */ React.createElement(VideoSheet, { titre: videoOuverte.titre, url: videoOuverte.url, onClose: () => setVideoOuverte(null) }));
+  })), ((_b = activeSession.abdosCardio) == null ? void 0 : _b.length) > 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 } }, "ABDOS / CARDIO"), activeSession.abdosCardio.map((item, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < activeSession.abdosCardio.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: T.accent, flexShrink: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text } }, item))))), /* @__PURE__ */ React.createElement(NoteSeance, { ctx, session: activeSession, semaine: viewedWeek }), videoOuverte && /* @__PURE__ */ React.createElement(VideoSheet, { titre: videoOuverte.titre, url: videoOuverte.url, onClose: () => setVideoOuverte(null) }));
+}
+function NoteSeance({ ctx, session, semaine }) {
+  const { supabase, userId, isDemo } = ctx;
+  const [note, setNote] = useState(null);
+  const [dispo, setDispo] = useState(true);
+  const [ouvert, setOuvert] = useState(false);
+  const [texte, setTexte] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const cle = `${semaine}-${session == null ? void 0 : session.id}`;
+  useEffect(() => {
+    if (isDemo || !supabase || !session) {
+      setDispo(false);
+      return;
+    }
+    let annule = false;
+    (async () => {
+      const { data, error } = await supabase.from("session_notes").select("*").eq("coachee_id", userId).eq("week_number", semaine).eq("session_config_id", session.id).maybeSingle();
+      if (annule) return;
+      if (error) {
+        setDispo(!tableAbsente(error));
+        return;
+      }
+      setNote(data || false);
+      setTexte((data == null ? void 0 : data.note) || "");
+      setOuvert(false);
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [supabase, userId, semaine, session, isDemo, cle]);
+  if (!dispo || note === null || !session) return null;
+  async function enregistrer() {
+    const t = texte.trim();
+    setOccupe(true);
+    try {
+      if (!t && note) {
+        await supabase.from("session_notes").delete().eq("id", note.id);
+        setNote(false);
+      } else if (t) {
+        await supabase.from("session_notes").upsert({
+          coachee_id: userId,
+          week_number: semaine,
+          session_config_id: session.id,
+          session_name: session.name,
+          note: t,
+          updated_at: (/* @__PURE__ */ new Date()).toISOString()
+        }, { onConflict: "coachee_id,week_number,session_config_id" });
+        setNote({ note: t });
+      }
+      setOuvert(false);
+    } finally {
+      setOccupe(false);
+    }
+  }
+  const aUneNote = note !== false;
+  return /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0" } }, !ouvert ? /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      onClick: () => setOuvert(true),
+      className: "quick-card",
+      style: { background: aUneNote ? T.surface : "transparent", border: `1px ${aUneNote ? "solid" : "dashed"} ${aUneNote ? T.border : T.borderStrong}`, borderRadius: 13, padding: aUneNote ? "13px 15px" : "11px 15px", cursor: "pointer" }
+    },
+    /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: aUneNote ? 6 : 0 } }, aUneNote ? "TA NOTE SUR CETTE S\xC9ANCE" : "+ AJOUTER UNE NOTE SUR CETTE S\xC9ANCE"),
+    aUneNote && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" } }, note.note)
+  ) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "13px 15px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: 8 } }, "NOTE SUR CETTE S\xC9ANCE"), /* @__PURE__ */ React.createElement(
+    "textarea",
+    {
+      rows: 3,
+      value: texte,
+      maxLength: 400,
+      autoFocus: true,
+      onChange: (e) => setTexte(e.target.value),
+      placeholder: "\xC9paule sensible, salle bond\xE9e, exercice remplac\xE9...",
+      style: __spreadProps(__spreadValues({}, inputStyle), { fontSize: 12.5, resize: "vertical", lineHeight: 1.5 })
+    }
+  ), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 9 } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        setTexte((note == null ? void 0 : note.note) || "");
+        setOuvert(false);
+      },
+      style: { flex: 1, padding: "10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }
+    },
+    "Annuler"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: enregistrer,
+      disabled: occupe,
+      className: "pressable",
+      style: { flex: 2, padding: "10px", background: occupe ? T.surface2 : T.accent, color: occupe ? T.textMuted : T.accentText, border: "none", borderRadius: 10, fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: occupe ? "default" : "pointer", fontFamily: "inherit" }
+    },
+    occupe ? "..." : !texte.trim() && aUneNote ? "SUPPRIMER LA NOTE" : "ENREGISTRER"
+  ))));
 }
 function Portail({ children }) {
   return ReactDOM.createPortal(children, document.body);
@@ -2826,9 +2921,13 @@ function CoachProgressView({ ctx, coachee }) {
     })));
   })), sheetExercise && /* @__PURE__ */ React.createElement(ExerciseSheet, { exercise: sheetExercise, allSetLogs, allCompletedSets, onClose: () => setSheetExercise(null) }));
 }
+function NotesDeSeance({ notes }) {
+  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, notes.map((n) => /* @__PURE__ */ React.createElement("div", { key: n.id, style: { background: T.bg, borderLeft: `2px solid ${T.borderStrong}`, borderRadius: "0 8px 8px 0", padding: "8px 11px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8.5, color: T.textMuted, letterSpacing: 1, fontWeight: 800, marginBottom: 3 } }, (n.session_name || `S\xC9ANCE ${n.session_config_id}`).toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" } }, n.note))));
+}
 function CoachBilansView({ ctx, coachee }) {
   const { supabase } = ctx;
   const [bilans, setBilans] = useState(null);
+  const [notes, setNotes] = useState([]);
   const [dispo, setDispo] = useState(true);
   const [brouillons, setBrouillons] = useState({});
   const [occupe, setOccupe] = useState(null);
@@ -2840,6 +2939,8 @@ function CoachBilansView({ ctx, coachee }) {
       return;
     }
     setBilans(data || []);
+    const { data: n, error: eN } = await supabase.from("session_notes").select("*").eq("coachee_id", coachee.id).order("week_number", { ascending: false });
+    setNotes(eN ? [] : n || []);
   }, [supabase, coachee.id]);
   useEffect(() => {
     recharger();
@@ -2863,11 +2964,15 @@ function CoachBilansView({ ctx, coachee }) {
   }
   if (!dispo) return /* @__PURE__ */ React.createElement("div", { style: { padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 } }, "Les bilans ne sont pas encore activ\xE9s en base.", /* @__PURE__ */ React.createElement("br", null), "Joue ", /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700 } }, "sql/2026-08-08-bilan-hebdomadaire.sql"), " dans Supabase.");
   if (bilans === null) return /* @__PURE__ */ React.createElement("div", { style: { padding: 40, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 24 }));
-  if (bilans.length === 0) return /* @__PURE__ */ React.createElement("div", { style: { padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 } }, coachee.name, " n'a pas encore envoy\xE9 de bilan.");
-  return /* @__PURE__ */ React.createElement("div", { className: "fade-in", style: { display: "flex", flexDirection: "column", gap: 10 } }, bilans.map((b) => {
+  const semaines = [.../* @__PURE__ */ new Set([...bilans.map((b) => b.week_number), ...notes.map((n) => n.week_number)])].sort((a, b) => b - a);
+  if (semaines.length === 0) return /* @__PURE__ */ React.createElement("div", { style: { padding: "26px 18px", textAlign: "center", color: T.textMuted, fontSize: 12.5, lineHeight: 1.6 } }, coachee.name, " n'a pas encore envoy\xE9 de retour.");
+  return /* @__PURE__ */ React.createElement("div", { className: "fade-in", style: { display: "flex", flexDirection: "column", gap: 10 } }, semaines.map((num) => {
     var _a, _b, _c, _d, _e;
+    const b = bilans.find((x) => x.week_number === num);
+    const notesSem = notes.filter((n) => n.week_number === num);
+    if (!b) return /* @__PURE__ */ React.createElement("div", { key: `n${num}`, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5, marginBottom: 4 } }, "SEMAINE ", num), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginBottom: 10 } }, "Pas de bilan, mais des notes de s\xE9ance"), /* @__PURE__ */ React.createElement(NotesDeSeance, { notes: notesSem }));
     const enAttente = !b.coach_reply;
-    return /* @__PURE__ */ React.createElement("div", { key: b.id, style: { background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5 } }, "SEMAINE ", b.week_number), enAttente && /* @__PURE__ */ React.createElement("span", { style: { background: T.warnBg, color: T.warnText, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800 } }, "SANS R\xC9PONSE")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: b.note ? 11 : 0 } }, BILAN_CRITERES.map((c) => /* @__PURE__ */ React.createElement("div", { key: c.cle, style: { flex: 1, textAlign: "center", background: T.bg, borderRadius: 9, padding: "8px 2px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, lineHeight: 1, color: b[c.cle] == null ? T.textMuted : b[c.cle] <= 2 ? "var(--cmp-down-text)" : b[c.cle] >= 4 ? "var(--cmp-up-text)" : T.textSub } }, b[c.cle] == null ? "\u2014" : b[c.cle]), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 7.5, color: T.textMuted, letterSpacing: 0.4, fontWeight: 700, marginTop: 4 } }, c.label.toUpperCase())))), b.note && /* @__PURE__ */ React.createElement("div", { style: { background: T.bg, borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: T.text, lineHeight: 1.55, whiteSpace: "pre-wrap" } }, b.note), b.coach_reply ? /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 4 } }, "TA R\xC9PONSE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.accentDark, lineHeight: 1.5, whiteSpace: "pre-wrap" } }, b.coach_reply)) : /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11 } }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { key: b.id, style: { background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5 } }, "SEMAINE ", b.week_number), enAttente && /* @__PURE__ */ React.createElement("span", { style: { background: T.warnBg, color: T.warnText, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800 } }, "SANS R\xC9PONSE")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: b.note ? 11 : 0 } }, BILAN_CRITERES.map((c) => /* @__PURE__ */ React.createElement("div", { key: c.cle, style: { flex: 1, textAlign: "center", background: T.bg, borderRadius: 9, padding: "8px 2px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, lineHeight: 1, color: b[c.cle] == null ? T.textMuted : b[c.cle] <= 2 ? "var(--cmp-down-text)" : b[c.cle] >= 4 ? "var(--cmp-up-text)" : T.textSub } }, b[c.cle] == null ? "\u2014" : b[c.cle]), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 7.5, color: T.textMuted, letterSpacing: 0.4, fontWeight: 700, marginTop: 4 } }, c.label.toUpperCase())))), b.note && /* @__PURE__ */ React.createElement("div", { style: { background: T.bg, borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: T.text, lineHeight: 1.55, whiteSpace: "pre-wrap" } }, b.note), notesSem.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11 } }, /* @__PURE__ */ React.createElement(NotesDeSeance, { notes: notesSem })), b.coach_reply ? /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 10, padding: "10px 12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 4 } }, "TA R\xC9PONSE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.accentDark, lineHeight: 1.5, whiteSpace: "pre-wrap" } }, b.coach_reply)) : /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11 } }, /* @__PURE__ */ React.createElement(
       "textarea",
       {
         rows: 2,
@@ -2985,7 +3090,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
     setBusy(false);
     onBack();
   }
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["bilans", "Bilans"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditOpen(true), style: { width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "\xC9diter les infos"), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9"), /* @__PURE__ */ React.createElement(CoachPushSender, { ctx, coachee })), tab === "bilans" && /* @__PURE__ */ React.createElement(CoachBilansView, { ctx, coachee }), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })), editOpen && /* @__PURE__ */ React.createElement(EditCoacheeModal, { supabase, coachee, onClose: () => setEditOpen(false), onSaved: async () => {
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(Icon, { name: "chevronLeft", size: 20, color: T.text })), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 } }, coachee.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, coachee.access_code))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" } }, [["infos", "Infos"], ["bilans", "Retours"], ["programme", "Programme"], ["periodisation", "P\xE9riodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setTab(id), style: { flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } }, label))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, tab === "infos" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" } }, [["Nom", coachee.name], ["Code d'acc\xE8s", coachee.access_code], ["Objectif", coachee.goal || "\u2014"], ["Date de d\xE9but", coachee.start_date || "\u2014"]].map(([k, v], i, arr) => /* @__PURE__ */ React.createElement("div", { key: k, style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, k), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: T.text, fontWeight: 700 } }, v))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.border}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Offre"), /* @__PURE__ */ React.createElement(OfferBadge, { offer: coachee.offer })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "9px 0", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: T.textMuted, fontWeight: 600 } }, "Statut"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent } }, coachee.is_active === false ? "Inactif" : "Actif"))), /* @__PURE__ */ React.createElement("button", { onClick: () => setEditOpen(true), style: { width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, "\xC9diter les infos"), /* @__PURE__ */ React.createElement("button", { onClick: toggleActive, disabled: busy, style: { width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, coachee.is_active === false ? "R\xE9activer ce coach\xE9" : "D\xE9sactiver ce coach\xE9"), /* @__PURE__ */ React.createElement(CoachPushSender, { ctx, coachee })), tab === "bilans" && /* @__PURE__ */ React.createElement(CoachBilansView, { ctx, coachee }), tab === "programme" && /* @__PURE__ */ React.createElement(ProgramBuilder, { ctx, coachee, onClose: onBack }), tab === "periodisation" && /* @__PURE__ */ React.createElement(CoachPeriodizationView, { ctx, coachee }), tab === "nutrition" && /* @__PURE__ */ React.createElement(CoachNutritionView, { ctx, coachee }), tab === "progression" && /* @__PURE__ */ React.createElement(CoachProgressView, { ctx, coachee })), editOpen && /* @__PURE__ */ React.createElement(EditCoacheeModal, { supabase, coachee, onClose: () => setEditOpen(false), onSaved: async () => {
     setEditOpen(false);
     await onChanged();
     onBack();
