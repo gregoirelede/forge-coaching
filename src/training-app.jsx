@@ -2758,6 +2758,169 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  SAUVEGARDE — exporter toutes les données du coach dans un fichier
+//
+//  POURQUOI CETTE FONCTION EXISTE. Le plan gratuit de Supabase ne fait AUCUNE
+//  sauvegarde automatique, et sa documentation recommande explicitement aux
+//  projets gratuits d'exporter régulièrement leurs données. Perdre l'historique
+//  d'un client qui paie ne se rattrape ni techniquement, ni commercialement.
+//
+//  L'export tourne entièrement côté client, avec la session du coach : la RLS
+//  lui donne accès à ses coachés et à rien d'autre. Aucune clé service_role
+//  n'intervient, aucune Edge Function — donc aucune surface nouvelle.
+//
+//  LES CODES D'ACCÈS NE SONT PAS EXPORTÉS. C'est la règle de la Partie K du
+//  CLAUDE.md : « un code ne se note ni dans le dépôt, ni dans une conversation,
+//  ni dans un fichier ». Un code est l'unique secret d'un compte — l'email et le
+//  mot de passe internes s'en déduisent. Un fichier de sauvegarde traîne dans un
+//  dossier Téléchargements, se copie sur une clé USB, part par mail : ce n'est
+//  pas un endroit pour des identifiants de connexion.
+//  Conséquence à connaître : restaurer suppose de recréer les comptes depuis
+//  l'espace coach, qui réémettra de nouveaux codes. C'est de toute façon le seul
+//  chemin légitime (Partie K).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Tables rattachées aux coachés, exportées via leur coachee_id.
+const SAUVEGARDE_TABLES_COACHES = [
+  "programs", "weeks", "sets_logged", "weight_logs",
+  "nutrition_profiles", "meal_plans", "periodization_phases",
+  "weekly_reviews", "session_notes",
+];
+// Tables qui appartiennent au coach lui-même.
+const SAUVEGARDE_TABLES_COACH = ["exercises_library", "recipes_library"];
+
+// push_subscriptions et push_config sont volontairement absentes : la première
+// ne contient que des secrets d'appareils, sans valeur une fois restaurés ;
+// la seconde porte la clé privée VAPID, que personne ne doit jamais manipuler.
+
+async function construireSauvegarde(supabase, coachId, coachees) {
+  const ids = coachees.map(c => c.id);
+  const donnees = {};
+
+  // Les profils, débarrassés du code d'accès.
+  donnees.profiles = coachees.map(({ access_code, ...reste }) => reste);
+
+  for (const table of SAUVEGARDE_TABLES_COACHES) {
+    if (ids.length === 0) { donnees[table] = []; continue; }
+    const { data, error } = await supabase.from(table).select("*").in("coachee_id", ids);
+    // Une table absente (migration pas jouée) ne doit pas faire échouer toute
+    // la sauvegarde : on note l'incident et on continue.
+    donnees[table] = error ? { _erreur: error.message, lignes: [] } : (data || []);
+  }
+  for (const table of SAUVEGARDE_TABLES_COACH) {
+    const { data, error } = await supabase.from(table).select("*").eq("coach_id", coachId);
+    donnees[table] = error ? { _erreur: error.message, lignes: [] } : (data || []);
+  }
+
+  const compter = (v) => Array.isArray(v) ? v.length : 0;
+  return {
+    _forge_coaching: {
+      version: 1,
+      exporte_le: new Date().toISOString(),
+      coach_id: coachId,
+      avertissement:
+        "Les codes d'accès ne figurent PAS dans ce fichier, volontairement : " +
+        "un code est l'unique secret d'un compte coaché. Restaurer suppose de " +
+        "recréer les comptes depuis l'espace coach, qui émettra de nouveaux codes.",
+      contenu: Object.fromEntries(Object.entries(donnees).map(([k, v]) => [k, compter(v)])),
+    },
+    donnees,
+  };
+}
+
+// Déclenche le téléchargement du fichier. Renvoie false si le navigateur ne
+// l'a pas permis — sur iPhone hors écran d'accueil, notamment.
+function telechargerJSON(nomFichier, objet) {
+  try {
+    const blob = new Blob([JSON.stringify(objet, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomFichier;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // On libère l'URL après coup : la révoquer immédiatement annulerait le
+    // téléchargement sur certains navigateurs.
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    return true;
+  } catch { return false; }
+}
+
+const CLE_DERNIERE_SAUVEGARDE = "forge_derniere_sauvegarde";
+
+// ── Carte « Sauvegarde » en bas de la liste des coachés ─────────────────────
+function CoachBackupCard({ ctx }) {
+  const { supabase, coachId, coachees } = ctx;
+  const [occupe, setOccupe] = useState(false);
+  const [retour, setRetour] = useState(null);   // { ok, message }
+  const [derniere, setDerniere] = useState(() => {
+    try { return localStorage.getItem(CLE_DERNIERE_SAUVEGARDE); } catch { return null; }
+  });
+
+  async function exporter() {
+    setOccupe(true); setRetour(null);
+    try {
+      const sauvegarde = await construireSauvegarde(supabase, coachId, coachees);
+      const jour = new Date().toISOString().slice(0, 10);
+      const ok = telechargerJSON(`forge-coaching-sauvegarde-${jour}.json`, sauvegarde);
+      if (!ok) throw new Error("Ton navigateur a refusé le téléchargement. Réessaie depuis un ordinateur.");
+
+      const total = Object.values(sauvegarde._forge_coaching.contenu).reduce((a, b) => a + b, 0);
+      const incomplet = Object.values(sauvegarde.donnees).some(v => v && v._erreur);
+      const maintenant = new Date().toISOString();
+      try { localStorage.setItem(CLE_DERNIERE_SAUVEGARDE, maintenant); } catch {}
+      setDerniere(maintenant);
+      setRetour({ ok: !incomplet, message: incomplet
+        ? `${total} lignes exportées, mais certaines tables n'ont pas pu être lues.`
+        : `${total} lignes exportées. Range le fichier en lieu sûr.` });
+    } catch (e) {
+      setRetour({ ok: false, message: e?.message || "Export impossible" });
+    } finally { setOccupe(false); }
+  }
+
+  const jours = derniere
+    ? Math.floor((Date.now() - new Date(derniere).getTime()) / 86400000) : null;
+  const ancienne = jours === null || jours >= 30;
+
+  return (
+    <div style={{ padding: "22px 18px 0" }}>
+      <div style={{ background: T.surface, border: `1px solid ${ancienne ? T.warnBorder : T.border}`, borderRadius: 14, padding: "15px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>SAUVEGARDE</div>
+          {derniere && (
+            <span style={{ fontSize: 9.5, color: ancienne ? T.warnText : T.textMuted, fontWeight: 700 }}>
+              {jours === 0 ? "Aujourd'hui" : jours === 1 ? "Hier" : `Il y a ${jours} jours`}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 11 }}>
+          {derniere
+            ? "Télécharge une copie de tes données : coachés, programmes, séries loguées, pesées, bilans."
+            : "Supabase ne sauvegarde rien sur le plan gratuit. Télécharge une copie de tes données et range-la en lieu sûr."}
+        </div>
+
+        <button onClick={exporter} disabled={occupe} className="pressable"
+          style={{ width: "100%", padding: "12px", background: occupe ? T.surface2 : T.bg, border: `1.5px solid ${occupe ? T.border : T.borderStrong}`, borderRadius: 11, color: occupe ? T.textMuted : T.textSub, fontSize: 11, fontWeight: 800, letterSpacing: .8, cursor: occupe ? "default" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          {occupe ? (<><Spinner size={13} color={T.textMuted}/> EXPORT EN COURS...</>) : "TÉLÉCHARGER MES DONNÉES"}
+        </button>
+
+        {retour && (
+          <div style={{ fontSize: 10.5, color: retour.ok ? T.accent : T.danger, marginTop: 9, lineHeight: 1.5, fontWeight: 600 }}>
+            {retour.message}
+          </div>
+        )}
+
+        <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 10, lineHeight: 1.5, paddingTop: 10, borderTop: `1px solid ${T.border}` }}>
+          Les codes d'accès n'y figurent pas : un code est l'unique secret d'un compte,
+          il n'a rien à faire dans un fichier.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  SUIVI D'ASSIDUITÉ — qui s'entraîne, qui décroche
 //
 //  Aucune table nouvelle : tout se déduit de sets_logged, qui existe depuis le
@@ -3021,6 +3184,8 @@ function CoachListPage({ ctx }) {
           </div>
         ))}
       </div>
+
+      <CoachBackupCard ctx={ctx}/>
     </div>
   );
 }

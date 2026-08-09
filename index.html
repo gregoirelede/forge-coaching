@@ -2453,6 +2453,113 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
     loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " CR\xC9ATION...") : "CR\xC9ER LE COACH\xC9"
   )))));
 }
+const SAUVEGARDE_TABLES_COACHES = [
+  "programs",
+  "weeks",
+  "sets_logged",
+  "weight_logs",
+  "nutrition_profiles",
+  "meal_plans",
+  "periodization_phases",
+  "weekly_reviews",
+  "session_notes"
+];
+const SAUVEGARDE_TABLES_COACH = ["exercises_library", "recipes_library"];
+async function construireSauvegarde(supabase, coachId, coachees) {
+  const ids = coachees.map((c) => c.id);
+  const donnees = {};
+  donnees.profiles = coachees.map((_a) => {
+    var _b = _a, { access_code } = _b, reste = __objRest(_b, ["access_code"]);
+    return reste;
+  });
+  for (const table of SAUVEGARDE_TABLES_COACHES) {
+    if (ids.length === 0) {
+      donnees[table] = [];
+      continue;
+    }
+    const { data, error } = await supabase.from(table).select("*").in("coachee_id", ids);
+    donnees[table] = error ? { _erreur: error.message, lignes: [] } : data || [];
+  }
+  for (const table of SAUVEGARDE_TABLES_COACH) {
+    const { data, error } = await supabase.from(table).select("*").eq("coach_id", coachId);
+    donnees[table] = error ? { _erreur: error.message, lignes: [] } : data || [];
+  }
+  const compter = (v) => Array.isArray(v) ? v.length : 0;
+  return {
+    _forge_coaching: {
+      version: 1,
+      exporte_le: (/* @__PURE__ */ new Date()).toISOString(),
+      coach_id: coachId,
+      avertissement: "Les codes d'acc\xE8s ne figurent PAS dans ce fichier, volontairement : un code est l'unique secret d'un compte coach\xE9. Restaurer suppose de recr\xE9er les comptes depuis l'espace coach, qui \xE9mettra de nouveaux codes.",
+      contenu: Object.fromEntries(Object.entries(donnees).map(([k, v]) => [k, compter(v)]))
+    },
+    donnees
+  };
+}
+function telechargerJSON(nomFichier, objet) {
+  try {
+    const blob = new Blob([JSON.stringify(objet, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomFichier;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 3e4);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+const CLE_DERNIERE_SAUVEGARDE = "forge_derniere_sauvegarde";
+function CoachBackupCard({ ctx }) {
+  const { supabase, coachId, coachees } = ctx;
+  const [occupe, setOccupe] = useState(false);
+  const [retour, setRetour] = useState(null);
+  const [derniere, setDerniere] = useState(() => {
+    try {
+      return localStorage.getItem(CLE_DERNIERE_SAUVEGARDE);
+    } catch (e) {
+      return null;
+    }
+  });
+  async function exporter() {
+    setOccupe(true);
+    setRetour(null);
+    try {
+      const sauvegarde = await construireSauvegarde(supabase, coachId, coachees);
+      const jour = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      const ok = telechargerJSON(`forge-coaching-sauvegarde-${jour}.json`, sauvegarde);
+      if (!ok) throw new Error("Ton navigateur a refus\xE9 le t\xE9l\xE9chargement. R\xE9essaie depuis un ordinateur.");
+      const total = Object.values(sauvegarde._forge_coaching.contenu).reduce((a, b) => a + b, 0);
+      const incomplet = Object.values(sauvegarde.donnees).some((v) => v && v._erreur);
+      const maintenant = (/* @__PURE__ */ new Date()).toISOString();
+      try {
+        localStorage.setItem(CLE_DERNIERE_SAUVEGARDE, maintenant);
+      } catch (e) {
+      }
+      setDerniere(maintenant);
+      setRetour({ ok: !incomplet, message: incomplet ? `${total} lignes export\xE9es, mais certaines tables n'ont pas pu \xEAtre lues.` : `${total} lignes export\xE9es. Range le fichier en lieu s\xFBr.` });
+    } catch (e) {
+      setRetour({ ok: false, message: (e == null ? void 0 : e.message) || "Export impossible" });
+    } finally {
+      setOccupe(false);
+    }
+  }
+  const jours = derniere ? Math.floor((Date.now() - new Date(derniere).getTime()) / 864e5) : null;
+  const ancienne = jours === null || jours >= 30;
+  return /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 0" } }, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${ancienne ? T.warnBorder : T.border}`, borderRadius: 14, padding: "15px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 } }, "SAUVEGARDE"), derniere && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: ancienne ? T.warnText : T.textMuted, fontWeight: 700 } }, jours === 0 ? "Aujourd'hui" : jours === 1 ? "Hier" : `Il y a ${jours} jours`)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 11 } }, derniere ? "T\xE9l\xE9charge une copie de tes donn\xE9es : coach\xE9s, programmes, s\xE9ries logu\xE9es, pes\xE9es, bilans." : "Supabase ne sauvegarde rien sur le plan gratuit. T\xE9l\xE9charge une copie de tes donn\xE9es et range-la en lieu s\xFBr."), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: exporter,
+      disabled: occupe,
+      className: "pressable",
+      style: { width: "100%", padding: "12px", background: occupe ? T.surface2 : T.bg, border: `1.5px solid ${occupe ? T.border : T.borderStrong}`, borderRadius: 11, color: occupe ? T.textMuted : T.textSub, fontSize: 11, fontWeight: 800, letterSpacing: 0.8, cursor: occupe ? "default" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }
+    },
+    occupe ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 13, color: T.textMuted }), " EXPORT EN COURS...") : "T\xC9L\xC9CHARGER MES DONN\xC9ES"
+  ), retour && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: retour.ok ? T.accent : T.danger, marginTop: 9, lineHeight: 1.5, fontWeight: 600 } }, retour.message), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9.5, color: T.textMuted, marginTop: 10, lineHeight: 1.5, paddingTop: 10, borderTop: `1px solid ${T.border}` } }, "Les codes d'acc\xE8s n'y figurent pas : un code est l'unique secret d'un compte, il n'a rien \xE0 faire dans un fichier.")));
+}
 const SUIVI_SEMAINES = 8;
 const SUIVI_FENETRE = 4;
 async function loadAssiduite(supabase, coachees) {
@@ -2575,7 +2682,7 @@ function CoachListPage({ ctx }) {
   const { coachees, openCoachee, setShowNewModal } = ctx;
   const [filter, setFilter] = useState("actifs");
   const filtered = coachees.filter((c) => filter === "actifs" ? c.is_active !== false : c.is_active === false);
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "MES COACH\xC9S"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, filtered.length, " ", filter === "actifs" ? "actif" : "inactif", filtered.length > 1 ? "s" : "")), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowNewModal(true), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ NOUVEAU")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 8 } }, ["actifs", "inactifs"].map((f) => /* @__PURE__ */ React.createElement("button", { key: f, onClick: () => setFilter(f), style: { padding: "6px 14px", background: filter === f ? T.accent : T.surface, color: filter === f ? "white" : T.textSub, border: `1px solid ${filter === f ? T.accent : T.border}`, borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", textTransform: "capitalize" } }, f))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, filter === "actifs" ? "Aucun coach\xE9 actif. Cr\xE9e ton premier coach\xE9 avec le bouton + Nouveau." : "Aucun coach\xE9 inactif.") : filtered.map((c, i) => /* @__PURE__ */ React.createElement("div", { key: c.id, onClick: () => openCoachee(c), className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 20, color: "white" } }, (c.name || "?")[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(OfferBadge, { offer: c.offer }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, fontWeight: 600 } }, c.access_code))), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 20, color: T.borderStrong })))));
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 }, className: "fade-in" }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 } }, "MES COACH\xC9S"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginTop: 5 } }, filtered.length, " ", filter === "actifs" ? "actif" : "inactif", filtered.length > 1 ? "s" : "")), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowNewModal(true), className: "pressable", style: { background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: `0 4px 14px rgba(13,148,136,0.3)` } }, "+ NOUVEAU")), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 14px", display: "flex", gap: 8 } }, ["actifs", "inactifs"].map((f) => /* @__PURE__ */ React.createElement("button", { key: f, onClick: () => setFilter(f), style: { padding: "6px 14px", background: filter === f ? T.accent : T.surface, color: filter === f ? "white" : T.textSub, border: `1px solid ${filter === f ? T.accent : T.border}`, borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", textTransform: "capitalize" } }, f))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 } }, filter === "actifs" ? "Aucun coach\xE9 actif. Cr\xE9e ton premier coach\xE9 avec le bouton + Nouveau." : "Aucun coach\xE9 inactif.") : filtered.map((c, i) => /* @__PURE__ */ React.createElement("div", { key: c.id, onClick: () => openCoachee(c), className: "quick-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 20, color: "white" } }, (c.name || "?")[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(OfferBadge, { offer: c.offer }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: T.textMuted, fontWeight: 600 } }, c.access_code))), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 20, color: T.borderStrong })))), /* @__PURE__ */ React.createElement(CoachBackupCard, { ctx }));
 }
 function CoachLibraryPage({ ctx }) {
   const { supabase, coachId, library, reloadLibrary } = ctx;
