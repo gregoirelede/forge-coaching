@@ -1227,7 +1227,7 @@ function ToggleSwitch({ on, onChange, disabled }) {
   } }));
 }
 function ConfirmSheet({ title, message, confirmLabel = "Confirmer", danger = false, onConfirm, onCancel }) {
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onCancel, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 900 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 901, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", padding: "0 18px calc(18px + env(safe-area-inset-bottom))" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, textAlign: "center" } }, title), message ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, textAlign: "center", lineHeight: 1.6, margin: "10px 4px 0" } }, message) : null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: onConfirm, style: { flex: 1, padding: "14px", background: danger ? T.danger : "linear-gradient(135deg, #064E3B, #0D9488)", color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, confirmLabel))));
+  return /* @__PURE__ */ React.createElement(Portail, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: onCancel, style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 900 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 901, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", padding: "0 18px calc(18px + env(safe-area-inset-bottom))" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, textAlign: "center" } }, title), message ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, textAlign: "center", lineHeight: 1.6, margin: "10px 4px 0" } }, message) : null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 20 } }, /* @__PURE__ */ React.createElement("button", { onClick: onCancel, style: { flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Annuler"), /* @__PURE__ */ React.createElement("button", { onClick: onConfirm, style: { flex: 1, padding: "14px", background: danger ? T.danger : "linear-gradient(135deg, #064E3B, #0D9488)", color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" } }, confirmLabel))));
 }
 function useConfirm() {
   const [req, setReq] = useState(null);
@@ -2453,6 +2453,38 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
     loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: T.textMuted }), " CR\xC9ATION...") : "CR\xC9ER LE COACH\xC9"
   )))));
 }
+let versionApp = "inconnue";
+(async () => {
+  try {
+    const noms = await caches.keys();
+    const n = noms.find((x) => x.startsWith("forge-coaching-"));
+    if (n) versionApp = n.slice("forge-coaching-".length);
+  } catch (e) {
+  }
+})();
+const erreursDejaSignalees = /* @__PURE__ */ new Set();
+const contexteRapport = { supabase: null, userId: null, role: null };
+async function signalerErreur(supabase, userId, role, error) {
+  try {
+    if (!supabase || !userId) return;
+    const message = String((error == null ? void 0 : error.message) || error || "Erreur inconnue").slice(0, 500);
+    if (erreursDejaSignalees.has(message)) return;
+    erreursDejaSignalees.add(message);
+    await supabase.from("error_reports").insert({
+      user_id: userId,
+      role: role || null,
+      message,
+      // Les premières lignes suffisent à situer le problème, et évitent
+      // d'enregistrer des piles de plusieurs kilo-octets.
+      stack: String((error == null ? void 0 : error.stack) || "").split("\n").slice(0, 8).join("\n").slice(0, 2e3) || null,
+      user_agent: (navigator.userAgent || "").slice(0, 300),
+      app_version: versionApp,
+      // Le chemin seul, jamais les paramètres : ils peuvent porter n'importe quoi.
+      page: (location.pathname || "").slice(0, 200)
+    });
+  } catch (e) {
+  }
+}
 const SAUVEGARDE_TABLES_COACHES = [
   "programs",
   "weeks",
@@ -2624,6 +2656,40 @@ const STATUTS = {
   jamais: { label: "Jamais d\xE9marr\xE9", bg: "var(--surface2)", tx: "var(--text-sub)", ordre: 2 },
   sans_programme: { label: "Sans programme", bg: "var(--surface2)", tx: "var(--text-muted)", ordre: 4 }
 };
+function CoachErreursCard({ ctx }) {
+  const { supabase, coachees } = ctx;
+  const { confirm, confirmUI } = useConfirm();
+  const [erreurs, setErreurs] = useState(null);
+  const [dispo, setDispo] = useState(true);
+  const recharger = useCallback(async () => {
+    const { data, error } = await supabase.from("error_reports").select("*").order("created_at", { ascending: false }).limit(20);
+    if (error) {
+      setDispo(!tableAbsente(error));
+      setErreurs([]);
+      return;
+    }
+    setErreurs(data || []);
+  }, [supabase]);
+  useEffect(() => {
+    recharger();
+  }, [recharger]);
+  async function effacer() {
+    if (!await confirm({
+      title: "EFFACER LES RAPPORTS",
+      message: `Les ${erreurs.length} rapports affich\xE9s seront supprim\xE9s. Les donn\xE9es des coach\xE9s ne sont pas touch\xE9es.`,
+      confirmLabel: "Effacer",
+      danger: true
+    })) return;
+    await supabase.from("error_reports").delete().in("id", erreurs.map((e) => e.id));
+    await recharger();
+  }
+  if (!dispo || erreurs === null || erreurs.length === 0) return null;
+  const nomDe = (id) => {
+    var _a;
+    return ((_a = coachees.find((c) => c.id === id)) == null ? void 0 : _a.name) || "Toi";
+  };
+  return /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 0" } }, confirmUI, /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.warnBorder}`, borderRadius: 14, padding: "15px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 } }, erreurs.length, " PLANTAGE", erreurs.length > 1 ? "S" : ""), /* @__PURE__ */ React.createElement("button", { onClick: effacer, style: { background: "none", border: "none", color: T.textMuted, fontSize: 10.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 } }, "Effacer")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 11 } }, "L'app a affich\xE9 un \xE9cran d'erreur \xE0 quelqu'un. Transmets-moi \xE7a."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 7 } }, erreurs.map((e) => /* @__PURE__ */ React.createElement("div", { key: e.id, style: { background: T.bg, borderRadius: 9, padding: "9px 11px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 3 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: T.textSub, fontWeight: 800, letterSpacing: 0.5 } }, nomDe(e.user_id).toUpperCase()), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9, color: T.textMuted, flexShrink: 0 } }, new Date(e.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: T.text, lineHeight: 1.45, wordBreak: "break-word" } }, e.message), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, marginTop: 4 } }, "version ", e.app_version || "inconnue"))))));
+}
 function CoachFollowUpPage({ ctx }) {
   const { supabase, coachees, openCoachee } = ctx;
   const [assiduite, setAssiduite] = useState(null);
@@ -2676,7 +2742,7 @@ function CoachFollowUpPage({ ctx }) {
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.text } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 3 } }, a.jamaisEntraine ? "Aucune s\xE9ance enregistr\xE9e" : a.joursDepuis === 0 ? "Derni\xE8re s\xE9ance aujourd'hui" : a.joursDepuis === 1 ? "Derni\xE8re s\xE9ance hier" : `Derni\xE8re s\xE9ance il y a ${a.joursDepuis} jours`)), /* @__PURE__ */ React.createElement("span", { style: { background: s.bg, color: s.tx, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800, letterSpacing: 0.3, flexShrink: 0 } }, s.label)),
       a.prevuesParSemaine > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 11 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, "SEMAINE ", a.semaineEnCours, " \xB7 ", a.faitesCetteSemaine, "/", a.prevuesParSemaine, " S\xC9ANCES"), a.taux !== null && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 } }, a.taux, "% SUR ", SUIVI_FENETRE, " SEM.")), /* @__PURE__ */ React.createElement("div", { style: { height: 6, background: T.surface2, borderRadius: 3, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { width: `${pct}%`, height: "100%", background: pct >= 100 ? T.accent : s.tx, borderRadius: 3, transition: "width .4s ease" } })))
     );
-  })));
+  })), /* @__PURE__ */ React.createElement(CoachErreursCard, { ctx }));
 }
 function CoachListPage({ ctx }) {
   const { coachees, openCoachee, setShowNewModal } = ctx;
@@ -4456,6 +4522,10 @@ class ErrorBoundary extends React.Component {
       console.error("Erreur applicative :", error);
     } catch (e) {
     }
+    try {
+      signalerErreur(contexteRapport.supabase, contexteRapport.userId, contexteRapport.role, error);
+    } catch (e) {
+    }
   }
   render() {
     if (this.state.hasError) {
@@ -4469,6 +4539,12 @@ function ForgeCoachingRoot() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const supabaseRef = useRef(null);
+  useEffect(() => {
+    var _a;
+    contexteRapport.supabase = supabaseRef.current;
+    contexteRapport.userId = ((_a = session == null ? void 0 : session.user) == null ? void 0 : _a.id) || null;
+    contexteRapport.role = (profile == null ? void 0 : profile.role) || null;
+  }, [session, profile]);
   const resolveSession = useCallback(async (supabase, sess) => {
     try {
       const { data: prof } = await supabase.from("profiles").select("*").eq("id", sess.user.id).single();
