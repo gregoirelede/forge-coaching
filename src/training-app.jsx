@@ -802,8 +802,13 @@ function ToggleSwitch({ on, onChange, disabled }) {
 //  CONFIRMATION MAISON — remplace window.confirm (dialogues natifs bannis de l'UI)
 // ═══════════════════════════════════════════════════════════════════════════════
 function ConfirmSheet({ title, message, confirmLabel = "Confirmer", danger = false, onConfirm, onCancel }) {
+  // Rendue dans <body> comme toutes les feuilles, pour la raison expliquée sur
+  // le composant Portail : une page animée enferme le `position: fixed` dans
+  // son contexte d'empilement. Ces confirmations fonctionnaient jusqu'ici par
+  // chance — leurs z-index (900/901) les plaçaient au-dessus de tout ce qui
+  // partage leur contexte. Le portail rend ça vrai par construction.
   return (
-    <>
+    <Portail>
       <div className="sheet-backdrop" onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 900 }}/>
       <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 901, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", padding: "0 18px calc(18px + env(safe-area-inset-bottom))" }}>
         <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 16px" }}/>
@@ -814,7 +819,7 @@ function ConfirmSheet({ title, message, confirmLabel = "Confirmer", danger = fal
           <button onClick={onConfirm} style={{ flex: 1, padding: "14px", background: danger ? T.danger : "linear-gradient(135deg, #064E3B, #0D9488)", color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>{confirmLabel}</button>
         </div>
       </div>
-    </>
+    </Portail>
   );
 }
 
@@ -2758,6 +2763,66 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  SUPERVISION DES ERREURS
+//
+//  Jusqu'ici, quand l'app plantait chez un coaché, il voyait un écran d'excuse
+//  et Greg n'en savait rien — sauf si le coaché pensait à le dire. Désormais le
+//  rapport part en base et l'espace coach l'affiche.
+//
+//  CE QUI PART, ET RIEN D'AUTRE : le message, le début de la pile d'appels, le
+//  navigateur, la version du build et la page. AUCUNE donnée de coaché — pas de
+//  charge, pas de reps, pas de bilan. Un rapport d'erreur sert à réparer, pas à
+//  observer les gens.
+//
+//  PAS DE SERVICE EXTERNE. Un Sentry enverrait tout ça chez un tiers et
+//  ajouterait une dépendance dans le chemin le plus fragile de l'app. Une table
+//  fait le même travail sans rien envoyer nulle part.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// La version du build, lue depuis le nom du cache posé par le service worker.
+// Relevée une fois au démarrage pour être disponible immédiatement le jour où
+// une erreur survient — on ne veut pas d'un await dans un gestionnaire d'erreur.
+let versionApp = "inconnue";
+(async () => {
+  try {
+    const noms = await caches.keys();
+    const n = noms.find(x => x.startsWith("forge-coaching-"));
+    if (n) versionApp = n.slice("forge-coaching-".length);
+  } catch { /* pas de service worker : tant pis, la version restera inconnue */ }
+})();
+
+// Un plantage en boucle ne doit pas inonder la table : un même message n'est
+// signalé qu'une fois par session de navigation.
+const erreursDejaSignalees = new Set();
+
+// Qui est connecté, pour l'attacher au rapport. L'ErrorBoundary vit au-dessus
+// de la session dans l'arbre React : plutôt que de faire redescendre l'état à
+// travers un composant de classe, la racine tient cette référence à jour.
+const contexteRapport = { supabase: null, userId: null, role: null };
+
+async function signalerErreur(supabase, userId, role, error) {
+  try {
+    if (!supabase || !userId) return;
+    const message = String(error?.message || error || "Erreur inconnue").slice(0, 500);
+    if (erreursDejaSignalees.has(message)) return;
+    erreursDejaSignalees.add(message);
+
+    await supabase.from("error_reports").insert({
+      user_id: userId,
+      role: role || null,
+      message,
+      // Les premières lignes suffisent à situer le problème, et évitent
+      // d'enregistrer des piles de plusieurs kilo-octets.
+      stack: String(error?.stack || "").split("\n").slice(0, 8).join("\n").slice(0, 2000) || null,
+      user_agent: (navigator.userAgent || "").slice(0, 300),
+      app_version: versionApp,
+      // Le chemin seul, jamais les paramètres : ils peuvent porter n'importe quoi.
+      page: (location.pathname || "").slice(0, 200),
+    });
+  } catch { /* signaler une erreur ne doit jamais en provoquer une autre */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  SAUVEGARDE — exporter toutes les données du coach dans un fichier
 //
 //  POURQUOI CETTE FONCTION EXISTE. Le plan gratuit de Supabase ne fait AUCUNE
@@ -3020,6 +3085,75 @@ const STATUTS = {
   sans_programme: { label: "Sans programme",bg: "var(--surface2)",    tx: "var(--text-muted)",    ordre: 4 },
 };
 
+// ── Panneau des erreurs récentes, en bas de l'onglet Suivi ─────────────────
+function CoachErreursCard({ ctx }) {
+  const { supabase, coachees } = ctx;
+  const { confirm, confirmUI } = useConfirm();
+  const [erreurs, setErreurs] = useState(null);
+  const [dispo, setDispo]     = useState(true);
+
+  const recharger = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("error_reports").select("*")
+      .order("created_at", { ascending: false }).limit(20);
+    if (error) { setDispo(!tableAbsente(error)); setErreurs([]); return; }
+    setErreurs(data || []);
+  }, [supabase]);
+
+  useEffect(() => { recharger(); }, [recharger]);
+
+  async function effacer() {
+    if (!(await confirm({ title: "EFFACER LES RAPPORTS",
+      message: `Les ${erreurs.length} rapports affichés seront supprimés. Les données des coachés ne sont pas touchées.`,
+      confirmLabel: "Effacer", danger: true }))) return;
+    await supabase.from("error_reports").delete().in("id", erreurs.map(e => e.id));
+    await recharger();
+  }
+
+  // Rien à signaler : on n'affiche rien du tout. Un panneau vide en permanence
+  // finit par ne plus être lu, et c'est précisément celui-là qu'il faut voir.
+  if (!dispo || erreurs === null || erreurs.length === 0) return null;
+
+  const nomDe = (id) => coachees.find(c => c.id === id)?.name || "Toi";
+
+  return (
+    <div style={{ padding: "22px 18px 0" }}>
+      {confirmUI}
+      <div style={{ background: T.surface, border: `1px solid ${T.warnBorder}`, borderRadius: 14, padding: "15px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>
+            {erreurs.length} PLANTAGE{erreurs.length > 1 ? "S" : ""}
+          </div>
+          <button onClick={effacer} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 10.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+            Effacer
+          </button>
+        </div>
+        <div style={{ fontSize: 10.5, color: T.textMuted, lineHeight: 1.5, marginBottom: 11 }}>
+          L'app a affiché un écran d'erreur à quelqu'un. Transmets-moi ça.
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {erreurs.map(e => (
+            <div key={e.id} style={{ background: T.bg, borderRadius: 9, padding: "9px 11px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
+                <span style={{ fontSize: 9.5, color: T.textSub, fontWeight: 800, letterSpacing: .5 }}>
+                  {nomDe(e.user_id).toUpperCase()}
+                </span>
+                <span style={{ fontSize: 9, color: T.textMuted, flexShrink: 0 }}>
+                  {new Date(e.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, color: T.text, lineHeight: 1.45, wordBreak: "break-word" }}>{e.message}</div>
+              <div style={{ fontSize: 9, color: T.textMuted, marginTop: 4 }}>
+                version {e.app_version || "inconnue"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page coach : SUIVI ──
 function CoachFollowUpPage({ ctx }) {
   const { supabase, coachees, openCoachee } = ctx;
@@ -3132,6 +3266,8 @@ function CoachFollowUpPage({ ctx }) {
           );
         })}
       </div>
+
+      <CoachErreursCard ctx={ctx}/>
     </div>
   );
 }
@@ -6254,7 +6390,15 @@ function UpdateBanner({ onUpdate }) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
   static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error) { try { console.error("Erreur applicative :", error); } catch {} }
+  componentDidCatch(error) {
+    try { console.error("Erreur applicative :", error); } catch {}
+    // Le rapport part en base pour que le coach le voie. Volontairement sans
+    // await ni catch remonté : si le signalement échoue, l'écran d'excuse doit
+    // s'afficher quand même.
+    try {
+      signalerErreur(contexteRapport.supabase, contexteRapport.userId, contexteRapport.role, error);
+    } catch {}
+  }
   render() {
     if (this.state.hasError) {
       return <ErrorScreen title="UN PROBLÈME EST SURVENU" message="Une erreur inattendue s'est produite. Tes données sont en sécurité — recharge l'application pour reprendre." onLogout={() => window.location.reload()} actionLabel="Recharger l'application"/>;
@@ -6269,6 +6413,14 @@ function ForgeCoachingRoot() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null); // profil lu en base (contient role)
   const supabaseRef = useRef(null);
+
+  // Tient à jour de quoi attribuer un éventuel rapport d'erreur (voir
+  // contexteRapport). Sans ça, un plantage arriverait anonyme et inexploitable.
+  useEffect(() => {
+    contexteRapport.supabase = supabaseRef.current;
+    contexteRapport.userId   = session?.user?.id || null;
+    contexteRapport.role     = profile?.role || null;
+  }, [session, profile]);
 
   // Lit le profil pour déterminer le rôle, puis route
   const resolveSession = useCallback(async (supabase, sess) => {

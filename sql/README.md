@@ -61,3 +61,17 @@ ne sont pas jouées, les trois fonctionnalités restent simplement invisibles c�
 coaché — aucune erreur, aucun message technique. Côté coach, l'onglet Retours
 indique quel fichier jouer. C'est vérifié par un cas de test dédié dans chacune
 des trois séries concernées.
+
+## Sprint 4 — migration à jouer (9 août 2026)
+
+| Fichier | Ce qu'il ajoute |
+|---|---|
+| `2026-08-09-supervision-erreurs.sql` | Table `error_reports` — quand l'app plante chez un coaché, le coach le voit |
+
+Même remarque que pour le Sprint 3 : **le code déployé n'attend pas cette
+migration.** Tant qu'elle n'est pas jouée, le rapport ne part pas et le panneau
+ne s'affiche pas — aucun message technique nulle part. Le coaché voit son écran
+d'excuse exactement comme avant.
+
+L'export de sauvegarde (v7n), lui, n'a besoin d'aucune migration : il lit les
+tables existantes avec la session du coach.

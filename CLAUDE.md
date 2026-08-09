@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.3 · Build v7m (522 Ko / 6 200 lignes)
+### Fichier de référence pour Claude Code · Version 1.4 · Build v7o (534 Ko / 6 517 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -90,6 +90,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7l** | Sprint 3 : **bilan hebdomadaire** — le coaché fait le point, le coach répond. Correctif : les feuilles passent par un portail | 528 369 o | 6 060 |
 | **v7m** | Sprint 3 : **notes de séance** — un mot du coaché sur une séance précise, lu par le coach à côté du bilan. **Sprint 3 terminé** | 534 919 o | 6 200 |
 | **v7n** | Sprint 4 : **export de sauvegarde** — le coach télécharge toutes ses données, codes d'accès exclus | 541 304 o | 6 365 |
+| **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 
 ## B.4 — État d'installation
 
@@ -142,7 +143,7 @@ forge-coaching/
 ├── build.mjs                           ← script de build (Parties E et O)
 ├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   ├── training-app.jsx                ← SOURCE UNIQUE (6 365 lignes)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (6 517 lignes)
 │   ├── theme.css                       ← 64 variables CSS, clair + sombre
 │   ├── sw-template.js                  ← gabarit du service worker
 │   └── README.md
@@ -159,6 +160,7 @@ forge-coaching/
 │   ├── 2026-08-08-videos-exercices.sql
 │   ├── 2026-08-08-bilan-hebdomadaire.sql
 │   ├── 2026-08-08-notes-de-seance.sql
+│   ├── 2026-08-09-supervision-erreurs.sql
 │   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
 │   ├── VERIFIER-SPRINT-3.sql           ← contrôle en lecture seule, 8 lignes de verdict
 │   ├── NOTE-optimisation-rls.md
@@ -173,7 +175,7 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
-├── tests/                              ← 12 séries de tests, `npm test`
+├── tests/                              ← 13 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -559,6 +561,31 @@ Index : `idx_notes_seance_coachee ON session_notes(coachee_id, week_number DESC)
 > Le coach y a un accès **en lecture seule** : une note de séance est la parole du coaché, le
 > coach répond dans le bilan de la semaine. Une seule conversation par semaine, pas cinq.
 
+### `error_reports` *(v7o)* — savoir que l'app a planté
+```sql
+id          uuid PK
+user_id     uuid REFERENCES profiles(id) ON DELETE CASCADE
+role        text                       -- 'coach' ou 'coachee'
+message     text NOT NULL
+stack       text                       -- 8 premières lignes, tronquées
+user_agent  text
+app_version text                       -- empreinte du build, lue dans le nom du cache
+page        text                       -- le chemin seul, jamais les paramètres
+created_at  timestamptz DEFAULT now()
+```
+Index : `idx_erreurs_recentes ON error_reports(created_at DESC)`
+
+> **Ce qui n'y est pas.** Aucune donnée de coaché : pas de charge, pas de reps, pas de note, pas
+> de bilan. Un rapport d'erreur sert à réparer, pas à observer les gens. Le test
+> `tests/test-erreurs.mjs` vérifie que le rapport ne contient que ses 7 champs et rien d'autre.
+>
+> **Pas de service externe.** Un Sentry enverrait ces rapports chez un tiers et ajouterait une
+> dépendance dans le chemin le plus fragile de l'app. Une table fait le même travail sans rien
+> envoyer nulle part.
+>
+> Policies : chacun ne peut qu'**insérer** son propre rapport (écriture seule) ; le coach lit et
+> efface les siens et ceux de ses coachés.
+
 ### `push_subscriptions` *(v7h)*
 ```sql
 id               uuid PK
@@ -903,7 +930,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 | **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
 | **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Fait** (v7j–v7m) |
-| **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | **En cours** — sauvegarde faite (v7n) |
+| **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | **En cours** — sauvegarde (v7n), supervision des erreurs (v7o). Reste : domaine, RGPD, paiement |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
 > Le plan gratuit de Supabase n'en fait aucune (voir O.7). À prendre le jour du premier client
@@ -947,10 +974,10 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **8 août 2026** — v7m, 534 919 octets, 6 200 lignes |
-| Contenu de ce build | Notes de séance. **Sprint 3 terminé** : assiduité (v7j), vidéos (v7k), bilan hebdomadaire (v7l), notes de séance (v7m) |
-| Build précédent | 8 août 2026 — v7l, 528 369 octets. Bilan hebdomadaire + correctif des feuilles rendues dans un portail |
-| **En attente** | Les 3 migrations du Sprint 3 ne sont **pas** appliquées en base : le connecteur Supabase a refusé lecture comme écriture toute la session. Greg doit jouer `sql/SPRINT-3-A-JOUER.sql`. Le code déployé fonctionne sans — les 3 fonctionnalités restent simplement invisibles jusque-là |
+| Dernier build déployé | **9 août 2026** — v7o, 546 401 octets, 6 517 lignes |
+| Contenu de ce build | Supervision des erreurs + toutes les confirmations passées au portail |
+| Build précédent | 9 août 2026 — v7n, 541 304 octets. Export de sauvegarde |
+| **En attente** | `sql/2026-08-09-supervision-erreurs.sql` reste à jouer. Le Sprint 3 a été appliqué par Greg le 9 août — **non constaté depuis la session**, le connecteur Supabase refusant toute opération et le proxy bloquant `supabase.co`. `sql/VERIFIER-SPRINT-3.sql` donne le verdict en lecture seule |
 | Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
