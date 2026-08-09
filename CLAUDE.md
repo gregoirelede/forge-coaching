@@ -89,6 +89,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7k** | Sprint 3 : vidéos de démonstration sur les exercices (YouTube / Vimeo / fichier) | 512 965 o | 5 758 |
 | **v7l** | Sprint 3 : **bilan hebdomadaire** — le coaché fait le point, le coach répond. Correctif : les feuilles passent par un portail | 528 369 o | 6 060 |
 | **v7m** | Sprint 3 : **notes de séance** — un mot du coaché sur une séance précise, lu par le coach à côté du bilan. **Sprint 3 terminé** | 534 919 o | 6 200 |
+| **v7n** | Sprint 4 : **export de sauvegarde** — le coach télécharge toutes ses données, codes d'accès exclus | 541 304 o | 6 365 |
 
 ## B.4 — État d'installation
 
@@ -141,7 +142,7 @@ forge-coaching/
 ├── build.mjs                           ← script de build (Parties E et O)
 ├── package.json / package-lock.json    ← déclarent esbuild
 ├── src/
-│   ├── training-app.jsx                ← SOURCE UNIQUE (6 200 lignes)
+│   ├── training-app.jsx                ← SOURCE UNIQUE (6 365 lignes)
 │   ├── theme.css                       ← 64 variables CSS, clair + sombre
 │   ├── sw-template.js                  ← gabarit du service worker
 │   └── README.md
@@ -172,7 +173,7 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
-├── tests/                              ← 11 séries de tests, `npm test`
+├── tests/                              ← 12 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -723,6 +724,18 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
   Deux règles de calcul à connaître : une séance compte dès la **première** série validée, et le
   taux **ignore la semaine en cours** — la compter ferait chuter tout le monde un lundi matin.
 
+- **Sauvegarde** *(v7n)* — en bas de la liste des coachés. Télécharge un fichier JSON contenant
+  tout : profils, programmes, semaines, séries loguées, pesées, nutrition, plans de repas,
+  phases, bilans, notes de séance, bibliothèques d'exercices et de recettes. L'export tourne
+  côté client avec la session du coach — la RLS lui donne accès à ses coachés et à rien d'autre,
+  aucune clé `service_role` n'intervient. La carte se borde d'ambre au-delà de 30 jours sans
+  sauvegarde.
+  **Les codes d'accès en sont exclus**, conformément à la Partie K : un code est l'unique secret
+  d'un compte, et un fichier de sauvegarde traîne dans un dossier Téléchargements. Conséquence à
+  connaître : restaurer suppose de recréer les comptes depuis l'espace coach, qui réémettra de
+  nouveaux codes — c'est de toute façon le seul chemin légitime.
+  `push_config` (clé privée VAPID) et `push_subscriptions` (secrets d'appareils) ne sont pas
+  exportées non plus.
 - **Liste des coachés** : création (code d'accès + offre, via `create-coachee`), **édition** (nom / offre / code d'accès, via `update-coachee`), désactivation par `is_active` — **jamais de suppression d'historique**.
 - **Bibliothèque d'exercices** : CRUD complet, avec un champ **vidéo de démonstration** *(v7k)*.
   Coller un lien suffit : YouTube (toutes ses formes, Shorts compris), Vimeo, ou un fichier
@@ -890,7 +903,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 | **1 — Sécurité & fondations** | Codes d'accès + 2 chiffres, icône iOS, polices auto-hébergées, ErrorBoundary, écran d'erreur réseau (fin de la fuite du mode démo), confirmations maison, file hors-ligne, index et RLS optimisés en base | **Fait** (v7d–v7e) |
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
 | **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Fait** (v7j–v7m) |
-| **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | À faire |
+| **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | **En cours** — sauvegarde faite (v7n) |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
 > Le plan gratuit de Supabase n'en fait aucune (voir O.7). À prendre le jour du premier client
