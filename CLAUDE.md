@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.4 · Build v7o (534 Ko / 6 517 lignes)
+### Fichier de référence pour Claude Code · Version 1.5 · Build v7o (534 Ko / 6 517 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -944,6 +944,58 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 **Non fait, envisageable plus tard :** graphiques et analytics avancés côté coach · messagerie intégrée · publication sur les stores · ajout de catégories musculaires · paiement en ligne / gestion des abonnements.
 
 **Phase suivante du projet (hors code) :** acquisition clients — stratégie Instagram, recrutement des premiers bêta-testeurs. Cette partie se traite dans la conversation "Stratégie & Vision", pas ici.
+
+---
+
+# PARTIE P — MODE COACH : CRÉATION DE PROGRAMMES
+
+> **Règle posée le 9 août 2026.** Certaines demandes de Greg ne concernent pas le
+> développement de l'app mais son métier : créer un programme pour un coaché. Ces
+> demandes reviendront régulièrement. On change alors de casquette, et on la
+> repose une fois le programme livré — sauf nouvelle demande de ce type, qu'il
+> n'annoncera pas forcément.
+
+## P.1 — La posture attendue
+
+Se comporter comme un coach BPJEPS qui connaît la littérature, pas comme un
+générateur de séances. Concrètement, **à chaque demande de programme** :
+
+1. **Remettre les connaissances à jour par une recherche web.** Volume, fréquence,
+   proximité de l'échec, sélection d'exercices : la littérature bouge. Ne jamais
+   programmer de mémoire.
+2. **Lire la fiche réelle du coaché en base** — sexe, âge, taille, objectif, offre,
+   date de début — et son historique de séries. Ne jamais supposer.
+3. **Lire la bibliothèque d'exercices du coach** et construire en priorité avec ce
+   qui existe déjà. N'ajouter un exercice que s'il apporte quelque chose que la
+   bibliothèque ne couvre pas, et le justifier.
+4. **Choisir des exercices réalisables dans n'importe quelle salle.** Pas de
+   matériel exotique.
+5. **Adapter réellement à la personne** : niveau, contraintes articulaires,
+   priorité esthétique. Un programme qui pourrait convenir à n'importe qui n'est
+   pas un programme adapté.
+
+## P.2 — Ce qu'il faut savoir avant de programmer
+
+La fiche en base ne dit ni le niveau d'entraînement, ni les douleurs, ni la
+priorité esthétique. Ces trois éléments changent matériellement le programme :
+**les demander à Greg** s'ils ne sont pas donnés. Le reste (âge, taille, sexe,
+objectif) se lit en base et ne se demande pas.
+
+## P.3 — Contraintes techniques de l'app à respecter
+
+- **`muscle` appartient à une liste fermée** (Partie H). Un muscle hors liste casse
+  le code couleur sur toutes les vues.
+- **`reps` est un tableau d'autant d'entrées que `series`.**
+- **Numéroter les séances hors de la plage déjà utilisée** par les programmes
+  précédents du coaché. Les séries sont indexées par `session_config_id` : réutiliser
+  un id ferait afficher les anciennes charges sous les nouveaux noms d'exercices
+  quand le coaché consulte ses semaines passées.
+- **Un seul programme actif à la fois** — l'app lit `is_active = true` en
+  `maybeSingle()`. Désactiver l'ancien dans la même transaction, sans jamais le
+  supprimer : son historique y est rattaché.
+- **Vérifier la durée** avec `estimateSessionMinutes` avant de livrer.
+- Écrire un programme en SQL court-circuite le constructeur de l'espace coach et
+  ses garde-fous : **rejouer `tests/test-programme-*.mjs`** pour retrouver le filet.
 
 ---
 
