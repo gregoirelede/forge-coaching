@@ -37,6 +37,7 @@ machine. Sur la VM de travail, Chromium est déjà installé
 | `test-sauvegarde.mjs` | L'export de sauvegarde : le fichier est réellement téléchargé et relu. Vérifie surtout qu'**aucun code d'accès** n'y figure, et qu'une table en panne ne fait pas échouer le reste |
 | `test-erreurs.mjs` | La supervision : un plantage réel est provoqué, on vérifie que le rapport part, qu'il **ne contient aucune donnée de coaché**, qu'une boucle ne noie pas la table, et que le coach le voit |
 | `test-programme-anais.mjs` | Le programme réellement inséré en base pour Anaïs : l'app le rend sans erreur, les 4 séances sont accessibles, la durée tient sous 1h30, les volumes et la contrainte épaule sont respectés |
+| `test-diete.mjs` | La diète personnalisée : le générateur en pur calcul (allergènes, cibles atteintes à 6 % près, protéines réparties), le consentement du coaché, sa lecture seule, l'édition aliment par aliment côté coach, et le comportement **avant** la migration |
 | `test-videos.mjs` | Reconnaissance des liens vidéo (dont `javascript:` et `data:`, refusés), lecteur côté coaché, et le fonctionnement **avant** que la migration SQL soit jouée |
 
 Le chiffrement des notifications a son propre test, à côté du code qu'il
