@@ -195,8 +195,25 @@ FECULENTS_PAR_NOM = (r"pommes? de terre|patate douce|lentille|pois chiche"
                      r"|boulgour|feve seche|pois casse")
 
 
+# Protéines écartées du TIRAGE AUTOMATIQUE — elles restent dans la base, donc
+# cherchables et ajoutables à la main par le coach, mais l'app ne les propose
+# jamais d'elle-même. Constaté sur le fichier réel : sans ce filtre, les six
+# protéines les moins coûteuses pour une collation étaient du blanc d'œuf cru,
+# de la poudre d'œuf et de l'isolat de soja — le générateur en programmait une
+# fois sur trois.
+#
+# Deux raisons de sortir le CRU, et la seconde est la plus importante :
+#   — personne ne mange 150 g de poulet cru ;
+#   — les macros du cru et du cuit diffèrent nettement, la cuisson concentrant
+#     l'aliment par perte d'eau. Programmer l'entrée « cuit » lève l'ambiguïté
+#     sur la façon de peser.
+PROTEINES_HORS_TIRAGE = r"\b(cru|crue|crus|crues)\b|en poudre|isolat|deshydrat|lyophilis"
+
+
 def role_de(nom_aliment, ssgrp_code, libelles, p, c, f):
     role = ROLE_PAR_SSGRP.get((ssgrp_code or "").strip())
+    if role == "proteine" and re.search(PROTEINES_HORS_TIRAGE, sans_accent(nom_aliment)):
+        return "autre"
     if role:
         return role
     if re.search(FECULENTS_PAR_NOM, sans_accent(nom_aliment)):
