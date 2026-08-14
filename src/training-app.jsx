@@ -4750,16 +4750,26 @@ function ciblesParRepas(cibleJour, mealsPerDay) {
 
 // Aliments utilisables pour un coaché, par rôle et par repas.
 //
-// UNE SEULE RÈGLE N'EST JAMAIS ASSOUPLIE : les allergies. Les préférences,
-// elles, peuvent l'être si elles ne laissent aucun aliment — mieux vaut une
-// diète à retoucher qu'un repas vide.
-function alimentsUtilisables(foods, nutriProfile, role, mealType) {
+// L'ORDRE DES FILTRES EST LA MOITIÉ DU TRAVAIL, parce que tous n'ont pas le
+// même statut :
+//
+//   1. Les ALLERGIES ne sont jamais assouplies. Jamais. Même si le repas
+//      finit vide, un allergène ne passe pas.
+//   2. Les aliments détestés et les préférences (végétarien, halal…) sont
+//      assouplis en dernier recours seulement pour les préférences : mieux
+//      vaut une diète à retoucher qu'un repas vide.
+//   3. Les ALIMENTS HABITUELS du coaché passent avant tout le reste, et
+//      échappent aux plafonds de coût et de préparation : si le coach a noté
+//      que la personne mange déjà ça, la question du budget est réglée.
+//   4. Les plafonds de coût et de préparation ne s'appliquent donc qu'aux
+//      aliments qu'on lui ferait découvrir.
+function alimentsUtilisables(foods, nutriProfile, role, mealType, habituels) {
   const bas = (s) => (s || "").toLowerCase();
   const allergies = (nutriProfile?.allergies || []).map(bas).filter(Boolean);
   const detestes  = (nutriProfile?.disliked_foods || []).map(bas).filter(Boolean);
   const prefs     = (nutriProfile?.dietary_preferences || []).map(bas).filter(Boolean);
 
-  const base = (foods || []).filter(f => {
+  let base = (foods || []).filter(f => {
     if (f.role !== role) return false;
     const types = f.meal_types || [];
     if (types.length && !types.includes(mealType)) return false;
@@ -4768,12 +4778,26 @@ function alimentsUtilisables(foods, nutriProfile, role, mealType) {
     if (detestes.some(d => nom.includes(d))) return false;
     return true;
   });
-  if (!prefs.length) return base;
-  const conformes = base.filter(f => {
-    const tags = (f.tags || []).map(bas);
-    return prefs.every(p => tags.includes(p));
-  });
-  return conformes.length ? conformes : base;
+  if (prefs.length) {
+    const conformes = base.filter(f => prefs.every(p => (f.tags || []).map(bas).includes(p)));
+    if (conformes.length) base = conformes;
+  }
+  if (!base.length) return base;
+
+  // Ce qu'il mange déjà, d'abord.
+  if (habituels && habituels.size) {
+    const siens = base.filter(f => habituels.has(f.id));
+    if (siens.length) return siens;
+  }
+  // Sinon, ce qu'on peut lui demander d'acheter et de cuisiner.
+  const maxC = parseInt(nutriProfile?.max_cost_level) || 3;
+  const maxP = parseInt(nutriProfile?.max_prep_level) || 3;
+  if (maxC >= 3 && maxP >= 3) return base;
+  const praticables = base.filter(f =>
+    (parseInt(f.cost_level) || 2) <= maxC && (parseInt(f.prep_level) || 2) <= maxP);
+  // Aucun aliment praticable pour ce rôle : on rend la main plutôt que de
+  // laisser un trou. Le repas sera juste, et l'écart au budget se voit.
+  return praticables.length ? praticables : base;
 }
 
 // Restreint un tirage aux aliments que le repas peut réellement se payer.
@@ -4888,8 +4912,9 @@ function resoudreGrammages(choix, cibleRepas) {
 
 // Tire une diète complète : deux journées types, leurs repas, leurs aliments.
 // `alea` est injectable pour que les tests soient reproductibles.
-function genererDiete({ cibles, nutriProfile, foods, alea = Math.random }) {
+function genererDiete({ cibles, nutriProfile, foods, habituels, alea = Math.random }) {
   const mealsPerDay = DIET_MEAL_SETS[parseInt(nutriProfile?.meals_per_day)] ? parseInt(nutriProfile.meals_per_day) : 4;
+  const habitude = habituels instanceof Set ? habituels : new Set(habituels || []);
   const journees = [];
   const manquants = new Set();
 
@@ -4902,7 +4927,7 @@ function genererDiete({ cibles, nutriProfile, foods, alea = Math.random }) {
       const dejaVus = new Set();
       const choix = [];
       for (const role of roles) {
-        let pool = alimentsUtilisables(foods, nutriProfile, role, cible.meal_type)
+        let pool = alimentsUtilisables(foods, nutriProfile, role, cible.meal_type, habitude)
           .filter(f => !dejaVus.has(f.id));
         if (!pool.length) { manquants.add(role); continue; }
         pool = poolAbordable(pool, role, cible);
@@ -4956,6 +4981,13 @@ async function loadFoods(supabase, coachId) {
   const { data, error } = await supabase.from("foods").select("*").order("name");
   if (error) throw error;
   // La policy filtre déjà : base commune + aliments du coach connecté.
+  return data || [];
+}
+// Les aliments que le coaché mange déjà, validés par le coach.
+async function loadHabituels(supabase, coacheeId) {
+  const { data, error } = await supabase.from("coachee_staples")
+    .select("id, food_id").eq("coachee_id", coacheeId);
+  if (error) throw error;
   return data || [];
 }
 async function loadDiete(supabase, coacheeId) {
@@ -5015,7 +5047,7 @@ const DIET_ROLE_LABELS = [
   ["proteine", "Protéines"], ["feculent", "Féculents"], ["legume", "Légumes"],
   ["fruit", "Fruits"], ["matiere_grasse", "Matières grasses"], ["autre", "Autres"],
 ];
-function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRemplace, onChoose, onCreated, onClose }) {
+function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRemplace, titre, onChoose, onCreated, onClose }) {
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const [creation, setCreation] = useState(null);
@@ -5055,7 +5087,7 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
         <div style={{ padding: "16px 18px 10px", borderBottom: `1px solid ${T.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text }}>
-              {itemRemplace ? "REMPLACER " + itemRemplace.food_name.toUpperCase() : "AJOUTER UN ALIMENT"}
+              {titre || (itemRemplace ? "REMPLACER " + itemRemplace.food_name.toUpperCase() : "AJOUTER UN ALIMENT")}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: T.textMuted, cursor: "pointer", lineHeight: 1 }}>✕</button>
           </div>
@@ -5106,6 +5138,8 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{f.name}</div>
                     <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2 }}>
                       {Math.round(f.kcal_100)} kcal · P{Math.round(f.protein_100)} G{Math.round(f.carbs_100)} L{Math.round(f.fat_100)} / 100 g
+                      {" · "}{"€".repeat(parseInt(f.cost_level) || 2)}
+                      {" · "}{["immédiat", "à cuisiner", "long"][(parseInt(f.prep_level) || 2) - 1]}
                       {f.coach_id ? " · à toi" : ""}{horsRepas ? " · inhabituel à ce repas" : ""}
                     </div>
                   </div>
@@ -5187,6 +5221,8 @@ function CoachNutritionView({ ctx, coachee }) {
   const [consent, setConsent] = useState(null);
   const [phases, setPhases] = useState([]);
   const [dieteAbsente, setDieteAbsente] = useState(false); // migration pas encore jouée
+  const [habituels, setHabituels] = useState([]);          // [{ id, food_id }]
+  const [pickerHabitude, setPickerHabitude] = useState(false);
   const [jourVu, setJourVu] = useState("entrainement");
   const [picker, setPicker] = useState(null); // { mealId, item } — remplacement ou ajout
   const [section, setSection] = useState("parametres"); // parametres | sante | cibles | diete | poids
@@ -5212,6 +5248,10 @@ function CoachNutritionView({ ctx, coachee }) {
     try {
       const [f, d] = await Promise.all([loadFoods(supabase, coachId), loadDiete(supabase, coachee.id)]);
       setFoods(f); setDiete(d); setDieteAbsente(false);
+      // La liste des habitudes est arrivée après la diète : son absence ne doit
+      // pas rendre l'onglet inutilisable chez qui n'a pas joué la migration.
+      try { setHabituels(await loadHabituels(supabase, coachee.id)); }
+      catch (e) { if (!tableAbsente(e)) throw e; }
       const { data: fb } = await supabase.from("diet_feedback").select("*")
         .eq("coachee_id", coachee.id).order("created_at", { ascending: false });
       setRetours(fb || []);
@@ -5277,7 +5317,7 @@ function CoachNutritionView({ ctx, coachee }) {
     if (!foods.length) { setMsg("La base d'aliments est vide : la table Ciqual n'a pas encore été importée"); return; }
     setBusy(true); setMsg("");
     try {
-      const d = genererDiete({ cibles: targets, nutriProfile: nutri, foods });
+      const d = genererDiete({ cibles: targets, nutriProfile: nutri, foods, habituels: idsHabituels });
       if (d.manquants.length) {
         setMsg("Aucun aliment disponible pour : " + d.manquants.join(", ") + ". Vérifie les allergies et les aliments détestés.");
         setBusy(false); return;
@@ -5333,6 +5373,19 @@ function CoachNutritionView({ ctx, coachee }) {
     } catch (e) { setMsg("Erreur : " + e.message); }
     setBusy(false);
   }
+  async function ajouterHabitude(food) {
+    setPickerHabitude(false);
+    if (habituels.some(h => h.food_id === food.id)) return;
+    const { error } = await supabase.from("coachee_staples")
+      .insert({ coachee_id: coachee.id, food_id: food.id });
+    if (error) { setMsg("Erreur : " + error.message); return; }
+    setHabituels(await loadHabituels(supabase, coachee.id));
+  }
+  async function retirerHabitude(h) {
+    await supabase.from("coachee_staples").delete().eq("id", h.id);
+    setHabituels(hs => hs.filter(x => x.id !== h.id));
+  }
+
   async function traiterRetour(r, ajouterAuxDetestes) {
     if (ajouterAuxDetestes) {
       const liste = [...new Set([...(nutri.disliked_foods || []), r.food_name])];
@@ -5353,6 +5406,12 @@ function CoachNutritionView({ ctx, coachee }) {
   const sectionBtn = (id, label) => (
     <button key={id} onClick={() => setSection(id)} style={{ padding: "7px 11px", background: section === id ? T.accent : T.surface, color: section === id ? "white" : T.textSub, border: `1px solid ${section === id ? T.accent : T.border}`, borderRadius: 14, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{label}</button>
   );
+  // Volontairement PAS des hooks : on est ici après les `return` anticipés du
+  // composant (chargement, offre Essentiel). Un useMemo placé après un return
+  // n'est pas appelé à tous les rendus, et React refuse de rendre le composant.
+  const idsHabituels = new Set(habituels.map(h => h.food_id));
+  const foodById = (id) => foods.find(f => f.id === id);
+
   // Repas de la journée affichée, garnis de leurs aliments et de leur cible.
   const cibleJourVu = targets.ready ? (jourVu === "entrainement" ? targets.train : targets.rest) : null;
   const ciblesRepas = cibleJourVu ? ciblesParRepas(cibleJourVu, diete?.plan?.meals_per_day || parseInt(nutri.meals_per_day) || 4) : [];
@@ -5450,6 +5509,33 @@ function CoachNutritionView({ ctx, coachee }) {
           <Field label="PRÉFÉRENCES / RESTRICTIONS (tags de recettes)">
             <input type="text" value={(nutri.dietary_preferences || []).join(", ")} onChange={e => updNutri("dietary_preferences", e.target.value.split(",").map(x => x.trim().toLowerCase()).filter(Boolean))} placeholder="vegetarien, halal, sans porc" style={inputStyle}/>
           </Field>
+          {/* Ce qu'il mange déjà. Le levier le plus fort sur le suivi : on ne
+              demande à personne de tout changer d'un coup. */}
+          {!dieteAbsente && (
+            <Field label="ALIMENTS HABITUELS (LE GÉNÉRATEUR Y PIOCHE EN PRIORITÉ)">
+              {habituels.length === 0 ? (
+                <div style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.6, marginBottom: 8 }}>
+                  Rien pour l'instant. Ajoute ce qu'il mange déjà et que tu valides pour une diète
+                  de sportif — sa diète se construira autour, il aura beaucoup moins à changer.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {habituels.map(h => {
+                    const f = foodById(h.food_id);
+                    return (
+                      <span key={h.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: T.accentLight, border: `1px solid ${T.accent}44`, borderRadius: 10, padding: "5px 8px", fontSize: 11, color: T.text }}>
+                        {f ? f.name : "aliment retiré de la base"}
+                        <button onClick={() => retirerHabitude(h)} style={{ background: "none", border: "none", color: T.accent, fontSize: 13, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              <button onClick={() => setPickerHabitude(true)} style={{ width: "100%", padding: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, borderRadius: 10, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
+                AJOUTER UN ALIMENT HABITUEL
+              </button>
+            </Field>
+          )}
           <Field label="ALIMENTS DÉTESTÉS">
             <input type="text" value={(nutri.disliked_foods || []).join(", ")} onChange={e => updNutri("disliked_foods", e.target.value.split(",").map(x => x.trim()).filter(Boolean))} placeholder="brocoli, thon" style={inputStyle}/>
           </Field>
@@ -5555,6 +5641,38 @@ function CoachNutritionView({ ctx, coachee }) {
             </div>
           )}
 
+          {/* Praticité. Ces deux curseurs décident si la diète sera suivie ou
+              abandonnée en dix jours : une diète juste que la personne n'a ni
+              le temps ni les moyens de faire ne vaut rien. */}
+          {(() => {
+            const maxC = parseInt(nutri.max_cost_level) || 3;
+            const maxP = parseInt(nutri.max_prep_level) || 3;
+            const retenus = foods.filter(f => f.role !== "autre"
+              && (parseInt(f.cost_level) || 2) <= maxC && (parseInt(f.prep_level) || 2) <= maxP).length;
+            const total = foods.filter(f => f.role !== "autre").length;
+            const curseur = (champ, val, labels) => (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 800, letterSpacing: 0.8, color: T.textMuted, marginBottom: 5 }}>
+                  <span>{champ === "max_cost_level" ? "BUDGET" : "PRÉPARATION"}</span>
+                  <span style={{ color: val < 3 ? T.accent : T.textMuted }}>{labels[val - 1]}</span>
+                </div>
+                <input type="range" min="1" max="3" step="1" value={val}
+                  onChange={e => saveParams(null, { [champ]: parseInt(e.target.value) })}
+                  style={{ width: "100%", accentColor: T.accent }}/>
+              </div>
+            );
+            return (
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "12px 14px", marginBottom: 12 }}>
+                {curseur("max_cost_level", maxC, ["Serré", "Modéré", "Sans contrainte"])}
+                {curseur("max_prep_level", maxP, ["Rapide", "Normal", "Sans contrainte"])}
+                <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.55 }}>
+                  {retenus} aliments retenus sur {total}
+                  {habituels.length > 0 && ` · ${habituels.length} aliment${habituels.length > 1 ? "s" : ""} habituel${habituels.length > 1 ? "s" : ""}, prioritaire${habituels.length > 1 ? "s" : ""} et hors plafonds`}
+                </div>
+              </div>
+            );
+          })()}
+
           <button onClick={genererLaDiete} disabled={busy} className="pressable" style={{ width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {busy ? (<><Spinner size={14} color="white"/> ...</>) : (diete ? "REGÉNÉRER LA DIÈTE" : "GÉNÉRER LA DIÈTE")}
           </button>
@@ -5622,6 +5740,9 @@ function CoachNutritionView({ ctx, coachee }) {
                         <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 0", borderTop: `1px solid ${T.border}55` }}>
                           <button onClick={() => setPicker({ mealId: r.id, item: it })} style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, fontSize: 12, color: T.text, lineHeight: 1.35, cursor: "pointer" }}>
                             {it.food_name}
+                            {habituels.length > 0 && !idsHabituels.has(it.food_id) && (
+                              <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.5, color: T.warnText, background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 5, padding: "1px 4px", whiteSpace: "nowrap" }}>NOUVEAU</span>
+                            )}
                             <span style={{ display: "block", fontSize: 9, color: T.textMuted, marginTop: 1 }}>
                               {Math.round(macrosItem(it).kcal)} kcal · P{Math.round(macrosItem(it).protein)} G{Math.round(macrosItem(it).carbs)} L{Math.round(macrosItem(it).fat)}
                             </span>
@@ -5684,6 +5805,15 @@ function CoachNutritionView({ ctx, coachee }) {
             </div>
           )}
         </div>
+      )}
+      {pickerHabitude && (
+        <FoodPickerSheet
+          foods={foods} nutri={nutri} coachId={coachId} supabase={supabase}
+          titre="AJOUTER UN ALIMENT HABITUEL" itemRemplace={null}
+          onCreated={f => setFoods(fs => [...fs, f].sort((a, b) => a.name.localeCompare(b.name)))}
+          onChoose={ajouterHabitude}
+          onClose={() => setPickerHabitude(false)}
+        />
       )}
       {picker && (
         <FoodPickerSheet
