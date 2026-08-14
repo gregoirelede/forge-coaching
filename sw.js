@@ -2,7 +2,7 @@
 //  FORGE COACHING — SERVICE WORKER
 //
 //  Ce fichier est un GABARIT. Le build (build.mjs) en produit `sw.js` à la racine
-//  en remplaçant 5bc530531e78 par une empreinte de l'index.html du moment. Toute
+//  en remplaçant 212929be1d23 par une empreinte de l'index.html du moment. Toute
 //  modification de l'app change donc la version, ce qui invalide l'ancien cache
 //  et déclenche la bannière « Mise à jour disponible » côté coaché.
 //
@@ -18,7 +18,7 @@
 //     appuie sur « Recharger ». Pas de rechargement surprise en pleine séance.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const VERSION = "5bc530531e78";
+const VERSION = "212929be1d23";
 const CACHE   = "forge-coaching-" + VERSION;
 
 // Ressources mises en cache dès l'installation : l'app doit pouvoir démarrer

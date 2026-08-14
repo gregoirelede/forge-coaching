@@ -86,9 +86,10 @@ const jourAujourdhui = (PROGRAMME.week_structure.find(w => w.day === JOURS[new D
 // `consenti`  : le coaché a déjà accepté le cadre
 // `panne`     : les tables de la diète n'existent pas encore
 // `retours`   : aliments signalés par le coaché
-const injection = ({ role = "coachee", avecDiete = true, consenti = true, panne = false, retours = [], habituels = [] } = {}) => `
+const injection = ({ role = "coachee", avecDiete = true, consenti = true, panne = false, retours = [], habituels = [], sansPraticite = false } = {}) => `
 window.__journal = { inserts: [], updates: [], deletes: [] };
 const PANNE = ${panne};
+const SANS_PRATICITE = ${sansPraticite};
 const COACH  = { id: "coach-1", name: "Greg", role: "coach", access_code: "GLEDE572" };
 const COACHE = { id: "c1", name: "Marie Dupont", role: "coachee", coach_id: "coach-1",
                  access_code: "MDUPONT27", offer: "premium", is_active: true,
@@ -140,6 +141,9 @@ const TABLES_DIETE = ["foods","diet_plans","diet_meals","diet_items","diet_feedb
 
 function requete(table) {
   const diete = TABLES_DIETE.includes(table);
+  // La table des habitudes a sa propre migration : elle peut manquer alors
+  // que celles de la diète sont là.
+  const absente = (diete && PANNE) || (table === "coachee_staples" && SANS_PRATICITE);
   const q = { _f: {}, _in: {},
     select(){ return q; }, order(){ return q; }, gte(){ return q; }, limit(){ return q; },
     eq(c,v){ q._f[c]=v; return q; }, in(c,v){ q._in[c]=v; return q; },
@@ -151,7 +155,7 @@ function requete(table) {
       } }; },
     insert(vals){
       window.__journal.inserts.push({ table, vals });
-      if (diete && PANNE) return { select: () => ({ single: async () => ({ data: null, error: ERR_TABLE }) }), then: r => Promise.resolve({ data: null, error: ERR_TABLE }).then(r) };
+      if (absente) return { select: () => ({ single: async () => ({ data: null, error: ERR_TABLE }) }), then: r => Promise.resolve({ data: null, error: ERR_TABLE }).then(r) };
       if (table === "diet_consents") CONSENT = { id: "k9", coachee_id: "c1", version: vals.version, accepted_at: new Date().toISOString() };
       if (table === "diet_items") ITEMS.push({ id: "i" + (ITEMS.length + 90), ...vals });
       if (table === "coachee_staples") HABITUELS.push({ id: "h" + (HABITUELS.length + 1), ...vals });
@@ -180,12 +184,12 @@ function requete(table) {
       in: async () => ({ error: null }),
     }; },
     single: async () => {
-      if (diete && PANNE) return { data: null, error: ERR_TABLE };
+      if (absente) return { data: null, error: ERR_TABLE };
       return { data: table === "profiles" ? (q._f.id === "coach-1" ? COACH : COACHE)
                    : table === "programs" ? PROGRAMME : null, error: null };
     },
     maybeSingle: async () => {
-      if (diete && PANNE) return { data: null, error: ERR_TABLE };
+      if (absente) return { data: null, error: ERR_TABLE };
       if (table === "diet_plans") return { data: PLAN, error: null };
       if (table === "diet_consents") return { data: CONSENT, error: null };
       if (table === "programs") return { data: PROGRAMME, error: null };
@@ -193,7 +197,7 @@ function requete(table) {
       return { data: null, error: null };
     },
     then(res){
-      if (diete && PANNE) return Promise.resolve({ data: null, error: ERR_TABLE }).then(res);
+      if (absente) return Promise.resolve({ data: null, error: ERR_TABLE }).then(res);
       let d = [];
       if (table === "foods") d = FOODS;
       if (table === "diet_meals") d = REPAS.filter(r => r.plan_id === q._f.plan_id);
@@ -574,6 +578,27 @@ console.log("\n─── Avant que la migration SQL soit jouée ───");
   ok(/MA PESÉE/.test(vue), "la pesée fonctionne");
   ok(!/42P01|does not exist|schema cache/.test(vue), "aucun message technique n'atteint le coaché");
   ok(/n'a pas encore établi ta diète/.test(vue), "et on lui dit simplement que sa diète n'est pas prête");
+  await ctx.close();
+}
+// La praticité a sa PROPRE migration : un coach qui a joué la première et pas
+// la seconde doit garder un onglet Diète parfaitement utilisable.
+{
+  const { ctx, p, erreurs } = await ouvrir({ role: "coach", sansPraticite: true });
+  await p.locator("text=Marie Dupont").first().click();
+  await p.waitForTimeout(1100);
+  await p.locator("text=Nutrition").last().click();
+  await p.waitForTimeout(900);
+  await p.locator("button", { hasText: /^Diète$/ }).click();
+  await p.waitForTimeout(900);
+  const vue = await p.locator("body").innerText();
+  ok(erreurs.length === 0, `aucune erreur applicative sans la migration praticité (${erreurs.length})`);
+  ok(/2026-08-15-diete-praticite\.sql/.test(vue), "le coach apprend quelle migration il lui manque");
+  ok(!/BUDGET/.test(vue), "les curseurs ne s'affichent pas — les toucher échouerait");
+  ok(/GÉNÉRER LA DIÈTE|REGÉNÉRER LA DIÈTE/.test(vue), "mais la génération reste possible");
+  await p.locator("button", { hasText: /^Santé$/ }).click();
+  await p.waitForTimeout(700);
+  ok(!/ALIMENTS HABITUELS/.test(await p.locator("body").innerText()),
+     "la liste des aliments habituels est masquée elle aussi");
   await ctx.close();
 }
 {

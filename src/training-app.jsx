@@ -5223,6 +5223,10 @@ function CoachNutritionView({ ctx, coachee }) {
   const [dieteAbsente, setDieteAbsente] = useState(false); // migration pas encore jouée
   const [habituels, setHabituels] = useState([]);          // [{ id, food_id }]
   const [pickerHabitude, setPickerHabitude] = useState(false);
+  // La praticité est arrivée après la diète : elle a sa propre migration, donc
+  // son propre garde-fou. Sans lui, un coach qui a joué la première migration
+  // mais pas la seconde verrait une erreur en touchant un curseur.
+  const [praticiteAbsente, setPraticiteAbsente] = useState(false);
   const [jourVu, setJourVu] = useState("entrainement");
   const [picker, setPicker] = useState(null); // { mealId, item } — remplacement ou ajout
   const [section, setSection] = useState("parametres"); // parametres | sante | cibles | diete | poids
@@ -5250,8 +5254,12 @@ function CoachNutritionView({ ctx, coachee }) {
       setFoods(f); setDiete(d); setDieteAbsente(false);
       // La liste des habitudes est arrivée après la diète : son absence ne doit
       // pas rendre l'onglet inutilisable chez qui n'a pas joué la migration.
-      try { setHabituels(await loadHabituels(supabase, coachee.id)); }
-      catch (e) { if (!tableAbsente(e)) throw e; }
+      try {
+        setHabituels(await loadHabituels(supabase, coachee.id));
+        setPraticiteAbsente(false);
+      } catch (e) {
+        if (tableAbsente(e)) setPraticiteAbsente(true); else throw e;
+      }
       const { data: fb } = await supabase.from("diet_feedback").select("*")
         .eq("coachee_id", coachee.id).order("created_at", { ascending: false });
       setRetours(fb || []);
@@ -5511,7 +5519,7 @@ function CoachNutritionView({ ctx, coachee }) {
           </Field>
           {/* Ce qu'il mange déjà. Le levier le plus fort sur le suivi : on ne
               demande à personne de tout changer d'un coup. */}
-          {!dieteAbsente && (
+          {!dieteAbsente && !praticiteAbsente && (
             <Field label="ALIMENTS HABITUELS (LE GÉNÉRATEUR Y PIOCHE EN PRIORITÉ)">
               {habituels.length === 0 ? (
                 <div style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.6, marginBottom: 8 }}>
@@ -5644,7 +5652,13 @@ function CoachNutritionView({ ctx, coachee }) {
           {/* Praticité. Ces deux curseurs décident si la diète sera suivie ou
               abandonnée en dix jours : une diète juste que la personne n'a ni
               le temps ni les moyens de faire ne vaut rien. */}
-          {(() => {
+          {praticiteAbsente && (
+            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 11, padding: "9px 12px", marginBottom: 12, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
+              Budget et temps de préparation : joue <b>sql/2026-08-15-diete-praticite.sql</b> dans
+              Supabase pour les activer. La génération fonctionne sans, sans contrainte de praticité.
+            </div>
+          )}
+          {!praticiteAbsente && (() => {
             const maxC = parseInt(nutri.max_cost_level) || 3;
             const maxP = parseInt(nutri.max_prep_level) || 3;
             const retenus = foods.filter(f => f.role !== "autre"
