@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.6 · Build v7p (538 Ko / 6 866 lignes)
+### Fichier de référence pour Claude Code · Version 1.7 · Build v7q (545 Ko / 7010 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -92,6 +92,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7n** | Sprint 4 : **export de sauvegarde** — le coach télécharge toutes ses données, codes d'accès exclus | 541 304 o | 6 365 |
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
+| **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
 
 ## B.4 — État d'installation
 
@@ -169,6 +170,10 @@ forge-coaching/
 │   ├── 2026-08-08-notes-de-seance.sql
 │   ├── 2026-08-09-supervision-erreurs.sql
 │   ├── 2026-08-14-diete-personnalisee.sql  ← les 6 tables de la diète (v7p)
+│   ├── 2026-08-15-diete-praticite.sql   ← coût, préparation, aliments habituels (v7q)
+│   ├── 2026-08-15-niveaux-aliments.sql  ← les niveaux sur les 3 286 aliments
+│   ├── 2026-08-15-diete-anais.sql       ← sa diète sans gluten, composée à la main
+│   ├── A-JOUER-15-AOUT.sql              ← les 3 ci-dessus réunies, pour Greg
 │   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
 │   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
 │   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
@@ -638,6 +643,37 @@ valeurs pour 100 g **recopiées**.
 **`diet_consents`** — le consentement au cadre nutrition, donné par le **coaché**, horodaté et
 versionné. Aucune policy UPDATE ni DELETE, y compris pour le coach.
 
+### La praticité *(v7q)* — migration `sql/2026-08-15-diete-praticite.sql`
+
+Trois ajouts, qui décident si une diète sera suivie ou abandonnée en dix jours.
+
+```sql
+foods.cost_level  int NOT NULL DEFAULT 2 CHECK (1..3)   -- 1 bon marché … 3 cher
+foods.prep_level  int NOT NULL DEFAULT 2 CHECK (1..3)   -- 1 immédiat … 3 long
+nutrition_profiles.max_cost_level int NOT NULL DEFAULT 3
+nutrition_profiles.max_prep_level int NOT NULL DEFAULT 3
+```
+
+**`coachee_staples`** — `coachee_id` + `food_id`, `UNIQUE` sur la paire. Les aliments que le
+coaché mange **déjà** et que le coach a validés. Écrite par le coach seul ; le coaché la lit.
+
+> **Pourquoi une table et pas un `text[]` à côté de `disliked_foods`.** Le texte libre suffit
+> pour *exclure* : un faux positif écarte un aliment de plus, sans gravité. Ici c'est l'inverse,
+> il faut retrouver l'aliment exact pour en lire les macros. « poulet » en texte libre ne dit
+> pas s'il s'agit du blanc à 141 kcal ou de la cuisse avec peau à 171.
+>
+> **Les niveaux sont des estimations, pas des relevés de prix.** Ciqual ne contient ni l'un ni
+> l'autre. Ils sont pré-remplis par famille d'aliments à l'import, et le coach corrige au cas
+> par cas. Le défaut est 2 dans les deux axes : un aliment jamais classé reste utilisable, mais
+> sort dès qu'un curseur se serre — ce qui évite qu'un homard entre dans une diète à budget serré
+> par simple absence de classement.
+>
+> **Ordre de priorité dans le générateur**, et il compte : allergies (jamais assouplies) →
+> aliments détestés → préférences → **aliments habituels, qui échappent aux plafonds** → plafonds
+> de coût et de préparation. Si la personne mange déjà l'aliment, la question du budget est
+> réglée. Et un rôle dont aucun aliment ne passe les plafonds n'est jamais vidé : on rend la main
+> avec l'écart affiché plutôt que de laisser un trou dans le repas.
+
 > **Pourquoi les macros sont recopiées dans `diet_items`.** C'est l'inverse du choix fait pour
 > les vidéos d'exercices, et c'est délibéré. Une vidéo corrigée doit profiter à tout le monde ;
 > une diète, elle, est un document que le coach a validé à 2 480 kcal. Si la base d'aliments
@@ -842,6 +878,13 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
   `push_config` (clé privée VAPID) et `push_subscriptions` (secrets d'appareils) ne sont pas
   exportées non plus.
 - **Liste des coachés** : création (code d'accès + offre, via `create-coachee`), **édition** (nom / offre / code d'accès, via `update-coachee`), désactivation par `is_active` — **jamais de suppression d'historique**.
+- **Praticité d'une diète** *(v7q)* — dans l'onglet Nutrition d'un coaché :
+  - Section **Santé** : la liste des **aliments habituels**, ce qu'il mange déjà et que tu as
+    validé pour une diète de sportif. Le générateur y pioche en priorité et marque **NOUVEAU**
+    les aliments qu'il a dû ajouter faute de couverture. C'est le levier le plus fort sur le
+    suivi : on ne demande à personne de tout changer d'un coup.
+  - Section **Diète** : deux curseurs, **budget** et **préparation**, avec le nombre d'aliments
+    retenus affiché en direct. Un aliment habituel échappe aux deux.
 - **Bibliothèque d'exercices** : CRUD complet, avec un champ **vidéo de démonstration** *(v7k)*.
   Coller un lien suffit : YouTube (toutes ses formes, Shorts compris), Vimeo, ou un fichier
   `.mp4`/`.webm`. L'app dit tout de suite ce qu'elle a reconnu. Un lien non reconnu mais valide
@@ -1012,7 +1055,8 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
 | **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Fait** (v7j–v7m) |
 | **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | **En cours** — sauvegarde (v7n), supervision des erreurs (v7o). Reste : domaine, RGPD, paiement |
-| **5 — Diète** | Diète personnalisée fixe à l'aliment près, deux journées types, consentement du coaché, base Ciqual | **Fait** (v7p), sauf l'import Ciqual qui attend le fichier |
+| **5 — Diète** | Diète personnalisée fixe à l'aliment près, deux journées types, consentement du coaché, base Ciqual | **Fait** (v7p) |
+| **6 — Praticité** | Aliments habituels du coaché, plafonds de budget et de temps de préparation | **Fait** (v7q) |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
 > Le plan gratuit de Supabase n'en fait aucune (voir O.7). À prendre le jour du premier client
@@ -1149,6 +1193,37 @@ comportements à connaître avant de juger un résultat :
   Il équilibre les calories et les trois macros, rien d'autre. Le fer, la vitamine D
   et le calcium — les trois déficits les plus fréquents en France, particulièrement
   chez la femme sportive — restent à l'appréciation du coach.
+- **Il répartit les protéines à parts égales entre les repas** (`ciblesParRepas`).
+  C'est le bon défaut pour la synthèse protéique, mais ça se retourne dès qu'un
+  laitage couvre deux repas : sur la diète d'Anaïs, la répartition égale donnait
+  **60 g de poulet au déjeuner**, ce qui n'est pas une portion de repas. Sur une
+  diète composée à la main, charger les repas à viande (42 et 40 g) et alléger les
+  repas laitiers (28 et 25 g) donne un résultat réaliste, chaque prise restant
+  au-dessus de 0,4 g/kg. **Attention : le bouton « ajuster aux cibles » de l'espace
+  coach revient à la répartition égale et défait ce découpage.**
+- **Les grammages plafonnent** (`DIET_BORNES`). Toujours sur Anaïs : le dîner
+  s'arrêtait à 598 kcal pour 740 visées, parce que 400 g est la borne haute d'un
+  féculent et que la pomme de terre à 81 kcal/100 g n'y arrive pas. Changer de
+  féculent est la bonne réponse, pas relever la borne.
+
+### Le cas des régimes d'exclusion, appris sur la diète d'Anaïs
+
+Une allergie ne se traite pas comme une préférence : elle **redessine le menu**, elle
+ne le filtre pas. Le muesli demandé pour son petit-déjeuner contient du blé et de
+l'orge — il a fallu le remplacer par des flocons d'avoine, en portant l'instruction
+« paquet certifié sans gluten » dans le **nom même de l'aliment**, puisque c'est ce
+que le coaché lit dans son app. L'avoine est naturellement sans gluten et presque
+toujours contaminée en usine.
+
+Deux réflexes à garder pour tout régime d'exclusion :
+
+1. **Vérifier ce que l'exclusion emporte avec elle.** Sans gluten, ce sont les
+   vitamines B, le fer et les fibres qui chutent — les féculents en sont les
+   premiers porteurs. Compter les fibres du résultat (30 g et plus) est le contrôle
+   le plus rapide.
+2. **Une pathologie déclarée n'est pas une préférence.** Une maladie cœliaque
+   diagnostiquée relève du point 2 de la section précédente : pas de diète sans avis
+   médical préalable, et `medical_flag` coché en base.
 
 ---
 
@@ -1179,11 +1254,11 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **14 août 2026** — v7p, 550 890 octets, 6 866 lignes |
-| Contenu de ce build | Diète personnalisée fixe : refonte de l'onglet Nutrition, retrait du plan de la semaine et de l'onglet Recettes |
-| Build précédent | 9 août 2026 — v7o, 546 401 octets. Supervision des erreurs |
-| **En attente** | **Rien.** Les migrations de la diète et de la supervision des erreurs sont constatées en base depuis la session (21 tables, RLS active partout), et la table Ciqual est chargée |
-| Vérification du déploiement | Faite le 14 août : workflow `success` sur `33525f8`, et `index.html` sur `main` identique au build local à l'octet près (550 890 o, empreinte `caf182e10f`) |
+| Dernier build déployé | **15 août 2026** — v7q, 557 657 octets, 7010 lignes |
+| Contenu de ce build | Praticité : aliments habituels, plafonds budget / préparation |
+| Build précédent | 14 août 2026 — v7p, 550 890 octets. Diète personnalisée fixe |
+| **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
+| Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
