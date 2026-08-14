@@ -231,6 +231,79 @@ def role_de(nom_aliment, ssgrp_code, libelles, p, c, f):
     return "proteine" if kp >= kc else "feculent"
 
 
+# ── Coût et préparation ────────────────────────────────────────────────────
+#
+# Ciqual ne contient NI PRIX NI TEMPS DE PRÉPARATION. Ce qui suit est donc une
+# estimation par famille d'aliments, pas un relevé. Elle est assumée comme
+# telle : le coach corrige n'importe quel aliment depuis son espace, et sa
+# correction survit aux réimports.
+#
+# Le défaut est 2 dans les deux axes — « ni cher ni gratuit, ni instantané ni
+# long ». C'est le bon défaut : il ne fait jamais entrer un aliment coûteux
+# dans une diète à budget serré par simple absence de classement.
+#
+# On classe par NOM et par sous-groupe, dans cet ordre : le nom est plus précis
+# (« Boeuf, steak haché 5% » et « Boeuf, filet » sont dans le même sous-groupe
+# et n'ont pas le même prix au kilo).
+
+COUT_1 = (  # bon marché : la base de n'importe quelle diète abordable
+    r"\boeufs?\b|\bp[âa]tes\b|\briz\b|semoule|boulgour|\bpain\b|farine"
+    r"|pomme de terre|patate douce|lentille|pois chiche|haricot (blanc|rouge|noir)"
+    r"|flageolet|f[èe]ve|pois casse|\blait\b|fromage blanc|petit suisse|yaourt"
+    r"|skyr|\bthon\b.*conserve|sardine|maquereau|\bcarotte|\boignon|\bchou\b"
+    r"|\bcourgette|\bpoireau|navet|betterave|banane|\bpomme\b|poire\b"
+    r"|huile d'?(olive|tournesol|colza)|flocons? d'avoine|\bavoine\b|son de ble"
+    r"|cacahu[èe]te|arachide|\bthon\b"
+)
+COUT_3 = (  # cher : ce qui n'a pas sa place dans une diète à budget serré
+    r"saint[- ]jacques|homard|langouste|crevette|gambas|crabe|[ée]crevisse"
+    r"|huitre|hu[îi]tre|noix de p[ée]toncle|caviar|\boursin"
+    r"|foie gras|magret|canard|\boie\b|gibier|chevreuil|sanglier|biche"
+    r"|filet de boeuf|entrec[ôo]te|faux[- ]filet|c[ôo]te de boeuf|tournedos"
+    r"|\bveau\b|\bagneau\b|\bris de\b"
+    r"|saumon fum[ée]|truite fum[ée]|bar\b|\bsole\b|turbot|lotte|saint[- ]pierre"
+    r"|noix de cajou|\bpistache|\bamande|noix de p[ée]can|noisette|macadamia"
+    r"|\bquinoa\b|graines de chia|spiruline|\bavocat"
+    r"|parmesan|comt[ée]|beaufort|roquefort|mozzarella di bufala"
+)
+PREP_1 = (  # rien à faire : on ouvre, on sert
+    r"conserve|appertis|\bcru\b|\bcrue\b|nature\b|yaourt|fromage|\blait\b"
+    r"|skyr|petit suisse|\bpain\b|biscotte|c[ée]r[ée]ales de petit|\bmiel\b"
+    r"|confiture|\bhuile\b|\bbeurre\b|margarine|amande|noisette|cacahu"
+    r"|noix de cajou|noix du bresil|cerneaux de noix|\bpistache"
+    r"|jambon|surgel|\bcompote|\bfruit"
+)
+PREP_3 = (  # long : trempage, mijotage, ou plat à monter
+    r"s[èe]che?s?\b|\bsec\b|\bcrue?s? ?,? ?[àa] cuire"
+    r"|pot[- ]au[- ]feu|bourguignon|blanquette|mijot|braise|confit"
+    r"|g[âa]teau|tarte|p[âa]tisserie|souffl[ée]|gratin|lasagne|hachis"
+)
+
+
+def niveaux(nom, ssgrp_code, role):
+    n = sans_accent(nom)
+    cout = 3 if re.search(COUT_3, n) else (1 if re.search(COUT_1, n) else 2)
+    prep = 3 if re.search(PREP_3, n) else (1 if re.search(PREP_1, n) else 2)
+    # « Pâtes sèches, standard, cuites » : le mot « sèches » décrit le produit
+    # acheté, pas ce qu'il reste à faire. Un aliment que Ciqual donne DÉJÀ cuit
+    # ne peut pas être classé long — dix minutes d'eau bouillante, pas trois
+    # heures. Sans ce garde-fou, toutes les pâtes sortent d'une diète « rapide ».
+    if prep == 3 and re.search(r"\b(cuit|cuite|cuits|cuites|bouilli|bouillie)\b", n):
+        prep = 2
+    # Un fruit sec se mange tel quel, quoi que son nom laisse croire.
+    if role == "fruit" and prep == 3:
+        prep = 1
+    # Les légumes et fruits frais sont bon marché par défaut, sauf exception
+    # déjà attrapée ci-dessus (l'avocat, par exemple).
+    if role in ("legume", "fruit") and cout == 2:
+        cout = 1
+    # Un légume ou un féculent qui doit cuire n'est jamais « immédiat », même si
+    # son nom contient « nature ».
+    if role in ("legume", "feculent") and prep == 1 and not re.search(r"conserve|surgel|\bcru", n):
+        prep = 2
+    return cout, prep
+
+
 # Repas où l'aliment est proposé par défaut. Le coach peut le changer aliment
 # par aliment : ce n'est qu'un point de départ, choisi pour éviter les
 # absurdités du type cabillaud au petit-déjeuner.
@@ -486,9 +559,11 @@ def main():
             ecartes["macros manquantes"] += 1
             continue
         role = role_de(nom, ssgrp, libelles, p, c, f)
+        cout, prep = niveaux(nom, ssgrp, role)
         retenus.append({"code": code, "nom": nom, "role": role,
                         "repas": repas_de(role, ssgrp, libelles),
-                        "kcal": kcal, "p": p, "c": c, "f": f, "fibres": vals.get("fiber")})
+                        "kcal": kcal, "p": p, "c": c, "f": f, "fibres": vals.get("fiber"),
+                        "cout": cout, "prep": prep})
 
     if not retenus:
         raise SystemExit("Aucun aliment exploitable n'a été extrait.")
@@ -530,15 +605,19 @@ def main():
                 fibres = "null" if a["fibres"] is None else f'{a["fibres"]:g}'
                 code = "null" if not a["code"] else echapper(a["code"])
                 valeurs.append(f'({code},{echapper(a["nom"])},{echapper(a["role"])},'
-                               f'{a["kcal"]:g},{a["p"]:g},{a["c"]:g},{a["f"]:g},{fibres})')
+                               f'{a["kcal"]:g},{a["p"]:g},{a["c"]:g},{a["f"]:g},{fibres},'
+                               f'{a["cout"]},{a["prep"]})')
             out.write("insert into public.foods\n"
-                      "  (ciqual_code, name, role, kcal_100, protein_100, carbs_100, fat_100, fiber_100)\n"
+                      "  (ciqual_code, name, role, kcal_100, protein_100, carbs_100, fat_100, fiber_100,\n"
+                      "   cost_level, prep_level)\n"
                       "values\n" + ",\n".join(valeurs) +
                       "\non conflict (ciqual_code) where coach_id is null and ciqual_code is not null\n"
                       "do update set name = excluded.name, role = excluded.role,\n"
                       "              kcal_100 = excluded.kcal_100, protein_100 = excluded.protein_100,\n"
                       "              carbs_100 = excluded.carbs_100, fat_100 = excluded.fat_100,\n"
-                      "              fiber_100 = excluded.fiber_100;\n\n")
+                      "              fiber_100 = excluded.fiber_100,\n"
+                      "              cost_level = excluded.cost_level,\n"
+                      "              prep_level = excluded.prep_level;\n\n")
 
         sales = [a["code"] for a in retenus if a["repas"] == SALES and a["code"]]
         if sales:
@@ -560,6 +639,7 @@ def main():
             ("c", a["code"]), ("n", a["nom"]), ("r", a["role"]),
             ("k", a["kcal"]), ("p", a["p"]), ("g", a["c"]), ("l", a["f"]),
             ("f", a["fibres"]), ("s", 1 if a["repas"] == SALES else None),
+            ("co", a["cout"]), ("pr", a["prep"]),
         ) if v is not None} for a in retenus], fh, ensure_ascii=False, separators=(",", ":"))
 
     par_role = {}
@@ -573,6 +653,11 @@ def main():
     for k, v in ecartes.items():
         if v:
             print(f"  écartés : {v} ({k})")
+    for axe, cle in (("coût", "cout"), ("préparation", "prep")):
+        r = {}
+        for a in retenus:
+            r[a[cle]] = r.get(a[cle], 0) + 1
+        print(f"  {axe:<12} " + "  ".join(f"niveau {k} : {r.get(k, 0)}" for k in (1, 2, 3)))
     print(f"  taille : {os.path.getsize(SORTIE) // 1024} Ko")
 
 

@@ -50,7 +50,16 @@ const FOODS = [
   // Les deux allergènes du scénario. Ils doivent disparaître partout.
   { id: "f14", name: "Beurre de cacahuète",    role: "matiere_grasse", kcal_100: 620, protein_100: 24,  carbs_100: 12,  fat_100: 50,  portion_g: 20 },
   { id: "f15", name: "Crevettes cuites",       role: "proteine",       kcal_100: 99,  protein_100: 21,  carbs_100: 0.2, fat_100: 1.4, portion_g: 120 },
-];
+  // Aliments chers et/ou longs : ils doivent sortir dès qu'un plafond serre.
+  { id: "f17", name: "Noix de Saint-Jacques cuites", role: "proteine", kcal_100: 105, protein_100: 20,  carbs_100: 3,   fat_100: 1,   portion_g: 130,
+    cost_level: 3, prep_level: 2 },
+  { id: "f18", name: "Lentille sèche",         role: "feculent",       kcal_100: 327, protein_100: 25,  carbs_100: 44,  fat_100: 1.8, portion_g: 80,
+    cost_level: 1, prep_level: 3 },
+  { id: "f19", name: "Filet de boeuf grillé",  role: "proteine",       kcal_100: 190, protein_100: 27,  carbs_100: 0,   fat_100: 9,   portion_g: 140,
+    cost_level: 3, prep_level: 2 },
+// Tout le reste est bon marché et sans préparation, sauf mention contraire
+// ci-dessus : c'est ce qui rend les assertions sur les plafonds lisibles.
+].map(f => ({ cost_level: 1, prep_level: 1, ...f }));
 
 const PROGRAMME = {
   id: "p1", coachee_id: "c1", is_active: true,
@@ -77,7 +86,7 @@ const jourAujourdhui = (PROGRAMME.week_structure.find(w => w.day === JOURS[new D
 // `consenti`  : le coaché a déjà accepté le cadre
 // `panne`     : les tables de la diète n'existent pas encore
 // `retours`   : aliments signalés par le coaché
-const injection = ({ role = "coachee", avecDiete = true, consenti = true, panne = false, retours = [] } = {}) => `
+const injection = ({ role = "coachee", avecDiete = true, consenti = true, panne = false, retours = [], habituels = [] } = {}) => `
 window.__journal = { inserts: [], updates: [], deletes: [] };
 const PANNE = ${panne};
 const COACH  = { id: "coach-1", name: "Greg", role: "coach", access_code: "GLEDE572" };
@@ -124,9 +133,10 @@ if (PLAN) {
 }
 let CONSENT = ${consenti} ? { id: "k1", coachee_id: "c1", version: "2026-08-v1", accepted_at: "2026-08-11T08:00:00Z" } : null;
 let RETOURS = ${JSON.stringify(retours)};
+let HABITUELS = ${JSON.stringify(habituels)};
 
 const ERR_TABLE = { code: "42P01", message: 'relation "public.diet_plans" does not exist' };
-const TABLES_DIETE = ["foods","diet_plans","diet_meals","diet_items","diet_feedback","diet_consents"];
+const TABLES_DIETE = ["foods","diet_plans","diet_meals","diet_items","diet_feedback","diet_consents","coachee_staples"];
 
 function requete(table) {
   const diete = TABLES_DIETE.includes(table);
@@ -144,6 +154,7 @@ function requete(table) {
       if (diete && PANNE) return { select: () => ({ single: async () => ({ data: null, error: ERR_TABLE }) }), then: r => Promise.resolve({ data: null, error: ERR_TABLE }).then(r) };
       if (table === "diet_consents") CONSENT = { id: "k9", coachee_id: "c1", version: vals.version, accepted_at: new Date().toISOString() };
       if (table === "diet_items") ITEMS.push({ id: "i" + (ITEMS.length + 90), ...vals });
+      if (table === "coachee_staples") HABITUELS.push({ id: "h" + (HABITUELS.length + 1), ...vals });
       if (table === "foods") FOODS.push({ id: "f90", ...vals });
       const cree = table === "diet_consents" ? CONSENT
                  : table === "foods" ? FOODS[FOODS.length - 1]
@@ -163,6 +174,7 @@ function requete(table) {
         if (table === "diet_items") { const i = ITEMS.findIndex(x => x.id === v); if (i >= 0) ITEMS.splice(i,1); }
         if (table === "diet_meals") { REPAS = []; ITEMS = []; }
         if (table === "diet_feedback") RETOURS = RETOURS.filter(x => x.id !== v);
+        if (table === "coachee_staples") HABITUELS = HABITUELS.filter(x => x.id !== v);
         return { error: null };
       },
       in: async () => ({ error: null }),
@@ -187,6 +199,7 @@ function requete(table) {
       if (table === "diet_meals") d = REPAS.filter(r => r.plan_id === q._f.plan_id);
       if (table === "diet_items") d = ITEMS.filter(i => (q._in.meal_id || []).includes(i.meal_id));
       if (table === "diet_feedback") d = RETOURS;
+      if (table === "coachee_staples") d = HABITUELS;
       if (table === "weight_logs") d = POIDS;
       if (table === "profiles") d = [COACHE];
       return Promise.resolve({ data: d, error: null }).then(res);
@@ -279,6 +292,72 @@ console.log("\n─── Le générateur ───");
   console.log("\n─── Répartition des protéines ───");
   const spread = Math.max(...res.protParRepas) - Math.min(...res.protParRepas);
   ok(spread <= 22, `les protéines sont réparties entre les repas, sans repas sacrifié (écart ${spread} g)`);
+
+  // ── Budget et temps de préparation ──────────────────────────────────────
+  console.log("\n─── Les plafonds de coût et de préparation ───");
+  const prat = await p.evaluate(({ foods }) => {
+    const nutri = { allergies: [], disliked_foods: [], dietary_preferences: [] };
+    const noms = (o) => alimentsUtilisables(foods, { ...nutri, ...o }, "proteine", "dejeuner")
+      .map(f => f.name);
+    const fec = (o) => alimentsUtilisables(foods, { ...nutri, ...o }, "feculent", "dejeuner")
+      .map(f => f.name);
+    return {
+      sansPlafond:  noms({}),
+      budgetSerre:  noms({ max_cost_level: 1, max_prep_level: 3 }),
+      prepaRapide:  fec({ max_cost_level: 3, max_prep_level: 1 }),
+      // Un rôle dont AUCUN aliment ne passe le plafond ne doit pas disparaître.
+      impossible:   alimentsUtilisables(
+        [{ id: "x", name: "Truc cher", role: "legume", kcal_100: 20, protein_100: 1,
+           carbs_100: 2, fat_100: 0, cost_level: 3, prep_level: 3, meal_types: ["dejeuner"] }],
+        { ...nutri, max_cost_level: 1, max_prep_level: 1 }, "legume", "dejeuner").length,
+    };
+  }, { foods: FOODS });
+
+  ok(prat.sansPlafond.includes("Filet de boeuf grillé"),
+     "sans plafond, le filet de boeuf est disponible");
+  ok(!prat.budgetSerre.includes("Filet de boeuf grillé"),
+     "budget serré : le filet de boeuf sort");
+  ok(!prat.budgetSerre.includes("Noix de Saint-Jacques cuites"),
+     "budget serré : les Saint-Jacques sortent");
+  ok(prat.budgetSerre.includes("Blanc de poulet cuit"),
+     "budget serré : le blanc de poulet reste");
+  ok(!prat.prepaRapide.includes("Lentille sèche"),
+     "préparation rapide : les lentilles sèches sortent");
+  ok(prat.prepaRapide.includes("Riz basmati cuit"),
+     "préparation rapide : le riz reste");
+  ok(prat.impossible === 1,
+     "un rôle dont aucun aliment ne passe le plafond n'est pas vidé — un écart affiché vaut mieux qu'un trou");
+
+  // ── Les aliments habituels ──────────────────────────────────────────────
+  console.log("\n─── Les aliments que le coaché mange déjà ───");
+  const hab = await p.evaluate(({ foods }) => {
+    const nutri = { allergies: [], disliked_foods: [], dietary_preferences: [], meals_per_day: 4 };
+    const cibles = { train: { target: 2200, protein: 124, carbs: 300, fat: 56 },
+                     rest:  { target: 1900, protein: 124, carbs: 225, fat: 56 } };
+    let n = 0; const alea = () => { n = (n * 1103515245 + 12345) % 2147483648; return n / 2147483648; };
+    // Il ne mange habituellement que du poulet et du riz.
+    const habituels = new Set(["f1", "f5"]);
+    const d = genererDiete({ cibles, nutriProfile: nutri, foods, habituels, alea });
+    const tires = d.journees.flatMap(j => j.repas.flatMap(r => r.items.map(i => ({ id: i.food_id, n: i.food_name }))));
+    return {
+      proteines: [...new Set(tires.filter(t => ["f1","f2","f3","f4","f16","f17","f19"].includes(t.id)).map(t => t.n))],
+      feculents: [...new Set(tires.filter(t => ["f5","f6","f7","f18"].includes(t.id)).map(t => t.n))],
+      // Un rôle qu'il n'a pas listé doit quand même être couvert.
+      legumes:   [...new Set(tires.filter(t => ["f8","f9"].includes(t.id)).map(t => t.n))],
+      // Un aliment habituel CHER doit passer malgré un plafond serré.
+      cherMaisHabituel: alimentsUtilisables(
+        foods, { ...nutri, max_cost_level: 1 }, "proteine", "dejeuner", new Set(["f19"])
+      ).map(f => f.name),
+    };
+  }, { foods: FOODS });
+
+  ok(hab.proteines.length === 1 && hab.proteines[0] === "Blanc de poulet cuit",
+     `seule sa protéine habituelle est servie aux repas salés (${hab.proteines.join(", ")})`);
+  ok(hab.feculents.includes("Riz basmati cuit"), "son féculent habituel est servi");
+  ok(hab.legumes.length > 0,
+     `un rôle qu'il n'a pas listé est quand même couvert (${hab.legumes.join(", ")})`);
+  ok(hab.cherMaisHabituel.length === 1 && hab.cherMaisHabituel[0] === "Filet de boeuf grillé",
+     "un aliment habituel échappe au plafond de budget — s'il le mange déjà, la question ne se pose pas");
   await ctx.close();
 }
 
