@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 
 SORTIE = "sql/2026-08-14-aliments-ciqual.sql"
 SORTIE_JSON = "sql/data/aliments-ciqual-2025.json"
+SORTIE_NIVEAUX = "sql/2026-08-15-niveaux-aliments.sql"
 
 
 def sans_accent(s):
@@ -642,10 +643,40 @@ def main():
             ("co", a["cout"]), ("pr", a["prep"]),
         ) if v is not None} for a in retenus], fh, ensure_ascii=False, separators=(",", ":"))
 
+    # Troisième sortie : les seuls niveaux de coût et de préparation, pour
+    # mettre à jour une base d'aliments DÉJÀ chargée sans avoir à recoller les
+    # 300 Ko du fichier complet. Groupé par couple (coût, préparation) : neuf
+    # instructions au lieu de 3 286, et le fichier tient dans un copier-coller.
+    couples = {}
+    for a in retenus:
+        if a["code"]:
+            couples.setdefault((a["cout"], a["prep"]), []).append(a["code"])
+    with io.open(SORTIE_NIVEAUX, "w", encoding="utf-8") as fh:
+        fh.write("-- ═══════════════════════════════════════════════════════════════════════════\n"
+                 "--  FORGE COACHING — NIVEAUX DE COÛT ET DE PRÉPARATION DES ALIMENTS\n"
+                 "--\n"
+                 "--  GÉNÉRÉ par scripts/importer-ciqual.py. À jouer APRÈS\n"
+                 "--  sql/2026-08-15-diete-praticite.sql, sur une base d'aliments déjà chargée.\n"
+                 "--  IDEMPOTENT. Ne touche que la base commune : les aliments que le coach a\n"
+                 "--  créés ou corrigés lui-même ne sont jamais écrasés.\n"
+                 "--\n"
+                 "--  1 = bon marché / immédiat · 2 = moyen · 3 = cher / long.\n"
+                 "--  Ce sont des estimations par famille d'aliments, pas des relevés de prix.\n"
+                 "-- ═══════════════════════════════════════════════════════════════════════════\n\n")
+        for (co, pr), codes in sorted(couples.items()):
+            fh.write(f"-- coût {co}, préparation {pr} — {len(codes)} aliments\n"
+                     f"update public.foods set cost_level = {co}, prep_level = {pr}\n"
+                     f" where coach_id is null and ciqual_code in (\n  "
+                     + ",".join(echapper(c) for c in codes) + ");\n\n")
+        fh.write("-- ── Contrôle ──────────────────────────────────────────────────────────────\n"
+                 "-- select cost_level, prep_level, count(*) from public.foods\n"
+                 "--  where coach_id is null group by 1,2 order by 1,2;\n")
+
     par_role = {}
     for a in retenus:
         par_role[a["role"]] = par_role.get(a["role"], 0) + 1
     print(f"\n{SORTIE_JSON}  ({os.path.getsize(SORTIE_JSON) // 1024} Ko)")
+    print(f"{SORTIE_NIVEAUX}  ({os.path.getsize(SORTIE_NIVEAUX) // 1024} Ko)")
     print(f"{SORTIE}")
     print(f"  {len(retenus)} aliments retenus")
     for k, v in sorted(par_role.items(), key=lambda x: -x[1]):
