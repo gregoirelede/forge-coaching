@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.5 · Build v7o (534 Ko / 6 517 lignes)
+### Fichier de référence pour Claude Code · Version 1.6 · Build v7p (538 Ko / 6 866 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -91,6 +91,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7m** | Sprint 3 : **notes de séance** — un mot du coaché sur une séance précise, lu par le coach à côté du bilan. **Sprint 3 terminé** | 534 919 o | 6 200 |
 | **v7n** | Sprint 4 : **export de sauvegarde** — le coach télécharge toutes ses données, codes d'accès exclus | 541 304 o | 6 365 |
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
+| **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 
 ## B.4 — État d'installation
 
@@ -106,7 +107,10 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 - [x] Envoi d'une notification par le coach, depuis la fiche d'un coaché *(v7i)*
 
 **Optionnel, non fait :**
-- [ ] Clé API Anthropic (`sk-ant-...`) pour la génération de recettes par IA — le bouton "IA" de la page Recettes reste inactif sans elle. Compte sur `console.anthropic.com`, 5 $ de crédit suffisent pour des centaines de générations.
+- [ ] **Importer la table Ciqual** *(v7p)* — la seule pièce manquante du module diète. Télécharger le fichier sur `ciqual.anses.fr`, le déposer dans le dépôt, puis `python3 scripts/importer-ciqual.py <fichier>` et jouer le SQL produit. Sans elle, la base d'aliments est vide et le bouton « générer la diète » le dit.
+
+> **La clé API Anthropic n'est plus nécessaire.** Elle ne servait qu'au bouton « IA » de la page
+> Recettes, retirée en v7p avec le reste du module recettes. Rien d'autre dans l'app n'en dépend.
 
 > Si un doute subsiste sur l'état réel de la base, la vérité est dans Supabase → Table Editor. Les **12** tables de la Partie G doivent toutes exister (10 d'origine + `push_subscriptions` et `push_config`, ajoutées en v7h).
 
@@ -161,6 +165,7 @@ forge-coaching/
 │   ├── 2026-08-08-bilan-hebdomadaire.sql
 │   ├── 2026-08-08-notes-de-seance.sql
 │   ├── 2026-08-09-supervision-erreurs.sql
+│   ├── 2026-08-14-diete-personnalisee.sql  ← les 6 tables de la diète (v7p)
 │   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
 │   ├── VERIFIER-SPRINT-3.sql           ← contrôle en lecture seule, 8 lignes de verdict
 │   ├── NOTE-optimisation-rls.md
@@ -175,7 +180,9 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
-├── tests/                              ← 13 séries de tests, `npm test`
+├── scripts/
+│   └── importer-ciqual.py              ← table Ciqual → sql/…-aliments-ciqual.sql
+├── tests/                              ← 15 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -586,6 +593,60 @@ Index : `idx_erreurs_recentes ON error_reports(created_at DESC)`
 > Policies : chacun ne peut qu'**insérer** son propre rapport (écriture seule) ; le coach lit et
 > efface les siens et ceux de ses coachés.
 
+### Les six tables de la diète *(v7p)*
+
+Migration : `sql/2026-08-14-diete-personnalisee.sql`. Elles remplacent l'usage de `meal_plans`,
+qui reste en base avec ses données mais n'est plus alimentée.
+
+**`foods`** — la base d'aliments.
+```sql
+id            uuid PK
+coach_id      uuid REFERENCES profiles(id)  -- NULL = base commune Ciqual, sinon aliment perso
+ciqual_code   text                          -- alim_code de l'ANSES, NULL si aliment maison
+name          text NOT NULL
+role          text NOT NULL CHECK (role IN
+              ('proteine','feculent','legume','fruit','matiere_grasse','autre'))
+meal_types    text[]      -- repas où l'aliment est proposé par défaut
+kcal_100      numeric NOT NULL
+protein_100 / carbs_100 / fat_100   numeric NOT NULL
+fiber_100     numeric
+portion_g     numeric     -- portion usuelle, point de départ du grammage
+portion_label text        -- « 1 yaourt », « 1 c. à soupe »
+tags          text[]      -- vegetarien, vegan, sans_gluten, halal…
+```
+Index unique partiel : `(ciqual_code) WHERE coach_id IS NULL` — un aliment Ciqual n'entre qu'une
+fois dans la base commune, mais un coach reste libre de créer son propre « Riz basmati » à côté.
+
+**`diet_plans`** — une diète, **une seule par coaché** (contrainte `UNIQUE`, pas une convention).
+Porte les huit cibles figées à la génération (`kcal/prot/carbs/fat` × `train/rest`), le poids
+qui a servi au calcul, et un mot du coach affiché en tête.
+
+**`diet_meals`** — `plan_id` + `day_type` (`'entrainement'` | `'repos'`) + `meal_type`
+(`petit_dejeuner`, `collation_matin`, `dejeuner`, `collation`, `diner`). `UNIQUE (plan_id, day_type, meal_type)`.
+
+**`diet_items`** — un aliment dans un repas : `food_id`, `food_name`, `grams`, et les quatre
+valeurs pour 100 g **recopiées**.
+
+**`diet_feedback`** — « je n'aime pas cet aliment ». Écriture seule pour le coaché.
+
+**`diet_consents`** — le consentement au cadre nutrition, donné par le **coaché**, horodaté et
+versionné. Aucune policy UPDATE ni DELETE, y compris pour le coach.
+
+> **Pourquoi les macros sont recopiées dans `diet_items`.** C'est l'inverse du choix fait pour
+> les vidéos d'exercices, et c'est délibéré. Une vidéo corrigée doit profiter à tout le monde ;
+> une diète, elle, est un document que le coach a validé à 2 480 kcal. Si la base d'aliments
+> était mise à jour, les grammages ne bougeraient pas mais les totaux si — la diète cesserait
+> d'atteindre sa cible sans que personne ne l'ait décidé.
+>
+> **Pourquoi un consentement à part, alors que `nutrition_profiles.consent_disclaimer` existe.**
+> Cette colonne-là est cochée par le coach, depuis son espace, au nom du coaché. Un consentement
+> donné par quelqu'un d'autre n'en est pas un. La table le recueille depuis le compte du coaché.
+> La colonne d'origine n'a pas été supprimée, elle n'est simplement plus ce qui fait foi.
+>
+> **Ordre à respecter : le coach peut générer une diète AVANT que le coaché ait consenti.**
+> L'inverse bloquerait tout le monde — on ne consent pas à un document qui n'existe pas. C'est
+> l'affichage côté coaché qui est retenu tant qu'il n'a pas accepté, pas la construction.
+
 ### `push_subscriptions` *(v7h)*
 ```sql
 id               uuid PK
@@ -734,7 +795,18 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
   *(v7k)*. La vidéo n'est chargée qu'au clic : rien ne part sur le réseau tant que le coaché
   n'a rien demandé — il est peut-être en salle, en 4G, entre deux séries.
 - **Parcours** *(toutes offres)* — frise de périodisation en lecture seule, phase en cours mise en avant (semaine X/Y + compte à rebours "N semaines restantes"), détail au clic, courbe de poids superposée. Pour un Essentiel : type et objectif affichés, **cibles caloriques chiffrées masquées**.
-- **Nutrition** *(Premium)* — cibles kcal + macros, plan de repas de la semaine, saisie de la pesée. **Lecture seule** hors pesée : toute la configuration se fait côté coach.
+- **Nutrition** *(Premium)* — trois blocs, dans cet ordre : **cibles du jour** (kcal + macros,
+  annoncées pour le type de journée d'aujourd'hui), **ma diète** *(v7p)*, et **ma pesée**.
+  **Lecture seule hors pesée** : toute la configuration se fait côté coach.
+  - À sa première visite, le coaché lit le cadre nutrition et l'accepte lui-même. Tant qu'il
+    ne l'a pas fait, aucun aliment ne lui est montré — mais le calculateur et la pesée, eux,
+    restent disponibles : ils ne relèvent pas du même cadre.
+  - La diète est **fixe**, en deux journées types : **jour d'entraînement** et **jour de repos**.
+    L'app ouvre sur celle d'aujourd'hui, déduite du programme. Protéines et lipides sont
+    identiques les deux jours ; seuls les féculents changent.
+  - Chaque aliment porte une croix : **« je n'aime pas »**. Elle ne modifie rien — elle prévient
+    le coach, qui remplace. Un coaché qui abandonne un aliment en silence rend sa diète fausse
+    sans que personne ne le sache.
 - **Progrès** — exercices groupés par muscle en accordéon, pastille colorée, record kg, nombre de semaines loguées, mini-graphique au clic.
 - **Accueil** — porte la carte **Bilan de la semaine** *(v7l)* : elle invite à faire le point,
   confirme quand c'est envoyé, et passe en vert quand le coach a répondu.
@@ -782,7 +854,10 @@ Accès via un lien discret **"Espace coach"** en bas de l'écran de connexion �
   savoir à l'avance si le coaché a activé ses notifications — la RLS lui interdit de lire
   `push_subscriptions`, volontairement — donc c'est le serveur qui répond « Aucun appareil abonné »
   le cas échéant. La saisie est conservée en cas d'échec.
-- **Bibliothèque de recettes** : CRUD + bouton "IA" (API Anthropic) pour aider à remplir la bibliothèque.
+- **Bibliothèque de recettes : RETIRÉE de l'interface en v7p.** La table `recipes_library` et son
+  contenu restent en base et dans les sauvegardes — rien n'a été détruit — mais plus aucun écran
+  n'y mène. Le module diète travaille désormais à l'aliment, pas à la recette : c'est ce qui permet
+  de corriger 20 g de riz au lieu de remplacer un plat entier.
 - **Périodisation** : appliquer un des 4 modèles depuis une date de début, créer/éditer des phases manuellement, frise + courbe de poids, propositions de transition.
 
 ## I.3 — Réglages coaché (v7b, complété en v7g et v7h)
@@ -931,6 +1006,7 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 | **2 — PWA, thèmes, notifications** | PWA complète et bannière de mise à jour · mode sombre · notifications push, des deux côtés | **Fait** (v7f–v7i) |
 | **3 — Boucle de coaching** | Bilan hebdomadaire, commentaires de séance, vidéos d'exercices, tableau de bord d'assiduité | **Fait** (v7j–v7m) |
 | **4 — Mise en conformité & business** | Nom de domaine, pages RGPD, liens de paiement, supervision des erreurs, export de sauvegarde | **En cours** — sauvegarde (v7n), supervision des erreurs (v7o). Reste : domaine, RGPD, paiement |
+| **5 — Diète** | Diète personnalisée fixe à l'aliment près, deux journées types, consentement du coaché, base Ciqual | **Fait** (v7p), sauf l'import Ciqual qui attend le fichier |
 
 > **Le Sprint 4 contient un point à ne pas repousser indéfiniment : les sauvegardes.**
 > Le plan gratuit de Supabase n'en fait aucune (voir O.7). À prendre le jour du premier client
@@ -997,6 +1073,77 @@ objectif) se lit en base et ne se demande pas.
 - Écrire un programme en SQL court-circuite le constructeur de l'espace coach et
   ses garde-fous : **rejouer `tests/test-programme-*.mjs`** pour retrouver le filet.
 
+## P.4 — Casquette diététicien (règle du 14 août 2026)
+
+Une demande de **diète** s'aborde comme une demande de programme : recherche à
+jour d'abord, fiche réelle du coaché ensuite, jamais de mémoire. Ce qui suit est
+l'état des connaissances au 14 août 2026, à revérifier à chaque nouvelle demande.
+
+### Ce qu'il faut lire avant d'écrire une diète
+
+`nutrition_profiles` porte tout ce que l'app sait de l'alimentation du coaché, et
+**tout doit être utilisé** : `allergies`, `disliked_foods`, `dietary_preferences`,
+`medical_flag` + `medical_notes`, `ed_screening_flag`, `activity_factor`,
+`meals_per_day`, `protein_g_per_kg`, `fat_g_per_kg`. S'y ajoutent le sexe, l'âge
+et la taille dans `profiles`, la dernière pesée dans `weight_logs`, et la phase de
+périodisation active — qui **prime** sur `goal_adjustment_pct` (règle J.9).
+
+Ce que la base ne dit pas et qu'il faut **demander à Greg** : les horaires réels
+des repas, la capacité à cuisiner, le budget, et le contexte culturel ou religieux
+qui n'aurait pas été saisi en préférence. Les trois premiers décident si une diète
+sera suivie ou abandonnée en dix jours.
+
+### Repères chiffrés
+
+| Sujet | Repère | Source |
+|---|---|---|
+| Protéines, dose totale | Le gain de masse maigre plafonne vers **1,6 g/kg/j** ; 1,5 g/kg suffit pour la force. En déficit, monter à **1,6–2,4 g/kg** pour protéger la masse maigre | méta-régressions dose-réponse, 2022–2025 |
+| Protéines, par prise | **0,4–0,55 g/kg** par repas, sur **3 à 5 prises**, dont une dans la fenêtre 0–2 h autour de la séance | position ISSN |
+| Seuil de leucine | ~**2,5 g** par repas chez l'adulte jeune, soit **25–35 g** de protéines de bonne qualité | littérature MPS |
+| Prise de masse | **+150 à +350 kcal**, soit **0,25–0,5 %** du poids par semaine (jusqu'à 0,5–0,75 % chez un vrai débutant ou une personne très sèche) | revues 2025 |
+| Sèche | −15 à −20 %, jamais sous le plancher de sécurité (Partie J.11) | — |
+| Disponibilité énergétique basse | Sous **30 kcal/kg de masse maigre** : zone RED-S. Dépistage par LEAF-Q chez la femme | consensus CIO 2023, RED-S CAT v2 |
+
+**Le plancher calorique de l'app s'applique toujours**, y compris si une phase
+impose un pourcentage plus agressif. Il ne se contourne pas.
+
+### La limite qui n'est pas technique
+
+**Le titre de diététicien est protégé** — articles **L4371-1 à L4371-3** du Code
+de la santé publique. Dispenser des conseils nutritionnels *à titre habituel* y est
+réservé, et les diplômes de la filière sport — BPJEPS, DEJEPS, STAPS — n'en font
+pas partie. L'exercice illégal est puni d'**un an d'emprisonnement et 15 000 €
+d'amende**.
+
+Ce que ça implique concrètement, et qui n'est pas négociable :
+
+1. Le contenu reste une **suggestion à visée éducative**, jamais une prescription
+   (règle J.10). Le disclaimer et le consentement horodaté du coaché sont les deux
+   pièces qui le matérialisent — ils ne sont pas décoratifs.
+2. **Aucune diète en cas de pathologie déclarée** (`medical_flag`) sans avis
+   médical préalable. L'app l'affiche déjà en bandeau ; le coach doit s'y tenir.
+3. **Aucune diète en déficit** sur un profil `ed_screening_flag`. Le garde-fou est
+   dans le code, il ne se contourne pas depuis l'interface.
+4. Le vrai adossement, le jour où le chiffre d'affaires le permet, est un
+   **partenariat avec un diététicien diplômé** qui valide les diètes. C'est la
+   seule mesure qui change réellement l'exposition : le reste la réduit, ne la
+   supprime pas.
+
+### Comment le générateur travaille, et ce qu'il ne fait pas
+
+`genererDiete()` tire les aliments **une fois**, puis résout les grammages par
+convergence itérative (huit tours), et le coach corrige ensuite à la main. Deux
+comportements à connaître avant de juger un résultat :
+
+- **Le tirage est filtré par la densité de l'aliment** (`poolAbordable`). Une
+  collation de 285 kcal ne peut pas porter 31 g de protéines avec un yaourt à 9 %
+  — il en faudrait 344 g. Le générateur écarte donc les aliments trop coûteux pour
+  le budget du repas. C'est pour ça qu'il choisit du skyr et pas du yaourt grec.
+- **Il ne connaît ni les micronutriments, ni les fibres au-delà de l'affichage.**
+  Il équilibre les calories et les trois macros, rien d'autre. Le fer, la vitamine D
+  et le calcium — les trois déficits les plus fréquents en France, particulièrement
+  chez la femme sportive — restent à l'appréciation du coach.
+
 ---
 
 # PARTIE N — ENVIRONNEMENT DE TRAVAIL
@@ -1026,10 +1173,10 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **9 août 2026** — v7o, 546 401 octets, 6 517 lignes |
-| Contenu de ce build | Supervision des erreurs + toutes les confirmations passées au portail |
-| Build précédent | 9 août 2026 — v7n, 541 304 octets. Export de sauvegarde |
-| **En attente** | `sql/2026-08-09-supervision-erreurs.sql` reste à jouer. Le Sprint 3 a été appliqué par Greg le 9 août — **non constaté depuis la session**, le connecteur Supabase refusant toute opération et le proxy bloquant `supabase.co`. `sql/VERIFIER-SPRINT-3.sql` donne le verdict en lecture seule |
+| Dernier build déployé | **14 août 2026** — v7p, 550 890 octets, 6 866 lignes |
+| Contenu de ce build | Diète personnalisée fixe : refonte de l'onglet Nutrition, retrait du plan de la semaine et de l'onglet Recettes |
+| Build précédent | 9 août 2026 — v7o, 546 401 octets. Supervision des erreurs |
+| **En attente** | **1.** `sql/2026-08-14-diete-personnalisee.sql` à jouer. **2.** La table Ciqual à télécharger, importer et jouer (voir B.4). **3.** `sql/2026-08-09-supervision-erreurs.sql` — appliquée le 9 août d'après Greg, **non constatée depuis la session**, le connecteur Supabase ayant refusé les opérations |
 | Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.

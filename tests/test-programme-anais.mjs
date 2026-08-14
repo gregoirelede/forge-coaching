@@ -22,7 +22,7 @@ let ko = 0;
 const ok = (c, m) => { if (!c) ko++; console.log(`  ${c ? "OK   " : "ECHEC"}  ${m}`); };
 
 const injection = `
-const PROFIL = { id: "anais", name: "Anaïs Moncomble", access_code: "AMONCOMBLE16",
+const PROFIL = { id: "anais", name: "Anaïs Moncomble", access_code: "AEXEMPLE99",
                  coach_id: "coach-1", offer: "premium", goal: "Prise de masse", sex: "femme",
                  birth_date: "2003-07-04", height_cm: 171, is_active: true,
                  start_date: "2026-06-08", created_at: "2026-06-02T18:54:16Z", role: "coachee" };
