@@ -107,7 +107,10 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 - [x] Envoi d'une notification par le coach, depuis la fiche d'un coaché *(v7i)*
 
 **Optionnel, non fait :**
-- [ ] **Importer la table Ciqual** *(v7p)* — la seule pièce manquante du module diète. Télécharger le fichier sur `ciqual.anses.fr`, le déposer dans le dépôt, puis `python3 scripts/importer-ciqual.py <fichier>` et jouer le SQL produit. Sans elle, la base d'aliments est vide et le bouton « générer la diète » le dit.
+- [x] **Table Ciqual 2025 importée** *(14 août 2026)* — **3 286 aliments** en base, extraits de
+  l'archive `.7z` de l'ANSES. Répartition : 1 648 « autre » (jamais tirés automatiquement),
+  788 protéines, 313 féculents, 266 légumes, 137 matières grasses, 134 fruits.
+  Pour réimporter une version ultérieure : `python3 scripts/importer-ciqual.py <archive>`.
 
 > **La clé API Anthropic n'est plus nécessaire.** Elle ne servait qu'au bouton « IA » de la page
 > Recettes, retirée en v7p avec le reste du module recettes. Rien d'autre dans l'app n'en dépend.
@@ -166,6 +169,8 @@ forge-coaching/
 │   ├── 2026-08-08-notes-de-seance.sql
 │   ├── 2026-08-09-supervision-erreurs.sql
 │   ├── 2026-08-14-diete-personnalisee.sql  ← les 6 tables de la diète (v7p)
+│   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
+│   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
 │   ├── SPRINT-3-A-JOUER.sql            ← les 3 ci-dessus réunies, pour Greg
 │   ├── VERIFIER-SPRINT-3.sql           ← contrôle en lecture seule, 8 lignes de verdict
 │   ├── NOTE-optimisation-rls.md
@@ -180,8 +185,9 @@ forge-coaching/
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
+├── 2025_11_03.7z                       ← archive Ciqual 2025 de l'ANSES (source)
 ├── scripts/
-│   └── importer-ciqual.py              ← table Ciqual → sql/…-aliments-ciqual.sql
+│   └── importer-ciqual.py              ← archive Ciqual → SQL + JSON
 ├── tests/                              ← 15 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
@@ -1176,8 +1182,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 | Dernier build déployé | **14 août 2026** — v7p, 550 890 octets, 6 866 lignes |
 | Contenu de ce build | Diète personnalisée fixe : refonte de l'onglet Nutrition, retrait du plan de la semaine et de l'onglet Recettes |
 | Build précédent | 9 août 2026 — v7o, 546 401 octets. Supervision des erreurs |
-| **En attente** | **1.** `sql/2026-08-14-diete-personnalisee.sql` à jouer. **2.** La table Ciqual à télécharger, importer et jouer (voir B.4). **3.** `sql/2026-08-09-supervision-erreurs.sql` — appliquée le 9 août d'après Greg, **non constatée depuis la session**, le connecteur Supabase ayant refusé les opérations |
-| Vérification du déploiement | Workflow "pages build and deployment" sur `main` → statut `success`. Consultable depuis la session, pas besoin d'ouvrir GitHub |
+| **En attente** | **Rien.** Les migrations de la diète et de la supervision des erreurs sont constatées en base depuis la session (21 tables, RLS active partout), et la table Ciqual est chargée |
+| Vérification du déploiement | Faite le 14 août : workflow `success` sur `33525f8`, et `index.html` sur `main` identique au build local à l'octet près (550 890 o, empreinte `caf182e10f`) |
+| Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
 >
