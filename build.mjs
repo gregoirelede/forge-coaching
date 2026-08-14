@@ -177,7 +177,11 @@ function controler(html) {
     ["ParcoursPage", ">", 0],
     ["PhaseTimeline", ">", 0],
     ["NutritionPage", ">", 0],
-    ["CoachRecipesPage", ">", 0],
+    // Diète personnalisée fixe. CoachRecipesPage a disparu avec l'onglet
+    // Recettes : ces trois-là le remplacent comme témoins du module.
+    ["genererDiete", ">", 0],
+    ["FoodPickerSheet", ">", 0],
+    ["DIET_CONSENT_VERSION", ">", 0],
   ];
 
   let echecs = 0;

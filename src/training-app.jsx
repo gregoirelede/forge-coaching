@@ -2849,10 +2849,13 @@ async function signalerErreur(supabase, userId, role, error) {
 const SAUVEGARDE_TABLES_COACHES = [
   "programs", "weeks", "sets_logged", "weight_logs",
   "nutrition_profiles", "meal_plans", "periodization_phases",
-  "weekly_reviews", "session_notes",
+  "weekly_reviews", "session_notes", "diet_plans", "diet_consents",
 ];
 // Tables qui appartiennent au coach lui-même.
-const SAUVEGARDE_TABLES_COACH = ["exercises_library", "recipes_library"];
+// `foods` n'exporte que les aliments PERSO du coach : la base commune vient de
+// la table Ciqual de l'ANSES, elle se retélécharge, il serait absurde de la
+// recopier dans chaque sauvegarde.
+const SAUVEGARDE_TABLES_COACH = ["exercises_library", "recipes_library", "foods"];
 
 // push_subscriptions et push_config sont volontairement absentes : la première
 // ne contient que des secrets d'appareils, sans valeur une fois restaurés ;
@@ -2875,6 +2878,28 @@ async function construireSauvegarde(supabase, coachId, coachees) {
   for (const table of SAUVEGARDE_TABLES_COACH) {
     const { data, error } = await supabase.from(table).select("*").eq("coach_id", coachId);
     donnees[table] = error ? { _erreur: error.message, lignes: [] } : (data || []);
+  }
+
+  // Les repas et leurs aliments pendent d'un plan, pas d'un coaché : ils ne
+  // passent donc pas par la boucle ci-dessus. Sans eux la sauvegarde
+  // contiendrait des diètes vides, ce qui serait pire que pas de diète du tout.
+  try {
+    const plans = Array.isArray(donnees.diet_plans) ? donnees.diet_plans : [];
+    const planIds = plans.map(p => p.id);
+    if (planIds.length) {
+      const { data: repas, error: eR } = await supabase.from("diet_meals").select("*").in("plan_id", planIds);
+      if (eR) throw eR;
+      donnees.diet_meals = repas || [];
+      const repasIds = (repas || []).map(r => r.id);
+      if (repasIds.length) {
+        const { data: items, error: eI } = await supabase.from("diet_items").select("*").in("meal_id", repasIds);
+        if (eI) throw eI;
+        donnees.diet_items = items || [];
+      } else donnees.diet_items = [];
+    } else { donnees.diet_meals = []; donnees.diet_items = []; }
+  } catch (e) {
+    donnees.diet_meals = { _erreur: e.message, lignes: [] };
+    donnees.diet_items = { _erreur: e.message, lignes: [] };
   }
 
   const compter = (v) => Array.isArray(v) ? v.length : 0;
@@ -4367,7 +4392,6 @@ function CoachTabBar({ activePage, onNavigate }) {
     { id: "coachees", label: "Coachés", icon: "profile" },
     { id: "suivi",    label: "Suivi",     icon: "trending" },
     { id: "library",  label: "Exercices", icon: "workout" },
-    { id: "recipes",  label: "Recettes",  icon: "clock" },
   ];
   return (
     <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
@@ -4454,7 +4478,6 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
           {page === "coachees" && <CoachListPage ctx={ctx}/>}
           {page === "suivi"    && <CoachFollowUpPage ctx={ctx}/>}
           {page === "library"  && <CoachLibraryPage ctx={ctx}/>}
-          {page === "recipes"  && <CoachRecipesPage ctx={ctx}/>}
           <CoachTabBar activePage={page} onNavigate={setPage}/>
         </>
       )}
@@ -4476,20 +4499,11 @@ const ACTIVITY_FACTORS = [
   { value: 1.5,  label: "Actif (debout / beaucoup de marche)" },
   { value: 1.65, label: "Très actif (métier physique)" },
 ];
-const MEAL_TYPES = [
-  { id: "petit_dejeuner", label: "Petit-déjeuner" },
-  { id: "dejeuner",       label: "Déjeuner" },
-  { id: "collation",      label: "Collation" },
-  { id: "diner",          label: "Dîner" },
-];
-const mealLabel = (id) => (MEAL_TYPES.find(m => m.id === id) || {}).label || id;
-// Répartition de la cible par repas selon meals_per_day
-const MEAL_SPLITS = {
-  3: [["petit_dejeuner", 0.30], ["dejeuner", 0.40], ["diner", 0.30]],
-  4: [["petit_dejeuner", 0.25], ["dejeuner", 0.35], ["collation", 0.10], ["diner", 0.30]],
-};
 const KCAL_FLOOR = { homme: 1500, femme: 1200 };
-const NUTRITION_DISCLAIMER = "Les recommandations nutritionnelles fournies sont des suggestions à visée éducative dans le cadre d'un accompagnement sportif. Elles ne constituent pas une prescription ni un avis médical, et ne remplacent pas la consultation d'un médecin ou d'un diététicien, en particulier en cas de pathologie, de traitement, de grossesse ou d'antécédent de trouble du comportement alimentaire.";
+// Version du cadre accepté par le coaché. La changer redemande l'accord à
+// tout le monde : à ne faire QUE si le texte ci-dessous change sur le fond.
+const DIET_CONSENT_VERSION = "2026-08-v1";
+const NUTRITION_DISCLAIMER ="Les recommandations nutritionnelles fournies sont des suggestions à visée éducative dans le cadre d'un accompagnement sportif. Elles ne constituent pas une prescription ni un avis médical, et ne remplacent pas la consultation d'un médecin ou d'un diététicien, en particulier en cas de pathologie, de traitement, de grossesse ou d'antécédent de trouble du comportement alimentaire.";
 
 function calcAge(birthDate) {
   if (!birthDate) return null;
@@ -4546,23 +4560,67 @@ function computeNutritionTargets({ clientProfile, nutriProfile, lastWeight, sess
   let pct = (activePhasePct != null && activePhasePct !== "") ? parseInt(activePhasePct) : (parseInt(nutriProfile.goal_adjustment_pct) || 0);
   if (pct < -25) pct = -25;
   if (pct > 25) pct = 25;
-  let target = Math.round(tdee * (1 + pct / 100));
 
   // Garde-fous : plancher BMR + plancher absolu
   const floor = Math.max(bmr, KCAL_FLOOR[sex] || 1200);
-  let floored = false;
-  if (target < floor) { target = floor; floored = true; }
 
-  // Macros
+  // Protéines et lipides se calculent sur le POIDS, pas sur les calories : ils
+  // ne bougent donc pas d'un jour à l'autre. C'est l'usage en diététique du
+  // sport, et c'est aussi ce qui rend une diète mémorisable — seuls les
+  // féculents changent entre un jour de séance et un jour de repos.
   let pPerKg = parseFloat(nutriProfile.protein_g_per_kg) || 2.0;
   if (pPerKg > 2.4) pPerKg = 2.4;
   const fPerKg = parseFloat(nutriProfile.fat_g_per_kg) || 0.9;
   const protein = Math.round(pPerKg * lastWeight);
   const fat = Math.round(fPerKg * lastWeight);
-  let carbs = Math.round((target - protein * 4 - fat * 9) / 4);
-  if (carbs < 0) carbs = 0;
 
-  return { ready: true, age, bmr, dailyActivity: Math.round(daily), sportDaily, perSession, tdee, pct, target, floored, floor, protein, fat, carbs };
+  // Applique l'objectif et le plancher à une dépense donnée, puis en déduit
+  // les glucides par différence.
+  function cibleDepuis(depense) {
+    let t = Math.round(depense * (1 + pct / 100));
+    let fl = false;
+    if (t < floor) { t = floor; fl = true; }
+    let c = Math.round((t - protein * 4 - fat * 9) / 4);
+    if (c < 0) c = 0;
+    return { tdee: Math.round(depense), target: t, floored: fl, protein, fat, carbs: c };
+  }
+
+  const moyen = cibleDepuis(tdee);
+  const target = moyen.target;
+  const floored = moyen.floored;
+  const carbs = moyen.carbs;
+
+  // ── Les deux journées types ──
+  // Un jour de séance coûte les calories de CETTE séance, pas la moyenne
+  // hebdomadaire. Étaler l'effort sur sept jours sous-alimente les jours durs
+  // et sur-alimente les jours de repos : c'est précisément ce qu'on corrige.
+  const joursSeance = (week || []).filter(w => w.sessionId != null
+    && (sessions || []).some(s => s.id === w.sessionId));
+  const nbJoursSeance = joursSeance.length;
+  const kcalParSeance = nbJoursSeance > 0 ? weekKcal / nbJoursSeance : 0;
+
+  const train = cibleDepuis(daily + kcalParSeance);
+  const rest  = cibleDepuis(daily);
+  // Sans programme, les deux journées se valent : on ne fabrique pas une
+  // distinction que rien ne justifie.
+  const deuxJournees = nbJoursSeance > 0 && nbJoursSeance < 7;
+
+  return {
+    ready: true, age, bmr, dailyActivity: Math.round(daily), sportDaily, perSession,
+    tdee, pct, target, floored, floor, protein, fat, carbs,
+    train, rest, deuxJournees, nbJoursSeance,
+    joursSeance: joursSeance.map(w => w.day),
+  };
+}
+
+// Type de journée d'aujourd'hui, lu dans la structure hebdomadaire du programme.
+const JOUR_PAR_INDEX = { 0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI" };
+function typeDeJour(week, sessions) {
+  const jour = JOUR_PAR_INDEX[new Date().getDay()];
+  const entree = (week || []).find(w => w.day === jour);
+  if (!entree || entree.sessionId == null) return "repos";
+  if (sessions && !sessions.some(s => s.id === entree.sessionId)) return "repos";
+  return "entrainement";
 }
 
 // ── Helpers Supabase diète ──
@@ -4586,16 +4644,6 @@ async function addWeightLog(supabase, coacheeId, weightKg, dateStr) {
     .upsert({ coachee_id: coacheeId, weight_kg: weightKg, logged_date: dateStr }, { onConflict: "coachee_id,logged_date" });
   if (error) throw error;
 }
-async function loadRecipes(supabase, coachId) {
-  const q = supabase.from("recipes_library").select("*").order("name");
-  const { data } = coachId ? await q.eq("coach_id", coachId) : await q;
-  return data || [];
-}
-async function loadMealPlan(supabase, coacheeId, weekId) {
-  const { data } = await supabase.from("meal_plans").select("*").eq("coachee_id", coacheeId).eq("week_id", weekId);
-  return data || [];
-}
-// Tendance de poids : compare les 3 dernières pesées
 function weightTrend(logs) {
   if (!logs || logs.length < 2) return null;
   const last = logs.slice(-3);
@@ -4608,63 +4656,472 @@ function trendAlert(trend, goalPct) {
   if (goalPct > 3 && trend.delta <= 0) return "Stagnation en prise de masse : le poids ne monte pas. Envisage d'augmenter le surplus.";
   return null;
 }
-// Assemblage du plan de la semaine
-function buildWeekPlanRows({ coacheeId, weekId, targets, nutriProfile, recipes }) {
-  const split = MEAL_SPLITS[parseInt(nutriProfile.meals_per_day) === 3 ? 3 : 4];
-  const allergies = (nutriProfile.allergies || []).map(a => a.toLowerCase());
-  const disliked = (nutriProfile.disliked_foods || []).map(a => a.toLowerCase());
-  const prefs = (nutriProfile.dietary_preferences || []).map(a => a.toLowerCase());
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DIÈTE PERSONNALISÉE FIXE — modèle, tirage et résolution des grammages
+//
+//  Deux journées types seulement : entraînement et repos. Le tirage des
+//  aliments se fait UNE fois, à la génération ; ensuite tout se modifie à la
+//  main, aliment par aliment, depuis l'espace coach.
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  function recipeOk(r) {
-    const ingNames = (r.ingredients || []).map(i => (i.name || "").toLowerCase()).join(" ");
-    if (allergies.some(a => a && ingNames.includes(a))) return false;
-    if (disliked.some(d => d && ingNames.includes(d))) return false;
+const DIET_MEALS = [
+  { id: "petit_dejeuner",  label: "Petit-déjeuner",     court: "PDJ" },
+  { id: "collation_matin", label: "Collation du matin", court: "COL. MATIN" },
+  { id: "dejeuner",        label: "Déjeuner",           court: "DÉJ" },
+  { id: "collation",       label: "Collation",          court: "COLLATION" },
+  { id: "diner",           label: "Dîner",              court: "DÎNER" },
+];
+const dietMealLabel = (id) => (DIET_MEALS.find(m => m.id === id) || {}).label || id;
+
+// Quels repas composent la journée, selon meals_per_day.
+const DIET_MEAL_SETS = {
+  3: ["petit_dejeuner", "dejeuner", "diner"],
+  4: ["petit_dejeuner", "dejeuner", "collation", "diner"],
+  5: ["petit_dejeuner", "collation_matin", "dejeuner", "collation", "diner"],
+};
+// Part des calories de la journée revenant à chaque repas.
+// Les collations pèsent 13 à 15 %, pas 10 : elles portent leur part de
+// protéines comme les autres repas, et 10 % ne suffisent pas à la loger.
+const DIET_MEAL_SHARES = {
+  3: { petit_dejeuner: 0.30, dejeuner: 0.40, diner: 0.30 },
+  4: { petit_dejeuner: 0.25, dejeuner: 0.32, collation: 0.15, diner: 0.28 },
+  5: { petit_dejeuner: 0.22, collation_matin: 0.12, dejeuner: 0.28, collation: 0.13, diner: 0.25 },
+};
+// Rôles attendus dans chaque repas, dans l'ordre où le solveur les traite.
+const DIET_MEAL_COMPO = {
+  petit_dejeuner:  ["fruit", "proteine", "matiere_grasse", "feculent"],
+  collation_matin: ["fruit", "proteine"],
+  dejeuner:        ["legume", "proteine", "matiere_grasse", "feculent"],
+  collation:       ["fruit", "proteine"],
+  diner:           ["legume", "proteine", "matiere_grasse", "feculent"],
+};
+// Grammages plancher / plafond par rôle. Ils existent pour une seule raison :
+// empêcher le solveur de produire « 480 g d'huile d'olive » quand il n'arrive
+// pas à atteindre une cible. Mieux vaut un écart affiché qu'une aberration.
+const DIET_BORNES = {
+  proteine:       { min: 30, max: 350, defaut: 130 },
+  feculent:       { min: 20, max: 400, defaut: 150 },
+  legume:         { min: 80, max: 400, defaut: 200 },
+  fruit:          { min: 60, max: 300, defaut: 120 },
+  matiere_grasse: { min: 5,  max: 60,  defaut: 15  },
+  autre:          { min: 5,  max: 300, defaut: 50  },
+};
+// Rôles servis en portion fixe : on ne fait pas varier les légumes pour
+// rattraper 40 kcal. Ils sont posés d'abord, le reste s'ajuste autour.
+const DIET_ROLES_FIXES = ["legume", "fruit"];
+
+const macrosItem = (it) => {
+  const g = parseFloat(it.grams) || 0;
+  return {
+    kcal:    (parseFloat(it.kcal_100)    || 0) * g / 100,
+    protein: (parseFloat(it.protein_100) || 0) * g / 100,
+    carbs:   (parseFloat(it.carbs_100)   || 0) * g / 100,
+    fat:     (parseFloat(it.fat_100)     || 0) * g / 100,
+    fiber:   (parseFloat(it.fiber_100)   || 0) * g / 100,
+  };
+};
+function totauxItems(items) {
+  const t = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
+  (items || []).forEach(it => {
+    const m = macrosItem(it);
+    t.kcal += m.kcal; t.protein += m.protein; t.carbs += m.carbs; t.fat += m.fat; t.fiber += m.fiber;
+  });
+  Object.keys(t).forEach(k => { t[k] = Math.round(t[k]); });
+  return t;
+}
+
+// Cibles de chaque repas d'une journée.
+// Les PROTÉINES sont réparties à parts égales, pas au prorata des calories :
+// la synthèse protéique répond à la dose par prise, pas à la taille du repas.
+// Une collation à 10 % des calories mérite donc sa part de protéines.
+function ciblesParRepas(cibleJour, mealsPerDay) {
+  const n = DIET_MEAL_SETS[mealsPerDay] ? mealsPerDay : 4;
+  const ids = DIET_MEAL_SETS[n];
+  const shares = DIET_MEAL_SHARES[n];
+  const protParRepas = cibleJour.protein / ids.length;
+  return ids.map(id => {
+    const part = shares[id];
+    const kcal = cibleJour.target * part;
+    const fat = cibleJour.fat * part;
+    const carbs = Math.max(0, (kcal - protParRepas * 4 - fat * 9) / 4);
+    return { meal_type: id, kcal, protein: protParRepas, fat, carbs };
+  });
+}
+
+// Aliments utilisables pour un coaché, par rôle et par repas.
+//
+// UNE SEULE RÈGLE N'EST JAMAIS ASSOUPLIE : les allergies. Les préférences,
+// elles, peuvent l'être si elles ne laissent aucun aliment — mieux vaut une
+// diète à retoucher qu'un repas vide.
+function alimentsUtilisables(foods, nutriProfile, role, mealType) {
+  const bas = (s) => (s || "").toLowerCase();
+  const allergies = (nutriProfile?.allergies || []).map(bas).filter(Boolean);
+  const detestes  = (nutriProfile?.disliked_foods || []).map(bas).filter(Boolean);
+  const prefs     = (nutriProfile?.dietary_preferences || []).map(bas).filter(Boolean);
+
+  const base = (foods || []).filter(f => {
+    if (f.role !== role) return false;
+    const types = f.meal_types || [];
+    if (types.length && !types.includes(mealType)) return false;
+    const nom = bas(f.name);
+    if (allergies.some(a => nom.includes(a))) return false;
+    if (detestes.some(d => nom.includes(d))) return false;
     return true;
-  }
-  function matchPrefs(r) {
-    if (!prefs.length) return true;
-    const tags = (r.tags || []).map(t => t.toLowerCase());
+  });
+  if (!prefs.length) return base;
+  const conformes = base.filter(f => {
+    const tags = (f.tags || []).map(bas);
     return prefs.every(p => tags.includes(p));
-  }
+  });
+  return conformes.length ? conformes : base;
+}
 
-  const usage = {};
-  const rows = [];
-  for (let day = 0; day < 7; day++) {
-    for (const [mealType, share] of split) {
-      let pool = recipes.filter(r => r.meal_type === mealType && recipeOk(r));
-      const preferred = pool.filter(matchPrefs);
-      if (preferred.length) pool = preferred;
-      if (!pool.length) continue; // aucune recette compatible pour ce type
-      // rotation : la moins utilisée d'abord
-      pool.sort((a, b) => (usage[a.id] || 0) - (usage[b.id] || 0) || Math.random() - 0.5);
-      const recipe = pool[0];
-      usage[recipe.id] = (usage[recipe.id] || 0) + 1;
-      const mealKcal = targets.target * share;
-      let servings = recipe.total_kcal > 0 ? mealKcal / recipe.total_kcal : 1;
-      servings = Math.round(servings * 4) / 4;
-      if (servings < 0.5) servings = 0.5;
-      if (servings > 3) servings = 3;
-      rows.push({ coachee_id: coacheeId, week_id: weekId, day_index: day, meal_type: mealType, recipe_id: recipe.id, servings });
+// Restreint un tirage aux aliments que le repas peut réellement se payer.
+//
+// LE PROBLÈME QU'ELLE RÈGLE. Une collation de 285 kcal doit porter sa part de
+// protéines — 31 g dans une diète à 124 g réparties sur quatre prises. Avec un
+// yaourt à 9 g de protéines pour 100 g, il en faudrait 344 g, soit 334 kcal :
+// la collation dépasse son budget avant même le fruit. Avec du skyr à 11 g
+// pour 63 kcal, elle tient. La densité de l'aliment n'est donc pas un détail
+// de confort, c'est ce qui décide si le repas est réalisable.
+//
+// On calcule le coût calorique d'un gramme de la macro visée, et on écarte les
+// aliments trop coûteux pour ce repas-là. Si aucun ne passe, on garde le moins
+// coûteux plutôt que de rendre le repas impossible — un écart affiché vaut
+// mieux qu'un trou.
+const DIET_MACRO_DU_ROLE = { proteine: ["protein_100", "protein"], feculent: ["carbs_100", "carbs"], matiere_grasse: ["fat_100", "fat"] };
+function poolAbordable(pool, role, cibleRepas) {
+  const visee = DIET_MACRO_DU_ROLE[role];
+  if (!visee) return pool;
+  const [champ, macro] = visee;
+  const besoin = cibleRepas[macro];
+  if (!(besoin > 0)) return pool;
+  // 70 % du repas au maximum pour la macro visée : le reste doit rester
+  // disponible pour les autres aliments.
+  const budget = (cibleRepas.kcal * 0.7) / besoin;
+  const cout = (f) => {
+    const d = parseFloat(f[champ]) || 0;
+    return d > 0 ? (parseFloat(f.kcal_100) || 0) / d : Infinity;
+  };
+  const abordables = pool.filter(f => cout(f) <= budget);
+  if (abordables.length) return abordables;
+  const moindre = Math.min(...pool.map(cout));
+  return pool.filter(f => cout(f) === moindre);
+}
+
+// Résout les grammages d'un repas dont les aliments sont déjà choisis.
+//
+// POURQUOI CE N'EST PAS UNE SIMPLE DIVISION. Trois macros à viser, et chaque
+// aliment les porte toutes les trois : 200 g de yaourt grec apportent des
+// protéines, mais aussi des glucides et des lipides qui mangent le budget des
+// deux autres aliments. Une passe séquentielle « protéine puis lipide puis
+// glucide » se trompe donc systématiquement — mesuré à +25 % sur la cible.
+//
+// La méthode retenue est une convergence par itérations : chaque aliment est
+// recalculé en tenant compte de ce que les AUTRES apportent déjà, et on
+// recommence jusqu'à ce que ça se stabilise. Huit tours suffisent largement,
+// chaque aliment étant le porteur dominant de sa macro.
+//
+// Deux corrections finales, qui valent d'être connues :
+//   — une matière grasse dont personne n'a plus besoin est RETIRÉE du repas,
+//     au lieu d'être ajoutée à sa dose minimale. Un plat déjà gras n'a pas
+//     besoin d'une cuillère d'huile pour la forme.
+//   — s'il reste un écart calorique, c'est le féculent qui l'absorbe. Les
+//     glucides sont la macro d'ajustement : on ne rogne pas les protéines.
+function resoudreGrammages(choix, cibleRepas) {
+  const bornes = (role) => DIET_BORNES[role] || DIET_BORNES.autre;
+  const arrondi = (g) => Math.max(5, Math.round(g / 5) * 5);
+  const dens = (f, champ) => parseFloat(f[champ]) || 0;
+
+  const fixes = choix.filter(c => DIET_ROLES_FIXES.includes(c.role));
+  const VISEES = { proteine: ["protein_100", "protein"], matiere_grasse: ["fat_100", "fat"], feculent: ["carbs_100", "carbs"] };
+  const ajustables = choix.filter(c => VISEES[c.role]);
+  // Tout ce qui n'entre dans aucune des deux familles garde sa portion usuelle.
+  const autres = choix.filter(c => !fixes.includes(c) && !ajustables.includes(c));
+
+  const g = new Map();
+  [...fixes, ...autres].forEach(c => g.set(c, arrondi(parseFloat(c.food.portion_g) || bornes(c.role).defaut)));
+  ajustables.forEach(c => g.set(c, bornes(c.role).defaut));
+
+  // Apport total d'une macro, en excluant éventuellement un aliment.
+  const apport = (champ, sauf) => choix.reduce((s, c) =>
+    c === sauf ? s : s + dens(c.food, champ) * (g.get(c) || 0) / 100, 0);
+
+  for (let tour = 0; tour < 8; tour++) {
+    for (const c of ajustables) {
+      const [champ, macro] = VISEES[c.role];
+      const b = bornes(c.role);
+      const densite = dens(c.food, champ);
+      const besoin = cibleRepas[macro] - apport(champ, c);
+      let val = densite > 0 ? (besoin / densite) * 100 : b.defaut;
+      g.set(c, arrondi(Math.min(b.max, Math.max(b.min, val))));
     }
   }
-  return rows;
-}
-async function saveWeekPlan(supabase, coacheeId, weekId, rows) {
-  await supabase.from("meal_plans").delete().eq("coachee_id", coacheeId).eq("week_id", weekId);
-  if (rows.length) {
-    const { error } = await supabase.from("meal_plans").insert(rows);
-    if (error) throw error;
+
+  // Retrait d'une matière grasse superflue : elle est au plancher alors que
+  // le repas dépasse déjà sa cible de lipides.
+  let retenus = [...fixes, ...autres, ...ajustables];
+  for (const c of ajustables.filter(c => c.role === "matiere_grasse")) {
+    const b = bornes(c.role);
+    if (g.get(c) <= b.min && apport("fat_100", c) > cibleRepas.fat * 1.05) {
+      retenus = retenus.filter(x => x !== c);
+      g.delete(c);
+    }
   }
+
+  // Correction calorique finale, portée par le féculent.
+  const feculent = retenus.find(c => c.role === "feculent");
+  if (feculent) {
+    const kcalTotal = () => retenus.reduce((s, c) => s + dens(c.food, "kcal_100") * (g.get(c) || 0) / 100, 0);
+    const ecart = kcalTotal() - cibleRepas.kcal;
+    const densKcal = dens(feculent.food, "kcal_100");
+    if (Math.abs(ecart) > 20 && densKcal > 0) {
+      const b = bornes("feculent");
+      g.set(feculent, arrondi(Math.min(b.max, Math.max(b.min, g.get(feculent) - (ecart / densKcal) * 100))));
+    }
+  }
+
+  // On rétablit l'ordre de présentation du repas, pas l'ordre de résolution :
+  // le coaché lit « poulet, riz, brocolis », pas « brocolis, poulet… ».
+  return choix.filter(c => retenus.includes(c)).map(c => ({ ...c, grams: g.get(c) }));
 }
-// Récupère (ou crée) la week courante d'un coaché pour rattacher le plan
-async function getOrCreateCurrentWeek(supabase, coacheeId, programId) {
-  const { data: existing } = await supabase.from("weeks").select("id, week_number")
-    .eq("coachee_id", coacheeId).order("week_number", { ascending: false }).limit(1).maybeSingle();
-  if (existing) return existing;
-  const { data: created, error } = await supabase.from("weeks")
-    .insert({ coachee_id: coacheeId, program_id: programId, week_number: 1 }).select("id, week_number").single();
+
+// Tire une diète complète : deux journées types, leurs repas, leurs aliments.
+// `alea` est injectable pour que les tests soient reproductibles.
+function genererDiete({ cibles, nutriProfile, foods, alea = Math.random }) {
+  const mealsPerDay = DIET_MEAL_SETS[parseInt(nutriProfile?.meals_per_day)] ? parseInt(nutriProfile.meals_per_day) : 4;
+  const journees = [];
+  const manquants = new Set();
+
+  for (const dayType of ["entrainement", "repos"]) {
+    const cibleJour = dayType === "entrainement" ? cibles.train : cibles.rest;
+    const repas = ciblesParRepas(cibleJour, mealsPerDay).map((cible, i) => {
+      const roles = DIET_MEAL_COMPO[cible.meal_type] || [];
+      // Un aliment ne revient pas deux fois dans la même journée : la variété
+      // au sein d'une journée compte plus que la variété entre les deux.
+      const dejaVus = new Set();
+      const choix = [];
+      for (const role of roles) {
+        let pool = alimentsUtilisables(foods, nutriProfile, role, cible.meal_type)
+          .filter(f => !dejaVus.has(f.id));
+        if (!pool.length) { manquants.add(role); continue; }
+        pool = poolAbordable(pool, role, cible);
+        const food = pool[Math.floor(alea() * pool.length)];
+        dejaVus.add(food.id);
+        choix.push({ food, role });
+      }
+      return {
+        meal_type: cible.meal_type,
+        meal_order: i,
+        cible,
+        items: resoudreGrammages(choix, cible).map((c, j) => ({
+          food_id: c.food.id,
+          food_name: c.food.name,
+          grams: c.grams,
+          kcal_100: c.food.kcal_100,
+          protein_100: c.food.protein_100,
+          carbs_100: c.food.carbs_100,
+          fat_100: c.food.fat_100,
+          fiber_100: c.food.fiber_100,
+          item_order: j,
+        })),
+      };
+    });
+    journees.push({ day_type: dayType, repas });
+  }
+  return { mealsPerDay, journees, manquants: [...manquants] };
+}
+
+// Recalcule les grammages d'un repas SANS changer les aliments.
+// C'est le bouton « ajuster aux cibles » : le coach a remplacé un aliment à la
+// main, les totaux ont bougé, il veut retomber sur la cible sans tout refaire.
+function ajusterRepas(items, cibleRepas, foods) {
+  const roleDe = (it) => {
+    const f = (foods || []).find(x => x.id === it.food_id);
+    if (f) return f.role;
+    // Aliment dont la fiche a disparu de la base : on le classe d'après ses
+    // propres macros, ce qui reste plus juste que de l'ignorer.
+    const p = parseFloat(it.protein_100) || 0, c = parseFloat(it.carbs_100) || 0, g = parseFloat(it.fat_100) || 0;
+    if (g * 9 > (p * 4 + c * 4) * 1.5) return "matiere_grasse";
+    if (p * 4 > c * 4) return "proteine";
+    return "feculent";
+  };
+  const choix = items.map(it => ({ role: roleDe(it), food: { ...it, id: it.food_id, portion_g: it.grams } }));
+  const resolus = resoudreGrammages(choix, cibleRepas);
+  return items.map((it, i) => ({ ...it, grams: (resolus.find(r => r.food.id === it.food_id) || resolus[i] || it).grams }));
+}
+
+// ── Helpers Supabase diète fixe ──
+async function loadFoods(supabase, coachId) {
+  const { data, error } = await supabase.from("foods").select("*").order("name");
   if (error) throw error;
-  return created;
+  // La policy filtre déjà : base commune + aliments du coach connecté.
+  return data || [];
+}
+async function loadDiete(supabase, coacheeId) {
+  const { data: plan, error } = await supabase.from("diet_plans").select("*").eq("coachee_id", coacheeId).maybeSingle();
+  if (error) throw error;
+  if (!plan) return null;
+  const { data: repas } = await supabase.from("diet_meals").select("*").eq("plan_id", plan.id).order("meal_order");
+  const ids = (repas || []).map(r => r.id);
+  let items = [];
+  if (ids.length) {
+    const { data } = await supabase.from("diet_items").select("*").in("meal_id", ids).order("item_order");
+    items = data || [];
+  }
+  return { plan, repas: repas || [], items };
+}
+async function enregistrerDiete(supabase, coacheeId, cibles, diete, note) {
+  const payload = {
+    coachee_id: coacheeId,
+    meals_per_day: diete.mealsPerDay,
+    kcal_train: cibles.train.target, prot_train: cibles.train.protein,
+    carbs_train: cibles.train.carbs,  fat_train:  cibles.train.fat,
+    kcal_rest:  cibles.rest.target,   prot_rest:  cibles.rest.protein,
+    carbs_rest: cibles.rest.carbs,    fat_rest:   cibles.rest.fat,
+    generated_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  if (note !== undefined) payload.note = note;
+  const { data: plan, error } = await supabase.from("diet_plans")
+    .upsert(payload, { onConflict: "coachee_id" }).select().single();
+  if (error) throw error;
+
+  // Les repas sont remplacés en bloc : la cascade emporte leurs aliments.
+  await supabase.from("diet_meals").delete().eq("plan_id", plan.id);
+  for (const j of diete.journees) {
+    for (const r of j.repas) {
+      const { data: repas, error: eR } = await supabase.from("diet_meals")
+        .insert({ plan_id: plan.id, day_type: j.day_type, meal_type: r.meal_type, meal_order: r.meal_order })
+        .select().single();
+      if (eR) throw eR;
+      if (r.items.length) {
+        const { error: eI } = await supabase.from("diet_items")
+          .insert(r.items.map(it => ({ ...it, meal_id: repas.id })));
+        if (eI) throw eI;
+      }
+    }
+  }
+  return plan;
+}
+
+// Choix d'un aliment : recherche, filtre par rôle, et création d'un aliment
+// maison quand la base ne couvre pas le besoin.
+//
+// Les aliments écartés par une ALLERGIE ne sont pas seulement dépriorisés,
+// ils sont absents de la liste : un aliment allergène ne doit jamais pouvoir
+// être choisi par erreur, même à la main, même par le coach.
+const DIET_ROLE_LABELS = [
+  ["proteine", "Protéines"], ["feculent", "Féculents"], ["legume", "Légumes"],
+  ["fruit", "Fruits"], ["matiere_grasse", "Matières grasses"], ["autre", "Autres"],
+];
+function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRemplace, onChoose, onCreated, onClose }) {
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState("");
+  const [creation, setCreation] = useState(null);
+  const [err, setErr] = useState("");
+
+  const allergies = (nutri?.allergies || []).map(a => (a || "").toLowerCase()).filter(Boolean);
+  const liste = useMemo(() => {
+    const terme = q.trim().toLowerCase();
+    return (foods || [])
+      .filter(f => !allergies.some(a => (f.name || "").toLowerCase().includes(a)))
+      .filter(f => !role || f.role === role)
+      .filter(f => !terme || (f.name || "").toLowerCase().includes(terme))
+      .slice(0, 120);
+  }, [foods, q, role, allergies.join("|")]);
+
+  async function creer() {
+    const c = creation;
+    if (!c.name.trim() || !(parseFloat(c.kcal_100) >= 0)) { setErr("Nom et calories sont obligatoires"); return; }
+    try {
+      const { data, error } = await supabase.from("foods").insert({
+        coach_id: coachId, name: c.name.trim(), role: c.role,
+        kcal_100: parseFloat(c.kcal_100) || 0,
+        protein_100: parseFloat(c.protein_100) || 0,
+        carbs_100: parseFloat(c.carbs_100) || 0,
+        fat_100: parseFloat(c.fat_100) || 0,
+      }).select().single();
+      if (error) throw error;
+      onCreated(data);
+      onChoose(data);
+    } catch (e) { setErr("Erreur : " + e.message); }
+  }
+
+  return (
+    <Portail>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.45)", zIndex: 500, animation: "fadeIn .2s ease" }}/>
+      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px 18px 10px", borderBottom: `1px solid ${T.border}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text }}>
+              {itemRemplace ? "REMPLACER " + itemRemplace.food_name.toUpperCase() : "AJOUTER UN ALIMENT"}
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: T.textMuted, cursor: "pointer", lineHeight: 1 }}>✕</button>
+          </div>
+          {!creation && (<>
+            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un aliment"
+              style={{ ...inputStyle, marginBottom: 8 }}/>
+            <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2 }}>
+              <button onClick={() => setRole("")} style={{ padding: "6px 10px", background: !role ? T.accent : T.surface, color: !role ? "white" : T.textSub, border: `1px solid ${!role ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>Tous</button>
+              {DIET_ROLE_LABELS.map(([id, lab]) => (
+                <button key={id} onClick={() => setRole(id)} style={{ padding: "6px 10px", background: role === id ? T.accent : T.surface, color: role === id ? "white" : T.textSub, border: `1px solid ${role === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{lab}</button>
+              ))}
+            </div>
+          </>)}
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px 18px calc(20px + env(safe-area-inset-bottom))" }}>
+          {err && <div style={{ fontSize: 11, color: T.danger, fontWeight: 700, marginBottom: 8 }}>{err}</div>}
+          {creation ? (
+            <div>
+              <Field label="NOM"><input value={creation.name} onChange={e => setCreation({ ...creation, name: e.target.value })} placeholder="Skyr nature" style={inputStyle}/></Field>
+              <Field label="RÔLE DANS LE REPAS">
+                <select value={creation.role} onChange={e => setCreation({ ...creation, role: e.target.value })} style={inputStyle}>
+                  {DIET_ROLE_LABELS.map(([id, lab]) => <option key={id} value={id}>{lab}</option>)}
+                </select>
+              </Field>
+              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 1, margin: "4px 0 8px" }}>VALEURS POUR 100 G</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="CALORIES"><input type="number" min="0" value={creation.kcal_100} onChange={e => setCreation({ ...creation, kcal_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="PROTÉINES (G)"><input type="number" min="0" step="0.1" value={creation.protein_100} onChange={e => setCreation({ ...creation, protein_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="GLUCIDES (G)"><input type="number" min="0" step="0.1" value={creation.carbs_100} onChange={e => setCreation({ ...creation, carbs_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="LIPIDES (G)"><input type="number" min="0" step="0.1" value={creation.fat_100} onChange={e => setCreation({ ...creation, fat_100: e.target.value })} style={inputStyle}/></Field>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <button onClick={() => { setCreation(null); setErr(""); }} style={{ flex: 1, padding: 13, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, fontSize: 12, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>Annuler</button>
+                <button onClick={creer} style={{ flex: 2, padding: 13, background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>CRÉER ET UTILISER</button>
+              </div>
+            </div>
+          ) : (<>
+            {liste.length === 0 ? (
+              <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 10px", lineHeight: 1.6 }}>
+                Aucun aliment ne correspond.<br/>Crée le tien ci-dessous.
+              </div>
+            ) : liste.map(f => {
+              const horsRepas = mealType && (f.meal_types || []).length && !(f.meal_types || []).includes(mealType);
+              return (
+                <button key={f.id} onClick={() => onChoose(f)} className="pressable" style={{ width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, opacity: horsRepas ? 0.55 : 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{f.name}</div>
+                    <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2 }}>
+                      {Math.round(f.kcal_100)} kcal · P{Math.round(f.protein_100)} G{Math.round(f.carbs_100)} L{Math.round(f.fat_100)} / 100 g
+                      {f.coach_id ? " · à toi" : ""}{horsRepas ? " · inhabituel à ce repas" : ""}
+                    </div>
+                  </div>
+                  <Icon name="chevronRight" size={16} color={T.borderStrong}/>
+                </button>
+              );
+            })}
+            <button onClick={() => setCreation({ name: q, role: "proteine", kcal_100: "", protein_100: "", carbs_100: "", fat_100: "" })}
+              style={{ width: "100%", padding: 12, marginTop: 6, background: T.surface2, border: `1px dashed ${T.borderStrong}`, borderRadius: 12, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
+              CRÉER UN ALIMENT
+            </button>
+          </>)}
+        </div>
+      </div>
+    </Portail>
+  );
 }
 
 // ── Composants UI diète partagés ──
@@ -4716,391 +5173,6 @@ function WeightChart({ logs }) {
     </svg>
   );
 }
-// Pastille visuelle par type de repas (pas d'image requise)
-function MealVisual({ mealType, imageUrl, size = 44 }) {
-  if (imageUrl) return <img src={imageUrl} alt="" style={{ width: size, height: size, borderRadius: 12, objectFit: "cover", flexShrink: 0 }}/>;
-  const map = {
-    petit_dejeuner: { bg: T.warnBg, icon: "clock",    color: T.warnText },
-    dejeuner:       { bg: "var(--cmp-up-bg)", icon: "home",     color: "var(--cmp-up-text)" },
-    collation:      { bg: "var(--p-decharge-bg)", icon: "info",     color: "var(--p-decharge-tx)" },
-    diner:          { bg: "var(--p-seche-bg)", icon: "calendar", color: "var(--p-seche-tx)" },
-  };
-  const v = map[mealType] || map.dejeuner;
-  return (
-    <div style={{ width: size, height: size, borderRadius: 12, background: v.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <Icon name={v.icon} size={size * 0.45} color={v.color}/>
-    </div>
-  );
-}
-// Fiche recette détaillée (quantités ajustées aux portions)
-function RecipeSheet({ recipe, servings = 1, onClose }) {
-  if (!recipe) return null;
-  const mult = parseFloat(servings) || 1;
-  const fmtQty = (q) => { const v = (parseFloat(q) || 0) * mult; return Math.round(v * 10) / 10; };
-  return (
-    <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "88vh", overflowY: "auto", padding: "10px 18px calc(26px + env(safe-area-inset-bottom))" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" }}/>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
-          <MealVisual mealType={recipe.meal_type} imageUrl={recipe.image_url} size={52}/>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 1.5, lineHeight: 1.1 }}>{recipe.name}</div>
-            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>{mealLabel(recipe.meal_type)}{mult !== 1 ? ` · ${mult} portion${mult > 1 ? "s" : ""}` : ""}</div>
-          </div>
-          <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer" }}>×</button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 16 }}>
-          {[["KCAL", Math.round(recipe.total_kcal * mult), T.accent], ["PROT", Math.round(recipe.protein_g * mult) + "g", "var(--cmp-up-text)"], ["GLUC", Math.round(recipe.carbs_g * mult) + "g", T.warnText], ["LIP", Math.round(recipe.fat_g * mult) + "g", "var(--p-seche-tx)"]].map(([l, v, c]) => (
-            <div key={l} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 4px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: c }}>{v}</div>
-              <div style={{ fontSize: 7, color: T.textMuted, fontWeight: 800, letterSpacing: 1 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>INGRÉDIENTS</div>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "4px 14px", marginBottom: 16 }}>
-          {(recipe.ingredients || []).map((ing, i, arr) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 12 }}>
-              <span style={{ color: T.text }}>{ing.name}</span>
-              <span style={{ color: T.textSub, fontWeight: 700 }}>{fmtQty(ing.qty)} {ing.unit || ""}</span>
-            </div>
-          ))}
-        </div>
-        {(recipe.steps || []).length > 0 && (<>
-          <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>PRÉPARATION</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {recipe.steps.map((s, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ width: 22, height: 22, borderRadius: 7, background: T.accentLight, color: T.accent, fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5 }}>{s}</div>
-              </div>
-            ))}
-          </div>
-        </>)}
-      </div>
-    </>
-  );
-}
-
-// ── Page coach : bibliothèque de recettes (CRUD + assistance IA) ──
-function CoachRecipesPage({ ctx }) {
-  const { supabase, coachId } = ctx;
-  const { confirm, confirmUI } = useConfirm();
-  const [recipes, setRecipes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [editing, setEditing] = useState(null);   // null | recette (édition) | {} (création)
-  const [aiOpen, setAiOpen] = useState(false);
-  const [viewing, setViewing] = useState(null);
-
-  const reload = useCallback(async () => {
-    setRecipes(await loadRecipes(supabase, coachId));
-    setLoading(false);
-  }, [supabase, coachId]);
-  useEffect(() => { reload(); }, [reload]);
-
-  async function handleDelete(r) {
-    if (!(await confirm({ title: "SUPPRIMER LA RECETTE", message: `"${r.name}" sera retirée de ta bibliothèque.`, confirmLabel: "Supprimer", danger: true }))) return;
-    await supabase.from("recipes_library").delete().eq("id", r.id);
-    reload();
-  }
-
-  const filtered = recipes.filter(r =>
-    r.name.toLowerCase().includes(search.toLowerCase()) &&
-    (!typeFilter || r.meal_type === typeFilter)
-  );
-
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
-
-  return (
-    <>
-    <div style={{ paddingBottom: 100 }} className="fade-in">
-      <div style={{ padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          {confirmUI}
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>RECETTES</div>
-          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{recipes.length} recettes</div>
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => setAiOpen(true)} className="pressable" style={{ background: T.surface, color: T.accent, border: `1.5px solid ${T.accent}50`, borderRadius: 12, padding: "10px 12px", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>IA</button>
-          <button onClick={() => setEditing({})} className="pressable" style={{ background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, cursor: "pointer", boxShadow: `0 4px 14px rgba(13,148,136,0.3)` }}>+ AJOUTER</button>
-        </div>
-      </div>
-      <div style={{ padding: "0 18px 10px" }}>
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette..." style={inputStyle}/>
-      </div>
-      <div style={{ padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto" }}>
-        <button onClick={() => setTypeFilter("")} style={{ padding: "6px 12px", background: !typeFilter ? T.accent : T.surface, color: !typeFilter ? "white" : T.textSub, border: `1px solid ${!typeFilter ? T.accent : T.border}`, borderRadius: 16, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>Tous</button>
-        {MEAL_TYPES.map(m => (
-          <button key={m.id} onClick={() => setTypeFilter(typeFilter === m.id ? "" : m.id)} style={{ padding: "6px 12px", background: typeFilter === m.id ? T.accent : T.surface, color: typeFilter === m.id ? "white" : T.textSub, border: `1px solid ${typeFilter === m.id ? T.accent : T.border}`, borderRadius: 16, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{m.label}</button>
-        ))}
-      </div>
-      <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-        {filtered.length === 0 ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
-            Aucune recette. Ajoute-en manuellement avec "+ Ajouter" ou génère-en avec le bouton "IA".
-          </div>
-        ) : filtered.map((r, i) => (
-          <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, animation: `fadeUp .3s ease ${i * 0.03}s both` }}>
-            <MealVisual mealType={r.meal_type} imageUrl={r.image_url}/>
-            <div onClick={() => setViewing(r)} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3 }}>{r.name}</div>
-              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 3 }}>{mealLabel(r.meal_type)} · {r.total_kcal} kcal · P{r.protein_g} G{r.carbs_g} L{r.fat_g}</div>
-            </div>
-            <button onClick={() => setEditing(r)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: T.textSub, cursor: "pointer", fontWeight: 700 }}>Modifier</button>
-            <button onClick={() => handleDelete(r)} style={{ background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 }}>×</button>
-          </div>
-        ))}
-      </div>
-    </div>
-    {viewing && <RecipeSheet recipe={viewing} servings={1} onClose={() => setViewing(null)}/>}
-    {editing && <RecipeEditorModal supabase={supabase} coachId={coachId} recipe={editing.id ? editing : null} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }}/>}
-    {aiOpen && <AiRecipesModal supabase={supabase} coachId={coachId} onClose={() => setAiOpen(false)} onAdded={() => { setAiOpen(false); reload(); }}/>}
-    </>
-  );
-}
-
-// ── Éditeur de recette (création / modification manuelle) ──
-function RecipeEditorModal({ supabase, coachId, recipe, onClose, onSaved }) {
-  const [name, setName] = useState(recipe?.name || "");
-  const [mealType, setMealType] = useState(recipe?.meal_type || "dejeuner");
-  const [ingredients, setIngredients] = useState(recipe?.ingredients?.length ? recipe.ingredients : [{ name: "", qty: "", unit: "g", kcal: "", protein: "", carbs: "", fat: "" }]);
-  const [steps, setSteps] = useState((recipe?.steps || []).join("\n"));
-  const [tags, setTags] = useState((recipe?.tags || []).join(", "));
-  const [imageUrl, setImageUrl] = useState(recipe?.image_url || "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const totals = useMemo(() => {
-    let k = 0, p = 0, c = 0, f = 0;
-    ingredients.forEach(i => { k += parseFloat(i.kcal) || 0; p += parseFloat(i.protein) || 0; c += parseFloat(i.carbs) || 0; f += parseFloat(i.fat) || 0; });
-    return { kcal: Math.round(k), protein: Math.round(p), carbs: Math.round(c), fat: Math.round(f) };
-  }, [ingredients]);
-
-  function updIng(i, field, val) { const n = [...ingredients]; n[i] = { ...n[i], [field]: val }; setIngredients(n); }
-  function addIng() { setIngredients([...ingredients, { name: "", qty: "", unit: "g", kcal: "", protein: "", carbs: "", fat: "" }]); }
-  function rmIng(i) { setIngredients(ingredients.filter((_, j) => j !== i)); }
-
-  async function handleSave() {
-    if (!name.trim() || saving) return;
-    setSaving(true); setError("");
-    try {
-      const cleanIngs = ingredients.filter(i => i.name.trim()).map(i => ({
-        name: i.name.trim(), qty: parseFloat(i.qty) || 0, unit: i.unit || "",
-        kcal: parseFloat(i.kcal) || 0, protein: parseFloat(i.protein) || 0,
-        carbs: parseFloat(i.carbs) || 0, fat: parseFloat(i.fat) || 0,
-      }));
-      const payload = {
-        coach_id: coachId, name: name.trim(), meal_type: mealType,
-        ingredients: cleanIngs,
-        steps: steps.split("\n").map(s => s.trim()).filter(Boolean),
-        tags: tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean),
-        image_url: imageUrl.trim() || null,
-        total_kcal: totals.kcal, protein_g: totals.protein, carbs_g: totals.carbs, fat_g: totals.fat,
-        base_servings: 1,
-      };
-      if (recipe?.id) {
-        const { error } = await supabase.from("recipes_library").update(payload).eq("id", recipe.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("recipes_library").insert(payload);
-        if (error) throw error;
-      }
-      onSaved();
-    } catch (e) { setError(e.message || "Erreur"); setSaving(false); }
-  }
-
-  const smallInput = { ...inputStyle, padding: "7px 8px", fontSize: 12 };
-  return (
-    <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
-        <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 }}>{recipe ? "MODIFIER LA RECETTE" : "NOUVELLE RECETTE"}</div>
-          <Field label="NOM"><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ex : Bowl poulet riz brocoli" style={inputStyle}/></Field>
-          <Field label="TYPE DE REPAS">
-            <select value={mealType} onChange={e => setMealType(e.target.value)} style={inputStyle}>
-              {MEAL_TYPES.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-          </Field>
-          <Field label="INGRÉDIENTS (valeurs nutritionnelles pour la quantité indiquée)">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {ingredients.map((ing, i) => (
-                <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px" }}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                    <input type="text" value={ing.name} onChange={e => updIng(i, "name", e.target.value)} placeholder="Ingrédient" style={{ ...smallInput, flex: 2 }}/>
-                    <input type="number" value={ing.qty} onChange={e => updIng(i, "qty", e.target.value)} placeholder="Qté" style={{ ...smallInput, flex: 1, minWidth: 0 }}/>
-                    <input type="text" value={ing.unit} onChange={e => updIng(i, "unit", e.target.value)} placeholder="g" style={{ ...smallInput, width: 44, flexShrink: 0 }}/>
-                    <button onClick={() => rmIng(i)} style={{ background: "transparent", border: "none", color: T.danger, fontSize: 15, cursor: "pointer", flexShrink: 0 }}>×</button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
-                    {[["kcal","Kcal"],["protein","Prot"],["carbs","Gluc"],["fat","Lip"]].map(([f, l]) => (
-                      <div key={f}>
-                        <label style={{ fontSize: 7, color: T.textMuted, fontWeight: 700 }}>{l.toUpperCase()}</label>
-                        <input type="number" value={ing[f]} onChange={e => updIng(i, f, e.target.value)} placeholder="0" style={{ ...smallInput, width: "100%" }}/>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <button onClick={addIng} style={{ background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>+ Ingrédient</button>
-            </div>
-          </Field>
-          <div style={{ background: T.accentLight, border: `1px solid ${T.accent}30`, borderRadius: 10, padding: "9px 12px", marginBottom: 14, fontSize: 11, color: T.accentDark, fontWeight: 700, textAlign: "center" }}>
-            Totaux : {totals.kcal} kcal · P {totals.protein}g · G {totals.carbs}g · L {totals.fat}g
-          </div>
-          <Field label="ÉTAPES (une par ligne)"><textarea value={steps} onChange={e => setSteps(e.target.value)} rows={3} placeholder="Cuire le riz...&#10;Griller le poulet..." style={{ ...inputStyle, resize: "vertical" }}/></Field>
-          <Field label="TAGS (séparés par des virgules)"><input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="rapide, vegetarien, batch-cooking" style={inputStyle}/></Field>
-          <Field label="IMAGE (URL optionnelle)"><input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." style={inputStyle}/></Field>
-          {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{error}</div>}
-        </div>
-        <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-          <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>{saving ? "..." : "ENREGISTRER"}</button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Génération de recettes par IA (clé API du coach, stockée localement) ──
-function AiRecipesModal({ supabase, coachId, onClose, onAdded }) {
-  const [apiKey, setApiKey] = useState(localStorage.getItem("forge_coach_anthropic_key") || "");
-  const [mealType, setMealType] = useState("dejeuner");
-  const [count, setCount] = useState(3);
-  const [constraints, setConstraints] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [proposals, setProposals] = useState(null);
-  const [selected, setSelected] = useState({});
-  const [adding, setAdding] = useState(false);
-
-  async function generate() {
-    if (!apiKey.trim()) { setError("Colle ta clé API Anthropic (voir guide)"); return; }
-    localStorage.setItem("forge_coach_anthropic_key", apiKey.trim());
-    setLoading(true); setError(""); setProposals(null);
-    try {
-      const prompt = `Tu es un assistant nutrition pour coach sportif. Génère ${count} recettes de type "${mealLabel(mealType)}" en français.
-Contraintes du coach : ${constraints || "aucune"}.
-Réponds UNIQUEMENT avec un tableau JSON valide, sans préambule, sans backticks, sans Markdown. Format exact :
-[{"name":"...","ingredients":[{"name":"...","qty":100,"unit":"g","kcal":120,"protein":20,"carbs":5,"fat":3}],"steps":["...","..."],"tags":["rapide"]}]
-Les valeurs nutritionnelles de chaque ingrédient correspondent à la quantité indiquée. Sois réaliste et précis.`;
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey.trim(),
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message || "Erreur API");
-      const text = (data.content || []).map(c => c.text || "").join("");
-      const clean = text.replace(/```json|```/g, "").trim();
-      const arr = JSON.parse(clean);
-      if (!Array.isArray(arr) || !arr.length) throw new Error("Réponse IA invalide");
-      setProposals(arr);
-      const sel = {}; arr.forEach((_, i) => sel[i] = true);
-      setSelected(sel);
-    } catch (e) {
-      setError(e.message || "Erreur lors de la génération");
-    }
-    setLoading(false);
-  }
-
-  function recipeTotals(r) {
-    let k = 0, p = 0, c = 0, f = 0;
-    (r.ingredients || []).forEach(i => { k += parseFloat(i.kcal) || 0; p += parseFloat(i.protein) || 0; c += parseFloat(i.carbs) || 0; f += parseFloat(i.fat) || 0; });
-    return { kcal: Math.round(k), protein: Math.round(p), carbs: Math.round(c), fat: Math.round(f) };
-  }
-
-  async function addSelected() {
-    const toAdd = (proposals || []).filter((_, i) => selected[i]);
-    if (!toAdd.length) return;
-    setAdding(true); setError("");
-    try {
-      const rows = toAdd.map(r => {
-        const t = recipeTotals(r);
-        return {
-          coach_id: coachId, name: r.name, meal_type: mealType,
-          ingredients: r.ingredients || [], steps: r.steps || [],
-          tags: (r.tags || []).map(x => String(x).toLowerCase()),
-          total_kcal: t.kcal, protein_g: t.protein, carbs_g: t.carbs, fat_g: t.fat, base_servings: 1,
-        };
-      });
-      const { error } = await supabase.from("recipes_library").insert(rows);
-      if (error) throw error;
-      onAdded();
-    } catch (e) { setError(e.message || "Erreur"); setAdding(false); }
-  }
-
-  return (
-    <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
-        <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 }}>GÉNÉRER AVEC L'IA</div>
-          <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 }}>L'IA propose des recettes, tu passes en revue et tu ajoutes celles qui te plaisent à ta bibliothèque.</div>
-          {!proposals ? (<>
-            <Field label="CLÉ API ANTHROPIC (stockée sur cet appareil uniquement)">
-              <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-ant-..." style={inputStyle}/>
-            </Field>
-            <Field label="TYPE DE REPAS">
-              <select value={mealType} onChange={e => setMealType(e.target.value)} style={inputStyle}>
-                {MEAL_TYPES.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-            </Field>
-            <Field label="NOMBRE DE RECETTES">
-              <select value={count} onChange={e => setCount(parseInt(e.target.value))} style={inputStyle}>
-                {[2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </Field>
-            <Field label="CONTRAINTES (optionnel)">
-              <input type="text" value={constraints} onChange={e => setConstraints(e.target.value)} placeholder="Ex : riche en protéines, ~600 kcal, sans lactose" style={inputStyle}/>
-            </Field>
-          </>) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-              {proposals.map((r, i) => {
-                const t = recipeTotals(r);
-                return (
-                  <div key={i} onClick={() => setSelected({ ...selected, [i]: !selected[i] })} style={{ background: selected[i] ? T.accentLight : T.surface, border: `1.5px solid ${selected[i] ? T.accent : T.border}`, borderRadius: 12, padding: "11px 13px", cursor: "pointer", display: "flex", gap: 10, alignItems: "center" }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: selected[i] ? T.accent : T.surface2, border: `1.5px solid ${selected[i] ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {selected[i] && <Icon name="check" size={13} stroke={3} color="#FFF"/>}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{r.name}</div>
-                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{t.kcal} kcal · P{t.protein} G{t.carbs} L{t.fat} · {(r.ingredients || []).length} ingrédients</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{error}</div>}
-        </div>
-        <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={proposals ? () => setProposals(null) : onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{proposals ? "Retour" : "Annuler"}</button>
-          {proposals ? (
-            <button onClick={addSelected} disabled={adding} style={{ flex: 2, padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {adding ? (<><Spinner size={14} color="white"/> ...</>) : "AJOUTER LA SÉLECTION"}
-            </button>
-          ) : (
-            <button onClick={generate} disabled={loading} style={{ flex: 2, padding: "14px", background: loading ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: loading ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {loading ? (<><Spinner size={14} color={T.textMuted}/> GÉNÉRATION...</>) : "GÉNÉRER"}
-            </button>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ── Sous-vue coach : Nutrition d'un coaché ──
 function CoachNutritionView({ ctx, coachee }) {
   const { supabase, coachId } = ctx;
@@ -5109,22 +5181,24 @@ function CoachNutritionView({ ctx, coachee }) {
   const [clientProfile, setClientProfile] = useState(null);
   const [logs, setLogs] = useState([]);
   const [program, setProgram] = useState(null);
-  const [recipes, setRecipes] = useState([]);
-  const [plan, setPlan] = useState([]);
+  const [foods, setFoods] = useState([]);
+  const [diete, setDiete] = useState(null);
+  const [retours, setRetours] = useState([]);
+  const [consent, setConsent] = useState(null);
   const [phases, setPhases] = useState([]);
-  const [weekInfo, setWeekInfo] = useState(null);
-  const [section, setSection] = useState("parametres"); // parametres | sante | cibles | plan | poids
+  const [dieteAbsente, setDieteAbsente] = useState(false); // migration pas encore jouée
+  const [jourVu, setJourVu] = useState("entrainement");
+  const [picker, setPicker] = useState(null); // { mealId, item } — remplacement ou ajout
+  const [section, setSection] = useState("parametres"); // parametres | sante | cibles | diete | poids
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [viewRecipe, setViewRecipe] = useState(null);
 
   const reload = useCallback(async () => {
-    const [{ data: prof }, np, wl, prog, recs, phs] = await Promise.all([
+    const [{ data: prof }, np, wl, prog, phs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", coachee.id).single(),
       loadNutritionProfile(supabase, coachee.id),
       loadWeightLogs(supabase, coachee.id),
       loadActiveProgram(supabase, coachee.id),
-      loadRecipes(supabase, coachId),
       loadPhases(supabase, coachee.id),
     ]);
     setPhases(phs);
@@ -5132,11 +5206,21 @@ function CoachNutritionView({ ctx, coachee }) {
     setNutri(np || { coachee_id: coachee.id, allergies: [], dietary_preferences: [], disliked_foods: [], medical_flag: false, ed_screening_flag: false, consent_disclaimer: false, activity_factor: 1.2, goal_adjustment_pct: 0, meals_per_day: 4, protein_g_per_kg: 2.0, fat_g_per_kg: 0.9, session_intensity: {} });
     setLogs(wl);
     setProgram(prog);
-    setRecipes(recs);
-    if (prog) {
-      const wk = await getOrCreateCurrentWeek(supabase, coachee.id, prog.id);
-      setWeekInfo(wk);
-      setPlan(await loadMealPlan(supabase, coachee.id, wk.id));
+    // La diète et sa base d'aliments. Tant que la migration n'est pas jouée,
+    // l'onglet Nutrition doit rester utilisable : paramètres, cibles et poids
+    // n'ont besoin d'aucune de ces tables.
+    try {
+      const [f, d] = await Promise.all([loadFoods(supabase, coachId), loadDiete(supabase, coachee.id)]);
+      setFoods(f); setDiete(d); setDieteAbsente(false);
+      const { data: fb } = await supabase.from("diet_feedback").select("*")
+        .eq("coachee_id", coachee.id).order("created_at", { ascending: false });
+      setRetours(fb || []);
+      const { data: c } = await supabase.from("diet_consents").select("*")
+        .eq("coachee_id", coachee.id).eq("version", DIET_CONSENT_VERSION)
+        .order("accepted_at", { ascending: false }).limit(1).maybeSingle();
+      setConsent(c || false);
+    } catch (e) {
+      if (tableAbsente(e)) setDieteAbsente(true); else throw e;
     }
     setLoading(false);
   }, [supabase, coachee.id, coachId]);
@@ -5175,33 +5259,88 @@ function CoachNutritionView({ ctx, coachee }) {
   }
   function updNutri(field, val) { setNutri({ ...nutri, [field]: val }); }
 
-  async function generatePlan() {
-    if (!targets.ready) { setMsg("Complète d'abord les paramètres et une pesée"); return; }
-    if (!nutri.consent_disclaimer) { setMsg("Le consentement au disclaimer est requis avant de générer un plan"); return; }
+  // ── Diète ─────────────────────────────────────────────────────────────────
+  //
+  // Le CONSENTEMENT n'est plus une condition pour générer : il appartient
+  // désormais au coaché, qui le donne depuis son compte avant de voir sa
+  // première diète. Le coach doit donc pouvoir la préparer AVANT — sinon
+  // personne ne peut commencer, chacun attendant l'autre.
+  //
+  // Le garde-fou TCA, lui, reste : il ne dépend d'aucun accord et protège une
+  // personne qui n'est pas en mesure de se protéger elle-même.
+  async function genererLaDiete() {
+    if (!targets.ready) { setMsg("Complète d'abord les paramètres et saisis une pesée"); return; }
     if (nutri.ed_screening_flag && targets.pct < 0) {
-      setMsg("Profil sensible (antécédent TCA) : pas de plan en déficit automatique. Accompagnement professionnel recommandé — gestion manuelle uniquement.");
+      setMsg("Profil sensible (antécédent TCA) : pas de diète en déficit automatique. Accompagnement professionnel recommandé — gestion manuelle uniquement.");
       return;
     }
-    if (!recipes.length) { setMsg("Ta bibliothèque de recettes est vide (onglet Recettes)"); return; }
+    if (!foods.length) { setMsg("La base d'aliments est vide : la table Ciqual n'a pas encore été importée"); return; }
     setBusy(true); setMsg("");
     try {
-      const rows = buildWeekPlanRows({ coacheeId: coachee.id, weekId: weekInfo.id, targets, nutriProfile: nutri, recipes });
-      if (!rows.length) throw new Error("Aucune recette compatible avec le profil (allergies/préférences)");
-      await saveWeekPlan(supabase, coachee.id, weekInfo.id, rows);
-      setPlan(await loadMealPlan(supabase, coachee.id, weekInfo.id));
-      setMsg("Plan de la semaine généré ✓");
+      const d = genererDiete({ cibles: targets, nutriProfile: nutri, foods });
+      if (d.manquants.length) {
+        setMsg("Aucun aliment disponible pour : " + d.manquants.join(", ") + ". Vérifie les allergies et les aliments détestés.");
+        setBusy(false); return;
+      }
+      await enregistrerDiete(supabase, coachee.id, targets, d, diete?.plan?.note);
+      setDiete(await loadDiete(supabase, coachee.id));
+      setMsg("Diète générée ✓");
     } catch (e) { setMsg("Erreur : " + e.message); }
     setBusy(false);
   }
-  async function swapMeal(row) {
-    const pool = recipes.filter(r => r.meal_type === row.meal_type && r.id !== row.recipe_id);
-    if (!pool.length) { setMsg("Aucune autre recette de ce type"); return; }
-    const next = pool[Math.floor(Math.random() * pool.length)];
-    const share = (MEAL_SPLITS[parseInt(nutri.meals_per_day) === 3 ? 3 : 4].find(([m]) => m === row.meal_type) || [null, 0.25])[1];
-    let servings = next.total_kcal > 0 && targets.ready ? (targets.target * share) / next.total_kcal : 1;
-    servings = Math.max(0.5, Math.min(3, Math.round(servings * 4) / 4));
-    await supabase.from("meal_plans").update({ recipe_id: next.id, servings }).eq("id", row.id);
-    setPlan(await loadMealPlan(supabase, coachee.id, weekInfo.id));
+
+  async function majItem(item, champs) {
+    await supabase.from("diet_items").update(champs).eq("id", item.id);
+    setDiete(await loadDiete(supabase, coachee.id));
+  }
+  async function supprimerItem(item) {
+    await supabase.from("diet_items").delete().eq("id", item.id);
+    setDiete(await loadDiete(supabase, coachee.id));
+  }
+  // Remplacement et ajout partagent le même chemin : un aliment choisi arrive
+  // avec un grammage de départ, et le coach l'affine ensuite.
+  async function poserAliment(mealId, food, itemRemplace) {
+    const b = DIET_BORNES[food.role] || DIET_BORNES.autre;
+    const grams = itemRemplace ? itemRemplace.grams : (parseFloat(food.portion_g) || b.defaut);
+    const payload = {
+      food_id: food.id, food_name: food.name, grams,
+      kcal_100: food.kcal_100, protein_100: food.protein_100,
+      carbs_100: food.carbs_100, fat_100: food.fat_100, fiber_100: food.fiber_100,
+    };
+    if (itemRemplace) {
+      await supabase.from("diet_items").update(payload).eq("id", itemRemplace.id);
+    } else {
+      const dejaLa = diete.items.filter(i => i.meal_id === mealId).length;
+      await supabase.from("diet_items").insert({ ...payload, meal_id: mealId, item_order: dejaLa });
+    }
+    setPicker(null);
+    setDiete(await loadDiete(supabase, coachee.id));
+  }
+  // Recalcule les grammages d'un repas sans en changer les aliments.
+  async function ajusterLeRepas(repas, cibleRepas) {
+    const items = diete.items.filter(i => i.meal_id === repas.id).sort((a, b) => a.item_order - b.item_order);
+    if (!items.length) return;
+    setBusy(true);
+    try {
+      const ajustes = ajusterRepas(items, cibleRepas, foods);
+      for (const it of ajustes) {
+        const avant = items.find(x => x.id === it.id);
+        if (avant && Math.round(avant.grams) !== Math.round(it.grams)) {
+          await supabase.from("diet_items").update({ grams: it.grams }).eq("id", it.id);
+        }
+      }
+      setDiete(await loadDiete(supabase, coachee.id));
+    } catch (e) { setMsg("Erreur : " + e.message); }
+    setBusy(false);
+  }
+  async function traiterRetour(r, ajouterAuxDetestes) {
+    if (ajouterAuxDetestes) {
+      const liste = [...new Set([...(nutri.disliked_foods || []), r.food_name])];
+      const saved = await upsertNutritionProfile(supabase, coachee.id, { ...stripNutri(nutri), disliked_foods: liste });
+      setNutri(saved);
+    }
+    await supabase.from("diet_feedback").delete().eq("id", r.id);
+    setRetours(rs => rs.filter(x => x.id !== r.id));
   }
 
   if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
@@ -5214,13 +5353,27 @@ function CoachNutritionView({ ctx, coachee }) {
   const sectionBtn = (id, label) => (
     <button key={id} onClick={() => setSection(id)} style={{ padding: "7px 11px", background: section === id ? T.accent : T.surface, color: section === id ? "white" : T.textSub, border: `1px solid ${section === id ? T.accent : T.border}`, borderRadius: 14, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{label}</button>
   );
-  const DAYS_SHORT = ["LUN","MAR","MER","JEU","VEN","SAM","DIM"];
-  const recipeById = (id) => recipes.find(r => r.id === id);
+  // Repas de la journée affichée, garnis de leurs aliments et de leur cible.
+  const cibleJourVu = targets.ready ? (jourVu === "entrainement" ? targets.train : targets.rest) : null;
+  const ciblesRepas = cibleJourVu ? ciblesParRepas(cibleJourVu, diete?.plan?.meals_per_day || parseInt(nutri.meals_per_day) || 4) : [];
+  const repasVus = diete
+    ? diete.repas.filter(r => r.day_type === jourVu).sort((a, b) => a.meal_order - b.meal_order)
+        .map(r => ({
+          ...r,
+          items: diete.items.filter(i => i.meal_id === r.id).sort((a, b) => a.item_order - b.item_order),
+          cible: ciblesRepas.find(c => c.meal_type === r.meal_type) || null,
+        }))
+    : [];
+  // Dérive : la cible d'aujourd'hui contre celle figée à la génération. Un
+  // coaché qui a pris 3 kg n'a plus les mêmes besoins, et rien ne le signale
+  // sinon.
+  const derive = (diete && targets.ready && diete.plan.kcal_train != null)
+    ? targets.train.target - diete.plan.kcal_train : 0;
 
   return (
     <div className="fade-in">
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12 }}>
-        {sectionBtn("parametres", "Paramètres")}{sectionBtn("sante", "Santé")}{sectionBtn("cibles", "Cibles")}{sectionBtn("plan", "Plan repas")}{sectionBtn("poids", "Poids")}
+        {sectionBtn("parametres", "Paramètres")}{sectionBtn("sante", "Santé")}{sectionBtn("cibles", "Cibles")}{sectionBtn("diete", "Diète")}{sectionBtn("poids", "Poids")}
       </div>
       {msg && <div style={{ fontSize: 11, color: msg.includes("Erreur") || msg.includes("requis") || msg.includes("sensible") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>{msg}</div>}
       {nutri.medical_flag && (
@@ -5373,44 +5526,138 @@ function CoachNutritionView({ ctx, coachee }) {
         </div>
       )}
 
-      {section === "plan" && (
+      {section === "diete" && (
         <div>
-          <button onClick={generatePlan} disabled={busy} style={{ width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {busy ? (<><Spinner size={14} color="white"/> ...</>) : (plan.length ? "RÉGÉNÉRER LE PLAN DE LA SEMAINE" : "GÉNÉRER LE PLAN DE LA SEMAINE")}
-          </button>
-          {plan.length === 0 ? (
+          {dieteAbsente ? (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
-              Aucun plan pour la semaine en cours{weekInfo ? ` (semaine ${weekInfo.week_number})` : ""}.
+              La diète personnalisée attend sa migration SQL.<br/>
+              Joue <b style={{ color: T.textSub }}>sql/2026-08-14-diete-personnalisee.sql</b> dans Supabase.
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[0,1,2,3,4,5,6].map(day => {
-                const rows = plan.filter(p => p.day_index === day).sort((a, b) => MEAL_TYPES.findIndex(m => m.id === a.meal_type) - MEAL_TYPES.findIndex(m => m.id === b.meal_type));
-                if (!rows.length) return null;
+          ) : (<>
+
+          {/* Retours du coaché : en tête, parce que c'est ce qui appelle une action */}
+          {retours.length > 0 && (
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 13, padding: "12px 13px", marginBottom: 12 }}>
+              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.6, color: T.warnText, marginBottom: 8 }}>
+                {retours.length} ALIMENT{retours.length > 1 ? "S" : ""} SIGNALÉ{retours.length > 1 ? "S" : ""}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {retours.map(r => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: T.text, lineHeight: 1.4 }}>
+                      <b>{r.food_name}</b>{r.meal_label ? <span style={{ color: T.textMuted }}> · {r.meal_label}</span> : null}
+                    </div>
+                    <button onClick={() => traiterRetour(r, true)} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 9.5, fontWeight: 700, color: T.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>NE PLUS PROPOSER</button>
+                    <button onClick={() => traiterRetour(r, false)} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 15, cursor: "pointer", padding: "0 3px", lineHeight: 1 }} title="Ignorer">✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button onClick={genererLaDiete} disabled={busy} className="pressable" style={{ width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {busy ? (<><Spinner size={14} color="white"/> ...</>) : (diete ? "REGÉNÉRER LA DIÈTE" : "GÉNÉRER LA DIÈTE")}
+          </button>
+
+          {!diete ? (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+              Aucune diète pour ce coaché.<br/>
+              {foods.length ? `${foods.length} aliments disponibles dans la base.` : "La base d'aliments est vide : importe d'abord la table Ciqual."}
+            </div>
+          ) : (<>
+            {consent === false && (
+              <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 11, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
+                En attente : le coaché doit accepter le cadre nutrition depuis son app avant de voir sa diète.
+              </div>
+            )}
+            {Math.abs(derive) >= 100 && (
+              <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 11, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.warnText, lineHeight: 1.55, fontWeight: 600 }}>
+                La cible a bougé de {derive > 0 ? "+" : ""}{derive} kcal depuis la génération
+                {diete.plan.weight_at_gen ? ` (poids passé de ${diete.plan.weight_at_gen} à ${lastWeight} kg)` : ""}. Régénère ou ajuste les repas.
+              </div>
+            )}
+
+            {/* Bascule des deux journées types */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {[["entrainement", "ENTRAÎNEMENT"], ["repos", "REPOS"]].map(([id, lab]) => (
+                <button key={id} onClick={() => setJourVu(id)} style={{ flex: 1, padding: "9px 6px", background: jourVu === id ? T.accent : T.surface, color: jourVu === id ? "white" : T.textSub, border: `1px solid ${jourVu === id ? T.accent : T.border}`, borderRadius: 11, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, cursor: "pointer" }}>{lab}</button>
+              ))}
+            </div>
+
+            {/* Total de la journée face à sa cible */}
+            {cibleJourVu && (() => {
+              const tot = totauxItems(repasVus.flatMap(r => r.items));
+              const ecart = tot.kcal - cibleJourVu.target;
+              const couleur = Math.abs(ecart) <= 60 ? T.accent : T.warnText;
+              return (
+                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "11px 14px", marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: T.textMuted }}>TOTAL DE LA JOURNÉE</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: couleur }}>{tot.kcal} / {cibleJourVu.target} kcal</span>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: T.textSub, fontWeight: 600 }}>
+                    P {tot.protein}/{cibleJourVu.protein} · G {tot.carbs}/{cibleJourVu.carbs} · L {tot.fat}/{cibleJourVu.fat}
+                    {tot.fiber ? ` · Fibres ${tot.fiber} g` : ""}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Les repas, aliment par aliment */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {repasVus.map(r => {
+                const tot = totauxItems(r.items);
+                const cible = r.cible;
+                const ecart = cible ? tot.kcal - Math.round(cible.kcal) : 0;
                 return (
-                  <div key={day}>
-                    <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 2, color: T.textSub, marginBottom: 6 }}>{DAYS_SHORT[day]}</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {rows.map(row => {
-                        const r = recipeById(row.recipe_id);
-                        if (!r) return null;
-                        return (
-                          <div key={row.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-                            <MealVisual mealType={r.meal_type} imageUrl={r.image_url} size={38}/>
-                            <div onClick={() => setViewRecipe({ recipe: r, servings: row.servings })} style={{ flex: 1, minWidth: 0, cursor: "pointer" }}>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: T.text, lineHeight: 1.25 }}>{r.name}</div>
-                              <div style={{ fontSize: 9, color: T.textMuted, marginTop: 2 }}>{mealLabel(r.meal_type)} · {Math.round(r.total_kcal * row.servings)} kcal · ×{row.servings}</div>
-                            </div>
-                            <button onClick={() => swapMeal(row)} title="Remplacer" style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: T.textSub, cursor: "pointer" }}>↻</button>
-                          </div>
-                        );
-                      })}
+                  <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 13px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13.5, letterSpacing: 1.4, color: T.text }}>{dietMealLabel(r.meal_type).toUpperCase()}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, color: Math.abs(ecart) <= 40 ? T.accent : T.warnText }}>
+                        {tot.kcal}{cible ? ` / ${Math.round(cible.kcal)}` : ""} kcal
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {r.items.map(it => (
+                        <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 0", borderTop: `1px solid ${T.border}55` }}>
+                          <button onClick={() => setPicker({ mealId: r.id, item: it })} style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, fontSize: 12, color: T.text, lineHeight: 1.35, cursor: "pointer" }}>
+                            {it.food_name}
+                            <span style={{ display: "block", fontSize: 9, color: T.textMuted, marginTop: 1 }}>
+                              {Math.round(macrosItem(it).kcal)} kcal · P{Math.round(macrosItem(it).protein)} G{Math.round(macrosItem(it).carbs)} L{Math.round(macrosItem(it).fat)}
+                            </span>
+                          </button>
+                          <input type="number" min="1" max="2000" step="5" value={Math.round(it.grams)}
+                            onChange={e => { const v = parseInt(e.target.value); if (v > 0 && v <= 2000) majItem(it, { grams: v }); }}
+                            style={{ width: 58, padding: "6px 4px", textAlign: "right", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: T.text, flexShrink: 0 }}/>
+                          <span style={{ fontSize: 10, color: T.textMuted, flexShrink: 0 }}>g</span>
+                          <button onClick={() => supprimerItem(it)} title="Retirer" style={{ flexShrink: 0, background: "none", border: "none", color: T.textMuted, fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
+                      <button onClick={() => setPicker({ mealId: r.id, item: null })} style={{ flex: 1, padding: "8px", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 9, fontSize: 10, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>AJOUTER UN ALIMENT</button>
+                      {cible && (
+                        <button onClick={() => ajusterLeRepas(r, cible)} disabled={busy} style={{ flex: 1, padding: "8px", background: T.accentLight, border: `1px solid ${T.accent}55`, borderRadius: 9, fontSize: 10, fontWeight: 700, color: T.accent, cursor: "pointer" }}>AJUSTER AUX CIBLES</button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 7, fontWeight: 600 }}>
+                      P {tot.protein} · G {tot.carbs} · L {tot.fat}{cible ? ` — cible P ${Math.round(cible.protein)} · G ${Math.round(cible.carbs)} · L ${Math.round(cible.fat)}` : ""}
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
+
+            {/* Mot du coach, affiché en tête de la diète du coaché */}
+            <Field label="MOT AFFICHÉ EN TÊTE DE SA DIÈTE (FACULTATIF)">
+              <textarea value={diete.plan.note || ""} rows={2}
+                onChange={e => setDiete({ ...diete, plan: { ...diete.plan, note: e.target.value } })}
+                onBlur={async e => { await supabase.from("diet_plans").update({ note: e.target.value || null }).eq("id", diete.plan.id); }}
+                placeholder="Bois 2 L d'eau par jour. Les quantités sont données pour des aliments crus."
+                style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}/>
+            </Field>
+          </>)}
+          </>)}
         </div>
       )}
 
@@ -5438,7 +5685,16 @@ function CoachNutritionView({ ctx, coachee }) {
           )}
         </div>
       )}
-      {viewRecipe && <RecipeSheet recipe={viewRecipe.recipe} servings={viewRecipe.servings} onClose={() => setViewRecipe(null)}/>}
+      {picker && (
+        <FoodPickerSheet
+          foods={foods} nutri={nutri} coachId={coachId} supabase={supabase}
+          mealType={(diete?.repas || []).find(r => r.id === picker.mealId)?.meal_type}
+          itemRemplace={picker.item}
+          onCreated={f => setFoods(fs => [...fs, f].sort((a, b) => a.name.localeCompare(b.name)))}
+          onChoose={f => poserAliment(picker.mealId, f, picker.item)}
+          onClose={() => setPicker(null)}
+        />
+      )}
     </div>
   );
 }
@@ -5450,12 +5706,13 @@ function NutritionPage({ ctx }) {
   const [nutri, setNutri] = useState(null);
   const [clientProfile, setClientProfile] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [plan, setPlan] = useState([]);
-  const [recipes, setRecipes] = useState([]);
+  const [diete, setDiete] = useState(null);
   const [phases, setPhases] = useState([]);
   const [weekInfo, setWeekInfo] = useState(null);
-  const [dayIdx, setDayIdx] = useState(() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; });
-  const [viewRecipe, setViewRecipe] = useState(null);
+  // null = on ne sait pas encore, false = pas encore donné, objet = donné
+  const [consent, setConsent] = useState(null);
+  const [jourVu, setJourVu] = useState(null);
+  const [signales, setSignales] = useState({});
   const [weightInput, setWeightInput] = useState("");
   const [savingWeight, setSavingWeight] = useState(false);
   const [wMsg, setWMsg] = useState("");
@@ -5474,20 +5731,44 @@ function NutritionPage({ ctx }) {
         // Semaine courante = la plus récente
         const { data: wk } = await supabase.from("weeks").select("id, week_number")
           .eq("coachee_id", userId).order("week_number", { ascending: false }).limit(1).maybeSingle();
-        if (wk) {
-          setWeekInfo(wk);
-          const pl = await loadMealPlan(supabase, userId, wk.id);
-          setPlan(pl);
-          const ids = [...new Set(pl.map(p => p.recipe_id).filter(Boolean))];
-          if (ids.length) {
-            const { data: recs } = await supabase.from("recipes_library").select("*").in("id", ids);
-            setRecipes(recs || []);
-          }
-        }
+        if (wk) setWeekInfo(wk);
+        // La diète et le consentement. Tant que la migration n'est pas jouée,
+        // les deux restent muets : le calculateur et la pesée doivent marcher
+        // sans eux, ce sont les parties que le coaché utilise tous les jours.
+        try {
+          setDiete(await loadDiete(supabase, userId));
+        } catch (e) { if (!tableAbsente(e)) throw e; }
+        try {
+          const { data: c, error } = await supabase.from("diet_consents")
+            .select("*").eq("coachee_id", userId).eq("version", DIET_CONSENT_VERSION)
+            .order("accepted_at", { ascending: false }).limit(1).maybeSingle();
+          if (error) throw error;
+          setConsent(c || false);
+        } catch (e) { if (!tableAbsente(e)) throw e; }
       } catch {}
       setLoading(false);
     })();
   }, [supabase, userId]);
+
+  async function accepterCadre() {
+    try {
+      const { data, error } = await supabase.from("diet_consents")
+        .insert({ coachee_id: userId, version: DIET_CONSENT_VERSION }).select().single();
+      if (error) throw error;
+      setConsent(data);
+    } catch { /* le refus laisse l'écran en place, il réessaiera */ }
+  }
+
+  async function signaler(item, mealType) {
+    if (signales[item.id]) return;
+    setSignales(s => ({ ...s, [item.id]: true }));
+    try {
+      await supabase.from("diet_feedback").insert({
+        coachee_id: userId, item_id: item.id,
+        food_name: item.food_name, meal_label: dietMealLabel(mealType),
+      });
+    } catch { /* le retour est un confort, jamais un blocage */ }
+  }
 
   const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
   const activePhase = findActivePhase(phases);
@@ -5515,10 +5796,20 @@ function NutritionPage({ ctx }) {
 
   if (loading) return <div style={{ padding: 60, textAlign: "center" }}><Spinner size={26}/></div>;
 
-  const DAYS_SHORT = ["LUN","MAR","MER","JEU","VEN","SAM","DIM"];
-  const recipeById = (id) => recipes.find(r => r.id === id);
-  const dayRows = plan.filter(p => p.day_index === dayIdx)
-    .sort((a, b) => MEAL_TYPES.findIndex(m => m.id === a.meal_type) - MEAL_TYPES.findIndex(m => m.id === b.meal_type));
+  // Type de journée d'aujourd'hui, et celui que le coaché regarde. Par défaut
+  // on ouvre sur AUJOURD'HUI : il consulte sa diète pour savoir quoi manger
+  // maintenant, pas pour explorer.
+  const jourAujourdhui = typeDeJour(appData?.week, appData?.sessions);
+  const jourActif = jourVu || jourAujourdhui;
+  const cibleDuJour = targets.ready
+    ? (targets.deuxJournees ? (jourAujourdhui === "entrainement" ? targets.train : targets.rest) : targets)
+    : null;
+
+  const repasDuJour = diete
+    ? diete.repas.filter(r => r.day_type === jourActif)
+        .sort((a, b) => a.meal_order - b.meal_order)
+        .map(r => ({ ...r, items: diete.items.filter(i => i.meal_id === r.id).sort((a, b) => a.item_order - b.item_order) }))
+    : [];
   const todayStr = new Date().toISOString().slice(0, 10);
   const weighedTodayLocal = logs.some(l => l.logged_date === todayStr);
 
@@ -5553,11 +5844,18 @@ function NutritionPage({ ctx }) {
       {/* Cibles du jour */}
       <div style={{ padding: "0 18px 14px" }}>
         {targets.ready ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "18px 8px", display: "flex", justifyContent: "space-around", boxShadow: `0 2px 14px ${T.shadow}` }}>
-            <MacroRing label="CALORIES" value={targets.target} unit="KCAL" color={T.accent}/>
-            <MacroRing label="PROT" value={targets.protein} unit="G" color="var(--cmp-up-text)" size={70}/>
-            <MacroRing label="GLUC" value={targets.carbs} unit="G" color={T.warnText} size={70}/>
-            <MacroRing label="LIP" value={targets.fat} unit="G" color="var(--p-seche-tx)" size={70}/>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "14px 8px 18px", boxShadow: `0 2px 14px ${T.shadow}` }}>
+            {targets.deuxJournees && (
+              <div style={{ textAlign: "center", fontSize: 9.5, fontWeight: 800, letterSpacing: 1.4, color: jourAujourdhui === "entrainement" ? T.accent : T.textMuted, marginBottom: 10 }}>
+                {jourAujourdhui === "entrainement" ? "AUJOURD'HUI · JOUR D'ENTRAÎNEMENT" : "AUJOURD'HUI · JOUR DE REPOS"}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              <MacroRing label="CALORIES" value={cibleDuJour.target} unit="KCAL" color={T.accent}/>
+              <MacroRing label="PROT" value={cibleDuJour.protein} unit="G" color="var(--cmp-up-text)" size={70}/>
+              <MacroRing label="GLUC" value={cibleDuJour.carbs} unit="G" color={T.warnText} size={70}/>
+              <MacroRing label="LIP" value={cibleDuJour.fat} unit="G" color="var(--p-seche-tx)" size={70}/>
+            </div>
           </div>
         ) : (
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
@@ -5566,38 +5864,91 @@ function NutritionPage({ ctx }) {
         )}
       </div>
 
-      {/* Repas de la semaine */}
-      <div style={{ padding: "0 18px 6px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>REPAS DE LA SEMAINE</div>
-        <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 10 }}>
-          {DAYS_SHORT.map((d, i) => (
-            <button key={d} onClick={() => setDayIdx(i)} className="pressable" style={{ flex: 1, minWidth: 42, padding: "8px 4px", background: dayIdx === i ? T.accent : T.surface, color: dayIdx === i ? "white" : T.textSub, border: `1px solid ${dayIdx === i ? T.accent : T.border}`, borderRadius: 10, fontSize: 10, fontWeight: 800, cursor: "pointer" }}>{d}</button>
-          ))}
+      {/* Ma diète */}
+      {diete && consent === false ? (
+        // Le cadre, avant la première consultation. Un consentement donné par
+        // le coach à la place du coaché n'en est pas un : c'est lui qui accepte,
+        // depuis son compte, et l'acceptation est horodatée.
+        <div style={{ padding: "0 18px 6px" }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 16px", boxShadow: `0 2px 12px ${T.shadow}` }}>
+            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text, marginBottom: 10 }}>AVANT DE COMMENCER</div>
+            <p style={{ fontSize: 12, color: T.textSub, lineHeight: 1.65, margin: "0 0 14px" }}>{NUTRITION_DISCLAIMER}</p>
+            <button onClick={accepterCadre} className="pressable" style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1.2, cursor: "pointer" }}>
+              J'AI COMPRIS
+            </button>
+          </div>
         </div>
-        {dayRows.length === 0 ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
-            Aucun repas planifié pour ce jour.<br/>Ton coach prépare ton plan.
+      ) : diete ? (
+        <div style={{ padding: "0 18px 6px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub }}>MA DIÈTE</div>
+            {jourActif !== jourAujourdhui && (
+              <button onClick={() => setJourVu(null)} style={{ background: "none", border: "none", color: T.accent, fontSize: 10.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>Revenir à aujourd'hui</button>
+            )}
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {dayRows.map((row, i) => {
-              const r = recipeById(row.recipe_id);
-              if (!r) return null;
-              return (
-                <div key={row.id} onClick={() => setViewRecipe({ recipe: r, servings: row.servings })} className="quick-card" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
-                  <MealVisual mealType={r.meal_type} imageUrl={r.image_url} size={46}/>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 9, color: T.textMuted, fontWeight: 800, letterSpacing: 1 }}>{mealLabel(r.meal_type).toUpperCase()}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3, marginTop: 2 }}>{r.name}</div>
-                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{Math.round(r.total_kcal * row.servings)} kcal · P{Math.round(r.protein_g * row.servings)} G{Math.round(r.carbs_g * row.servings)} L{Math.round(r.fat_g * row.servings)}</div>
+
+          {diete.plan.note && (
+            <div style={{ background: T.accentLight, border: `1px solid ${T.accent}33`, borderRadius: 12, padding: "10px 13px", marginBottom: 10, fontSize: 11.5, color: T.text, lineHeight: 1.6 }}>
+              {diete.plan.note}
+            </div>
+          )}
+
+          {/* Bascule entraînement / repos */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[["entrainement", "JOUR D'ENTRAÎNEMENT"], ["repos", "JOUR DE REPOS"]].map(([id, lab]) => (
+              <button key={id} onClick={() => setJourVu(id)} className="pressable" style={{ flex: 1, padding: "10px 6px", background: jourActif === id ? T.accent : T.surface, color: jourActif === id ? "white" : T.textSub, border: `1px solid ${jourActif === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, cursor: "pointer" }}>
+                {lab}{id === jourAujourdhui ? " ·" : ""}
+              </button>
+            ))}
+          </div>
+
+          {repasDuJour.length === 0 ? (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+              Aucun repas pour cette journée.<br/>Ton coach finalise ta diète.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {repasDuJour.map((r, i) => {
+                const tot = totauxItems(r.items);
+                return (
+                  <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 15, padding: "13px 14px", animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
+                      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 1.4, color: T.text }}>{dietMealLabel(r.meal_type).toUpperCase()}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: T.accent }}>{tot.kcal} kcal</div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      {r.items.map(it => (
+                        <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderTop: `1px solid ${T.border}55` }}>
+                          <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4 }}>{it.food_name}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 800, color: T.textSub, flexShrink: 0 }}>{Math.round(it.grams)} g</div>
+                          <button onClick={() => signaler(it, r.meal_type)} disabled={!!signales[it.id]} title="Je n'aime pas cet aliment"
+                            style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: signales[it.id] ? T.accentLight : "transparent", border: `1px solid ${signales[it.id] ? T.accent : T.border}`, color: signales[it.id] ? T.accent : T.textMuted, fontSize: 9, fontWeight: 800, cursor: signales[it.id] ? "default" : "pointer", lineHeight: 1 }}>
+                            {signales[it.id] ? "OK" : "✕"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 8, fontWeight: 600 }}>
+                      P {tot.protein} g · G {tot.carbs} g · L {tot.fat} g{tot.fiber ? ` · Fibres ${tot.fiber} g` : ""}
+                    </div>
                   </div>
-                  <Icon name="chevronRight" size={18} color={T.borderStrong}/>
-                </div>
-              );
-            })}
+                );
+              })}
+              <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" }}>
+                La croix signale à ton coach qu'un aliment ne te convient pas. Il te le remplacera.
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ padding: "0 18px 6px" }}>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+            Ton coach n'a pas encore établi ta diète.<br/>Tes cibles ci-dessus restent valables en attendant.
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Pesée quotidienne */}
       <div id="forge-weigh-block" style={{ padding: "14px 18px 0", scrollMarginTop: 80 }}>
@@ -5623,8 +5974,6 @@ function NutritionPage({ ctx }) {
           <p style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>{NUTRITION_DISCLAIMER}</p>
         )}
       </div>
-
-      {viewRecipe && <RecipeSheet recipe={viewRecipe.recipe} servings={viewRecipe.servings} onClose={() => setViewRecipe(null)}/>}
     </div>
   );
 }
