@@ -460,7 +460,11 @@ console.log("\n─── Le coaché consulte sa diète ───");
   // Un appui par erreur doit pouvoir s'annuler : c'est le retour d'une vraie
   // coachée, et sans ça le coach remplace un aliment qui convenait.
   console.log("\n─── L'APPUI PAR ERREUR S'ANNULE ───");
-  ok(await annuler().count() > 0, "le bouton propose maintenant d'annuler");
+  ok(await annuler().count() > 0, "le bouton passe en état signalé");
+  ok((await annuler().innerText()).trim() === "✓",
+     `il affiche un ✓, pas un mot (« ${(await annuler().innerText()).trim()} »)`);
+  ok(!/ANNULER/.test(await p.locator("body").innerText()),
+     "aucun libellé « ANNULER » ne subsiste dans la liste des aliments");
   await annuler().click();
   await p.waitForTimeout(700);
   const j2 = await p.evaluate(() => window.__journal);

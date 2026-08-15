@@ -6114,8 +6114,8 @@ function NutritionPage({ ctx }) {
                                 disabled={!!enCours[it.id]}
                                 aria-pressed={marque}
                                 title={marque ? "Signalé à ton coach — appuie pour annuler" : "Je n'aime pas cet aliment"}
-                                style={{ flexShrink: 0, minWidth: 26, height: 26, padding: "0 7px", borderRadius: 8, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: marque ? 8.5 : 11, fontWeight: 800, letterSpacing: marque ? 0.4 : 0, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }}>
-                                {marque ? "ANNULER" : "✕"}
+                                style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: 12, fontWeight: 800, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }}>
+                                {marque ? "✓" : "✕"}
                               </button>
                             );
                           })()}
@@ -6130,7 +6130,7 @@ function NutritionPage({ ctx }) {
               })}
               <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" }}>
                 La croix signale à ton coach qu'un aliment ne te convient pas — il te le remplacera.
-                Appui par erreur ? Appuie sur ANNULER, rien ne lui sera envoyé.
+                Le ✓ confirme que c'est bien parti. Appui par erreur ? Réappuie sur le ✓, rien ne lui sera envoyé.
               </div>
             </div>
           )}
