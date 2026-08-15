@@ -93,7 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
-| **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois | 559 226 o | 7060 |
+| **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois. Le signalement se lit d'un ✓ | 559 204 o | 7060 |
 
 ## B.4 — État d'installation
 
@@ -853,8 +853,8 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
   - Chaque aliment porte une croix : **« je n'aime pas »**. Elle ne modifie rien — elle prévient
     le coach, qui remplace. Un coaché qui abandonne un aliment en silence rend sa diète fausse
     sans que personne ne le sache.
-  - **Le signalement s'annule** *(v7r)*. Un appui par erreur ne doit pas être définitif : le
-    bouton bascule en ANNULER, et le retour est retiré de la base. L'état est **relu au
+  - **Le signalement s'annule** *(v7r)*. Un appui par erreur ne doit pas être définitif : la
+    croix devient un **✓** qui confirme l'envoi, et réappuyer dessus retire le retour de la base. L'état est **relu au
     démarrage**, donc il survit à la fermeture de l'app — sans ça la croix repartait vierge à
     chaque ouverture et le même aliment pouvait être signalé deux fois.
 
@@ -1269,8 +1269,8 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **15 août 2026** — v7r, 559 226 octets, 7060 lignes |
-| Contenu de ce build | Retour « je n'aime pas » annulable et persistant |
+| Dernier build déployé | **15 août 2026** — v7r, 559 204 octets, 7060 lignes |
+| Contenu de ce build | Retour « je n'aime pas » annulable et persistant, signalé par un ✓ |
 | Build précédent | 15 août 2026 — v7q, 557 657 octets. Praticité des diètes |
 | **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
 | Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
