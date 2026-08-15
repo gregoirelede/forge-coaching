@@ -4763,25 +4763,100 @@ function ciblesParRepas(cibleJour, mealsPerDay) {
 //      que la personne mange déjà ça, la question du budget est réglée.
 //   4. Les plafonds de coût et de préparation ne s'appliquent donc qu'aux
 //      aliments qu'on lui ferait découvrir.
-function alimentsUtilisables(foods, nutriProfile, role, mealType, habituels) {
-  const bas = (s) => (s || "").toLowerCase();
-  const allergies = (nutriProfile?.allergies || []).map(bas).filter(Boolean);
+// Le filtre DUR, celui qui ne s'assouplit jamais. Isolé dans sa propre
+// fonction pour une seule raison : la règle des allergies ne doit exister qu'à
+// UN endroit du code. Le générateur et la table d'équivalences s'en servent
+// tous les deux ; le jour où l'un des deux se met à la réécrire pour son
+// compte, c'est ce jour-là qu'un allergène finit dans une assiette.
+// Ce que chaque allergène recouvre RÉELLEMENT dans les noms d'aliments.
+//
+// POURQUOI CETTE TABLE EXISTE, et c'est un vrai défaut trouvé sur les données
+// réelles : le filtre compare le terme déclaré au nom de l'aliment. Une
+// allergie saisie « gluten » ne filtrait donc quasiment rien, parce que
+// presque aucun aliment Ciqual ne porte le mot « gluten » dans son nom — mais
+// beaucoup portent « blé », « froment », « orge » ou « pâtes ». Une coachée
+// cœliaque se serait vu proposer des crackers au froment.
+//
+// On préfère ici EXCLURE TROP que trop peu. Un faux positif écarte un aliment
+// de plus, sans gravité ; un faux négatif met un allergène dans une assiette.
+// L'avoine est dans la liste du gluten pour cette raison : naturellement sans
+// gluten, presque toujours contaminée en usine.
+const ALLERGENES_SYNONYMES = [
+  [["gluten", "ble", "froment", "coeliaque", "celiaque"],
+   ["ble", "froment", "orge", "seigle", "epeautre", "kamut", "avoine", "semoule", "boulgour",
+    "couscous", "pain", "pates", "muesli", "biscotte", "chapelure", "malt", "brioche",
+    "viennoiserie", "biscuit", "gateau", "tarte", "pizza", "crepe", "gaufre", "cereales",
+    "farine", "cracker", "pain de mie", "pate a tarte", "beignet", "quiche", "sandwich"]],
+  [["lactose", "lait", "laitier", "laitiers", "produits laitiers"],
+   ["lait", "fromage", "yaourt", "creme", "beurre", "skyr", "petit suisse", "ricotta",
+    "mozzarella", "faisselle", "fromage blanc", "chantilly", "glace"]],
+  [["arachide", "cacahuete", "cacahuetes"], ["arachide", "cacahuete"]],
+  [["oeuf", "oeufs", "ovoproduit"], ["oeuf", "omelette", "mayonnaise", "meringue"]],
+  [["poisson", "poissons"],
+   ["poisson", "saumon", "thon", "cabillaud", "colin", "merlu", "sardine", "maquereau",
+    "truite", "hareng", "anchois", "lieu", "sole", "bar ", "dorade", "lotte", "raie",
+    "surimi", "tarama", "brandade"]],
+  [["crustace", "crustaces", "crevette"],
+   ["crevette", "homard", "langouste", "langoustine", "crabe", "ecrevisse", "gambas", "tourteau"]],
+  [["mollusque", "mollusques", "fruits de mer"],
+   ["moule", "huitre", "calmar", "calamar", "encornet", "poulpe", "seiche", "bulot",
+    "bigorneau", "coquille", "petoncle", "escargot", "saint-jacques"]],
+  [["soja", "soya"], ["soja", "tofu", "tempeh", "edamame", "miso"]],
+  [["fruits a coque", "fruit a coque", "noix", "oleagineux"],
+   ["amande", "noisette", "noix", "pistache", "cajou", "pecan", "macadamia", "praline"]],
+  [["sesame"], ["sesame", "tahin", "houmous"]],
+  [["celeri"], ["celeri"]],
+  [["moutarde"], ["moutarde"]],
+  [["lupin"], ["lupin"]],
+  [["sulfite", "sulfites"], ["sulfite", "vin ", "vinaigre"]],
+];
+
+// Étend les termes déclarés à tout ce qu'ils recouvrent. Un terme inconnu de la
+// table est conservé tel quel : le coach reste libre d'écrire ce qu'il veut.
+function termesAllergenes(declares) {
+  const sansAccent = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const sortie = new Set();
+  for (const brut of declares) {
+    const t = sansAccent(brut);
+    if (!t) continue;
+    sortie.add(t);
+    for (const [cles, couvre] of ALLERGENES_SYNONYMES) {
+      if (cles.some(c => t === c || t.includes(c))) couvre.forEach(x => sortie.add(x));
+    }
+  }
+  return [...sortie];
+}
+
+function alimentsAutorises(foods, nutriProfile, role, mealType) {
+  const bas = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const allergies = termesAllergenes(nutriProfile?.allergies || []);
   const detestes  = (nutriProfile?.disliked_foods || []).map(bas).filter(Boolean);
   const prefs     = (nutriProfile?.dietary_preferences || []).map(bas).filter(Boolean);
 
   let base = (foods || []).filter(f => {
     if (f.role !== role) return false;
     const types = f.meal_types || [];
-    if (types.length && !types.includes(mealType)) return false;
+    if (mealType && types.length && !types.includes(mealType)) return false;
     const nom = bas(f.name);
     if (allergies.some(a => nom.includes(a))) return false;
     if (detestes.some(d => nom.includes(d))) return false;
     return true;
   });
+  // Les préférences, elles, s'assouplissent en dernier recours : mieux vaut
+  // une diète à retoucher qu'un repas vide. Jamais les allergies.
   if (prefs.length) {
     const conformes = base.filter(f => prefs.every(p => (f.tags || []).map(bas).includes(p)));
     if (conformes.length) base = conformes;
   }
+  return base;
+}
+
+const respecteLesPlafonds = (f, nutriProfile) =>
+  (parseInt(f.cost_level) || 2) <= (parseInt(nutriProfile?.max_cost_level) || 3)
+  && (parseInt(f.prep_level) || 2) <= (parseInt(nutriProfile?.max_prep_level) || 3);
+
+function alimentsUtilisables(foods, nutriProfile, role, mealType, habituels) {
+  const base = alimentsAutorises(foods, nutriProfile, role, mealType);
   if (!base.length) return base;
 
   // Ce qu'il mange déjà, d'abord.
@@ -4790,11 +4865,7 @@ function alimentsUtilisables(foods, nutriProfile, role, mealType, habituels) {
     if (siens.length) return siens;
   }
   // Sinon, ce qu'on peut lui demander d'acheter et de cuisiner.
-  const maxC = parseInt(nutriProfile?.max_cost_level) || 3;
-  const maxP = parseInt(nutriProfile?.max_prep_level) || 3;
-  if (maxC >= 3 && maxP >= 3) return base;
-  const praticables = base.filter(f =>
-    (parseInt(f.cost_level) || 2) <= maxC && (parseInt(f.prep_level) || 2) <= maxP);
+  const praticables = base.filter(f => respecteLesPlafonds(f, nutriProfile));
   // Aucun aliment praticable pour ce rôle : on rend la main plutôt que de
   // laisser un trou. Le repas sera juste, et l'écart au budget se voit.
   return praticables.length ? praticables : base;
@@ -4831,6 +4902,110 @@ function poolAbordable(pool, role, cibleRepas) {
   if (abordables.length) return abordables;
   const moindre = Math.min(...pool.map(cout));
   return pool.filter(f => cout(f) === moindre);
+}
+
+// ── Table d'équivalences ───────────────────────────────────────────────────
+//
+// « Je n'ai pas de riz ce soir, je mets quoi à la place ? »
+//
+// AVEC UN SEUL CURSEUR — le grammage — ON NE PEUT PAS FAIRE COÏNCIDER LES
+// CALORIES ET LES TROIS MACROS À LA FOIS. Il faut choisir sur quoi on cale, et
+// le choix retenu est celui des vraies tables d'équivalences : on égalise la
+// macro dont l'aliment est le porteur. Un féculent s'échange à glucides égaux,
+// une protéine à protéines égales, une matière grasse à lipides égaux.
+//
+// C'est le seul choix qui préserve ce qui compte. À calories égales, échanger
+// 90 g de poulet contre du riz ferait perdre 25 g de protéines sur le repas —
+// la diète tomberait juste au compteur et serait fausse dans l'assiette.
+//
+// L'écart calorique résiduel n'est pas caché : il est calculé et renvoyé, pour
+// que l'app l'affiche à côté de chaque proposition.
+const DIET_MACRO_100 = { proteine: "protein_100", feculent: "carbs_100", matiere_grasse: "fat_100",
+                         legume: "carbs_100", fruit: "carbs_100", autre: "kcal_100" };
+
+// Rôle d'une ligne de diète. `diet_items` fige le nom et les macros mais pas le
+// rôle : on le relit dans la base d'aliments, et à défaut — aliment retiré
+// depuis — on le déduit de ses propres macros.
+function roleDeLItem(item, foods) {
+  const f = (foods || []).find(x => x.id === item.food_id);
+  if (f && f.role) return f.role;
+  const p = parseFloat(item.protein_100) || 0;
+  const c = parseFloat(item.carbs_100) || 0;
+  const g = parseFloat(item.fat_100) || 0;
+  if (g * 9 > (p + c) * 4 * 1.5) return "matiere_grasse";
+  return p * 4 > c * 4 ? "proteine" : "feculent";
+}
+
+// Personne ne mange 1,5 kg de quoi que ce soit : au-delà, la proposition est
+// arithmétiquement juste et pratiquement absurde, on ne l'affiche pas.
+const EQUIV_GRAMMES_MAX = 800;
+
+function equivalents({ item, foods, nutriProfile, habituels, mealType, max = 5 }) {
+  const role = roleDeLItem(item, foods);
+  const champ = DIET_MACRO_100[role] || "kcal_100";
+  const grammes = parseFloat(item.grams) || 0;
+  const vise = (parseFloat(item[champ]) || 0) * grammes / 100;
+  if (!(vise > 0)) return { role, champ, vise: 0, liste: [] };
+
+  const hab = habituels instanceof Set ? habituels : new Set(habituels || []);
+  const source = macrosItem(item);
+
+  const candidats = alimentsAutorises(foods, nutriProfile, role, mealType)
+    .filter(f => f.id !== item.food_id)
+    .map(f => {
+      const densite = parseFloat(f[champ]) || 0;
+      if (densite <= 0) return null;
+      const g = Math.max(5, Math.round((vise / densite) * 100 / 5) * 5);
+      if (g > EQUIV_GRAMMES_MAX) return null;
+      const m = macrosItem({ ...f, grams: g });
+      return {
+        food: f, grams: g, habituel: hab.has(f.id),
+        dKcal: Math.round(m.kcal - source.kcal),
+        dProt: Math.round(m.protein - source.protein),
+        dCarbs: Math.round(m.carbs - source.carbs),
+        dFat: Math.round(m.fat - source.fat),
+      };
+    })
+    .filter(Boolean)
+    // Un aliment habituel échappe aux plafonds, comme dans le générateur : s'il
+    // le mange déjà, la question du budget est réglée.
+    .filter(e => e.habituel || respecteLesPlafonds(e.food, nutriProfile));
+
+  // CLASSER SUR LE SEUL ÉCART CALORIQUE NE SUFFIT PAS, et ça se voit dès qu'on
+  // essaie sur de vraies données : à 27 g de protéines et zéro écart de
+  // calories, le homard et le bulot sortent devant le steak. Arithmétiquement
+  // imbattables, concrètement inutilisables.
+  //
+  // Le coût et la préparation doivent donc peser sur l'ORDRE, pas seulement
+  // servir de filtre — d'autant qu'un coaché sans plafond ne filtre rien du
+  // tout. On les convertit en pénalité exprimée dans la même unité que l'écart
+  // calorique, ce qui rend le compromis lisible : un aliment cher doit être
+  // nettement plus proche de la cible pour passer devant un aliment courant.
+  const penalite = (e) =>
+    Math.abs(e.dKcal)
+    + ((parseInt(e.food.cost_level) || 2) - 1) * 60
+    + ((parseInt(e.food.prep_level) || 2) - 1) * 30;
+
+  // Ses habitudes d'abord — s'il le mange déjà, rien ne le bat.
+  candidats.sort((a, b) => (b.habituel - a.habituel) || (penalite(a) - penalite(b)));
+  return { role, champ, vise: Math.round(vise), liste: candidats.slice(0, max) };
+}
+
+const EQUIV_LIBELLE = { proteine: "protéines", feculent: "glucides", matiere_grasse: "lipides",
+                        legume: "glucides", fruit: "glucides", autre: "calories" };
+
+// Combien de grammes de `food` équivalent à cette ligne de diète. Renvoie null
+// quand la question n'a pas de sens — rôles différents, ou aliment qui ne porte
+// pas du tout la macro visée (chercher les glucides d'une huile).
+function grammesEquivalents(item, food, foods) {
+  const role = roleDeLItem(item, foods);
+  if (!food || food.role !== role) return null;
+  const champ = DIET_MACRO_100[role] || "kcal_100";
+  const vise = (parseFloat(item[champ]) || 0) * (parseFloat(item.grams) || 0) / 100;
+  const densite = parseFloat(food[champ]) || 0;
+  if (!(vise > 0) || densite <= 0) return null;
+  const g = Math.max(5, Math.round((vise / densite) * 100 / 5) * 5);
+  return g > EQUIV_GRAMMES_MAX ? null : g;
 }
 
 // Résout les grammages d'un repas dont les aliments sont déjà choisis.
@@ -5132,6 +5307,9 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
               </div>
             ) : liste.map(f => {
               const horsRepas = mealType && (f.meal_types || []).length && !(f.meal_types || []).includes(mealType);
+              // En remplacement, on annonce la quantité équivalente AVANT le
+              // clic : le coach voit tout de suite si la portion est réaliste.
+              const gEquiv = itemRemplace ? grammesEquivalents(itemRemplace, f, foods) : null;
               return (
                 <button key={f.id} onClick={() => onChoose(f)} className="pressable" style={{ width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, opacity: horsRepas ? 0.55 : 1 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -5143,6 +5321,12 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
                       {f.coach_id ? " · à toi" : ""}{horsRepas ? " · inhabituel à ce repas" : ""}
                     </div>
                   </div>
+                  {gEquiv != null && (
+                    <div style={{ flexShrink: 0, textAlign: "right", marginRight: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: T.accent }}>{gEquiv} g</div>
+                      <div style={{ fontSize: 8.5, color: T.textMuted, fontWeight: 700, letterSpacing: 0.3 }}>ÉQUIVALENT</div>
+                    </div>
+                  )}
                   <Icon name="chevronRight" size={16} color={T.borderStrong}/>
                 </button>
               );
@@ -5349,7 +5533,12 @@ function CoachNutritionView({ ctx, coachee }) {
   // avec un grammage de départ, et le coach l'affine ensuite.
   async function poserAliment(mealId, food, itemRemplace) {
     const b = DIET_BORNES[food.role] || DIET_BORNES.autre;
-    const grams = itemRemplace ? itemRemplace.grams : (parseFloat(food.portion_g) || b.defaut);
+    // Un remplacement arrive DIMENSIONNÉ pour équivaloir à ce qu'il remplace.
+    // Reprendre tel quel le grammage de l'ancien aliment était faux : 90 g de
+    // poulet ne valent pas 90 g de thon, ni 90 g de riz.
+    const grams = itemRemplace
+      ? (grammesEquivalents(itemRemplace, food, foods) ?? (parseFloat(food.portion_g) || b.defaut))
+      : (parseFloat(food.portion_g) || b.defaut);
     const payload = {
       food_id: food.id, food_name: food.name, grams,
       kcal_100: food.kcal_100, protein_100: food.protein_100,
@@ -5861,6 +6050,12 @@ function NutritionPage({ ctx }) {
   // même aliment peut être signalé deux fois.
   const [signales, setSignales] = useState({});
   const [enCours, setEnCours] = useState({});
+  // Équivalences : l'aliment consulté, et le cache des aliments par rôle. On
+  // ne charge JAMAIS les 3 286 aliments sur un téléphone — seulement le rôle
+  // demandé, et une seule fois par rôle.
+  const [equivPour, setEquivPour] = useState(null);
+  const [poolParRole, setPoolParRole] = useState({});
+  const [habituels, setHabituels] = useState([]);
   const [weightInput, setWeightInput] = useState("");
   const [savingWeight, setSavingWeight] = useState(false);
   const [wMsg, setWMsg] = useState("");
@@ -5903,6 +6098,10 @@ function NutritionPage({ ctx }) {
             setSignales(Object.fromEntries(fb.filter(f => f.item_id).map(f => [f.item_id, f.id])));
           }
         } catch { /* la relecture est un confort, elle ne bloque rien */ }
+        // Ses aliments habituels : la liste est courte, on la prend d'emblée.
+        // Elle sert à remonter en tête les équivalents qu'il mange déjà.
+        try { setHabituels(await loadHabituels(supabase, userId)); }
+        catch { /* pas de migration praticité : on s'en passe */ }
       } catch {}
       setLoading(false);
     })();
@@ -5915,6 +6114,32 @@ function NutritionPage({ ctx }) {
       if (error) throw error;
       setConsent(data);
     } catch { /* le refus laisse l'écran en place, il réessaiera */ }
+  }
+
+  // Ouvre la table d'équivalences d'un aliment. Le chargement est PARESSEUX :
+  // on récupère d'abord la fiche de l'aliment pour connaître son rôle, puis
+  // les aliments de ce rôle uniquement. Charger la base entière ferait passer
+  // 400 Ko sur le réseau d'une personne qui est peut-être en salle, en 4G.
+  async function ouvrirEquivalences(item, mealType) {
+    setEquivPour({ item, mealType, chargement: true });
+    try {
+      let role = null;
+      if (item.food_id) {
+        const { data } = await supabase.from("foods").select("role").eq("id", item.food_id).maybeSingle();
+        role = data?.role || null;
+      }
+      if (!role) role = roleDeLItem(item, []);
+      if (!poolParRole[role]) {
+        const { data, error } = await supabase.from("foods")
+          .select("id, name, role, kcal_100, protein_100, carbs_100, fat_100, fiber_100, cost_level, prep_level, meal_types, tags")
+          .eq("role", role);
+        if (error) throw error;
+        setPoolParRole(p => ({ ...p, [role]: data || [] }));
+      }
+      setEquivPour(e => (e && e.item.id === item.id ? { ...e, role, chargement: false } : e));
+    } catch {
+      setEquivPour(e => (e && e.item.id === item.id ? { ...e, chargement: false, echec: true } : e));
+    }
   }
 
   // Signaler un aliment, ou revenir dessus. Un appui par erreur doit pouvoir
@@ -6105,7 +6330,12 @@ function NutritionPage({ ctx }) {
                     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       {r.items.map(it => (
                         <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderTop: `1px solid ${T.border}55` }}>
-                          <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4 }}>{it.food_name}</div>
+                          <button onClick={() => ouvrirEquivalences(it, r.meal_type)}
+                            title="Voir par quoi le remplacer"
+                            style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4, cursor: "pointer" }}>
+                            {it.food_name}
+                            <span style={{ marginLeft: 5, fontSize: 10, color: T.accent, fontWeight: 700 }}>⇄</span>
+                          </button>
                           <div style={{ fontSize: 12.5, fontWeight: 800, color: T.textSub, flexShrink: 0 }}>{Math.round(it.grams)} g</div>
                           {(() => {
                             const marque = !!signales[it.id];
@@ -6129,7 +6359,8 @@ function NutritionPage({ ctx }) {
                 );
               })}
               <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" }}>
-                La croix signale à ton coach qu'un aliment ne te convient pas — il te le remplacera.
+                Appuie sur le nom d'un aliment pour voir par quoi le remplacer, avec la bonne quantité.
+                La croix, elle, signale à ton coach qu'un aliment ne te convient pas — il te le remplacera.
                 Le ✓ confirme que c'est bien parti. Appui par erreur ? Réappuie sur le ✓, rien ne lui sera envoyé.
               </div>
             </div>
@@ -6168,7 +6399,95 @@ function NutritionPage({ ctx }) {
           <p style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>{NUTRITION_DISCLAIMER}</p>
         )}
       </div>
+
+      {equivPour && (
+        <EquivalencesSheet
+          item={equivPour.item}
+          mealType={equivPour.mealType}
+          chargement={equivPour.chargement}
+          echec={equivPour.echec}
+          foods={poolParRole[equivPour.role] || []}
+          nutriProfile={nutri}
+          habituels={new Set(habituels.map(h => h.food_id))}
+          onClose={() => setEquivPour(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Feuille « par quoi je peux le remplacer » ───────────────────────────────
+//
+// LECTURE SEULE, et c'est le point. La diète du coaché n'est pas modifiée : la
+// feuille dit ce qu'il peut mettre à la place ce soir-là, exactement comme la
+// table d'équivalences papier qu'un diététicien remet à son patient. Une diète
+// que le client réécrit n'est plus celle que le coach a validée.
+function EquivalencesSheet({ item, mealType, chargement, echec, foods, nutriProfile, habituels, onClose }) {
+  const res = chargement || echec
+    ? { liste: [], role: null, vise: 0 }
+    : equivalents({ item, foods, nutriProfile, habituels, mealType });
+  const m = macrosItem(item);
+
+  return (
+    <Portail>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.45)", zIndex: 500, animation: "fadeIn .2s ease" }}/>
+      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${T.border}` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 1.8, color: T.textSub }}>À LA PLACE DE</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginTop: 3, lineHeight: 1.3 }}>{item.food_name}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>
+                {Math.round(item.grams)} g · {Math.round(m.kcal)} kcal · P{Math.round(m.protein)} G{Math.round(m.carbs)} L{Math.round(m.fat)}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: T.textMuted, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>✕</button>
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px calc(20px + env(safe-area-inset-bottom))" }}>
+          {chargement ? (
+            <div style={{ padding: "30px 0", textAlign: "center" }}><Spinner size={22}/></div>
+          ) : echec ? (
+            <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 10px", lineHeight: 1.6 }}>
+              Impossible de charger les équivalences.<br/>Vérifie ta connexion et réessaie.
+            </div>
+          ) : res.liste.length === 0 ? (
+            <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 10px", lineHeight: 1.6 }}>
+              Aucun équivalent à te proposer pour cet aliment.<br/>Parles-en à ton coach.
+            </div>
+          ) : (<>
+            <div style={{ fontSize: 10.5, color: T.textMuted, lineHeight: 1.55, marginBottom: 10 }}>
+              Quantités calculées pour apporter les mêmes <b>{EQUIV_LIBELLE[res.role] || "calories"}</b> ({res.vise} g).
+              L'écart de calories est indiqué à droite.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {res.liste.map(e => (
+                <div key={e.food.id} style={{ background: T.surface, border: `1px solid ${e.habituel ? T.accent + "55" : T.border}`, borderRadius: 12, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{e.food.name}</div>
+                    <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2 }}>
+                      P{e.dProt >= 0 ? "+" : ""}{e.dProt} G{e.dCarbs >= 0 ? "+" : ""}{e.dCarbs} L{e.dFat >= 0 ? "+" : ""}{e.dFat}
+                      {e.habituel ? " · tu en manges déjà" : ""}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{e.grams} g</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: Math.abs(e.dKcal) <= 30 ? T.accent : T.warnText }}>
+                      {e.dKcal >= 0 ? "+" : ""}{e.dKcal} kcal
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 12 }}>
+              Ta diète n'est pas modifiée : ces équivalences sont là pour te dépanner.
+              Si tu veux en changer pour de bon, demande à ton coach.
+            </div>
+          </>)}
+        </div>
+      </div>
+    </Portail>
   );
 }
 
