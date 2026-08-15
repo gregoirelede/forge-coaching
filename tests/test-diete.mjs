@@ -172,17 +172,32 @@ function requete(table) {
       return { select: () => ({ single: async () => ({ data: PLAN, error: null }) }),
                then: r => Promise.resolve({ data: PLAN, error: null }).then(r) };
     },
-    delete(){ return {
-      eq: async (c,v) => {
-        window.__journal.deletes.push({ table, [c]: v });
-        if (table === "diet_items") { const i = ITEMS.findIndex(x => x.id === v); if (i >= 0) ITEMS.splice(i,1); }
+    // Le vrai client laisse enchaîner les .eq() : .delete().eq(a).eq(b).
+    // Le simulateur doit donc renvoyer un objet à la fois chaînable ET
+    // « awaitable », sinon le deuxième .eq() s'applique à une promesse.
+    delete(){
+      const filtres = {};
+      const appliquer = () => {
+        window.__journal.deletes.push({ table, ...filtres });
+        if (table === "diet_items" && filtres.id) {
+          const i = ITEMS.findIndex(x => x.id === filtres.id); if (i >= 0) ITEMS.splice(i,1);
+        }
         if (table === "diet_meals") { REPAS = []; ITEMS = []; }
-        if (table === "diet_feedback") RETOURS = RETOURS.filter(x => x.id !== v);
-        if (table === "coachee_staples") HABITUELS = HABITUELS.filter(x => x.id !== v);
+        if (table === "diet_feedback") {
+          RETOURS = RETOURS.filter(x =>
+            !((filtres.id == null || x.id === filtres.id)
+              && (filtres.item_id == null || x.item_id === filtres.item_id)));
+        }
+        if (table === "coachee_staples" && filtres.id) HABITUELS = HABITUELS.filter(x => x.id !== filtres.id);
         return { error: null };
-      },
-      in: async () => ({ error: null }),
-    }; },
+      };
+      const q2 = {
+        eq(c, v) { filtres[c] = v; return q2; },
+        in() { return q2; },
+        then(res, rej) { return Promise.resolve(appliquer()).then(res, rej); },
+      };
+      return q2;
+    },
     single: async () => {
       if (absente) return { data: null, error: ERR_TABLE };
       return { data: table === "profiles" ? (q._f.id === "coach-1" ? COACH : COACHE)
@@ -430,8 +445,10 @@ console.log("\n─── Le coaché consulte sa diète ───");
   await p.screenshot({ path: `${CAPTURES}diete-coache.png`, fullPage: true });
 
   console.log("\n─── « Je n'aime pas cet aliment » ───");
-  const avant = (await p.evaluate(() => window.__journal)).inserts.length;
-  await p.locator('button[title="Je n\'aime pas cet aliment"]').first().click();
+  const croix = () => p.locator('button[title="Je n\'aime pas cet aliment"]').first();
+  const annuler = () => p.locator('button[title^="Signalé à ton coach"]').first();
+
+  await croix().click();
   await p.waitForTimeout(700);
   const j = await p.evaluate(() => window.__journal);
   const fb = j.inserts.filter(i => i.table === "diet_feedback");
@@ -439,15 +456,66 @@ console.log("\n─── Le coaché consulte sa diète ───");
   ok(fb[0]?.vals.coachee_id === "c1" && !!fb[0]?.vals.food_name,
      `il dit quel aliment et chez qui (${fb[0]?.vals.food_name})`);
   ok(!!fb[0]?.vals.meal_label, `et dans quel repas (${fb[0]?.vals.meal_label})`);
-  await p.locator('button[title="Je n\'aime pas cet aliment"]').first().click().catch(() => {});
-  await p.waitForTimeout(400);
+
+  // Un appui par erreur doit pouvoir s'annuler : c'est le retour d'une vraie
+  // coachée, et sans ça le coach remplace un aliment qui convenait.
+  console.log("\n─── L'APPUI PAR ERREUR S'ANNULE ───");
+  ok(await annuler().count() > 0, "le bouton propose maintenant d'annuler");
+  await annuler().click();
+  await p.waitForTimeout(700);
   const j2 = await p.evaluate(() => window.__journal);
+  const supp = j2.deletes.filter(x => x.table === "diet_feedback");
+  ok(supp.length === 1, `l'annulation efface le retour en base (${supp.length})`);
+  ok(supp[0]?.item_id != null, "elle vise bien l'aliment concerné");
+  ok(await croix().count() > 0, "et la croix revient, prête pour un vrai signalement");
   ok(j2.inserts.filter(i => i.table === "diet_feedback").length === 1,
-     "re-cliquer ne renvoie pas un doublon");
+     "annuler ne crée pas de retour supplémentaire");
+
+  // Re-signaler après annulation doit remarcher.
+  await croix().click();
+  await p.waitForTimeout(600);
+  const j3 = await p.evaluate(() => window.__journal);
+  ok(j3.inserts.filter(i => i.table === "diet_feedback").length === 2,
+     "on peut re-signaler ensuite");
+  await annuler().click();
+  await p.waitForTimeout(500);
 
   console.log("\n─── Le coaché ne modifie rien ───");
   ok(!/AJOUTER UN ALIMENT|AJUSTER AUX CIBLES|REGÉNÉRER/.test(vue),
      "aucune commande d'édition ne lui est proposée");
+  await ctx.close();
+}
+
+// L'état « signalé » doit survivre à la fermeture de l'app. Sans ça la croix
+// repart vierge à chaque ouverture, et le même aliment part une deuxième fois
+// chez le coach — le défaut le plus vicieux des deux, parce qu'invisible.
+console.log("\n─── L'état signalé survit à un redémarrage ───");
+{
+  // L'app ouvre sur la journée d'AUJOURD'HUI : viser un aliment de l'autre
+  // journée type rendrait ce test vert ou rouge selon le jour de la semaine.
+  // Le simulateur crée 14 aliments par journée, la banane du petit-déjeuner
+  // en tête de chacune.
+  const premierAliment = jourAujourdhui === "entrainement" ? "i1" : "i15";
+  const { ctx, p } = await ouvrir({ role: "coachee", retours: [
+    { id: "fb9", coachee_id: "c1", item_id: premierAliment, food_name: "Banane, chair sans peau, crue",
+      meal_label: "Petit-déjeuner", created_at: "2026-08-15T09:00:00Z" },
+  ] });
+  await allerNutrition(p);
+  const dejaMarque = await p.locator('button[title^="Signalé à ton coach"]').count();
+  ok(dejaMarque === 1, `l'aliment signalé la veille est retrouvé marqué (${dejaMarque})`);
+
+  // Et il ne peut pas repartir en double : le bouton propose d'annuler, pas de
+  // signaler à nouveau.
+  const j0 = await p.evaluate(() => window.__journal);
+  ok(j0.inserts.filter(i => i.table === "diet_feedback").length === 0,
+     "rien n'est renvoyé au chargement");
+  await p.locator('button[title^="Signalé à ton coach"]').first().click();
+  await p.waitForTimeout(700);
+  const j1 = await p.evaluate(() => window.__journal);
+  ok(j1.deletes.filter(x => x.table === "diet_feedback").length === 1,
+     "l'appui l'annule au lieu de le redoubler");
+  ok(j1.inserts.filter(i => i.table === "diet_feedback").length === 0,
+     "aucun doublon n'a été créé");
   ok((await p.locator('input[type="number"]').count()) <= 1,
      "le seul champ chiffré de la page est celui de la pesée");
   await ctx.close();

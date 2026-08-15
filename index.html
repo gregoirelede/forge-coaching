@@ -4235,6 +4235,7 @@ function NutritionPage({ ctx }) {
   const [consent, setConsent] = useState(null);
   const [jourVu, setJourVu] = useState(null);
   const [signales, setSignales] = useState({});
+  const [enCours, setEnCours] = useState({});
   const [weightInput, setWeightInput] = useState("");
   const [savingWeight, setSavingWeight] = useState(false);
   const [wMsg, setWMsg] = useState("");
@@ -4266,6 +4267,13 @@ function NutritionPage({ ctx }) {
         } catch (e) {
           if (!tableAbsente(e)) throw e;
         }
+        try {
+          const { data: fb } = await supabase.from("diet_feedback").select("id, item_id").eq("coachee_id", userId);
+          if (fb && fb.length) {
+            setSignales(Object.fromEntries(fb.filter((f) => f.item_id).map((f) => [f.item_id, f.id])));
+          }
+        } catch (e) {
+        }
       } catch (e) {
       }
       setLoading(false);
@@ -4279,18 +4287,43 @@ function NutritionPage({ ctx }) {
     } catch (e) {
     }
   }
-  async function signaler(item, mealType) {
-    if (signales[item.id]) return;
-    setSignales((s) => __spreadProps(__spreadValues({}, s), { [item.id]: true }));
+  async function basculerSignalement(item, mealType) {
+    if (enCours[item.id]) return;
+    const dejaSignale = !!signales[item.id];
+    setEnCours((e) => __spreadProps(__spreadValues({}, e), { [item.id]: true }));
+    setSignales((s) => {
+      const n = __spreadValues({}, s);
+      if (dejaSignale) delete n[item.id];
+      else n[item.id] = "en-cours";
+      return n;
+    });
     try {
-      await supabase.from("diet_feedback").insert({
-        coachee_id: userId,
-        item_id: item.id,
-        food_name: item.food_name,
-        meal_label: dietMealLabel(mealType)
-      });
+      if (dejaSignale) {
+        const { error } = await supabase.from("diet_feedback").delete().eq("coachee_id", userId).eq("item_id", item.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("diet_feedback").insert({
+          coachee_id: userId,
+          item_id: item.id,
+          food_name: item.food_name,
+          meal_label: dietMealLabel(mealType)
+        }).select().single();
+        if (error) throw error;
+        setSignales((s) => __spreadProps(__spreadValues({}, s), { [item.id]: data.id }));
+      }
     } catch (e) {
+      setSignales((s) => {
+        const n = __spreadValues({}, s);
+        if (dejaSignale) n[item.id] = "inconnu";
+        else delete n[item.id];
+        return n;
+      });
     }
+    setEnCours((e) => {
+      const n = __spreadValues({}, e);
+      delete n[item.id];
+      return n;
+    });
   }
   const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
   const activePhase = findActivePhase(phases);
@@ -4338,17 +4371,21 @@ function NutritionPage({ ctx }) {
     /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 6px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA DI\xC8TE"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 16px", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text, marginBottom: 10 } }, "AVANT DE COMMENCER"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: 12, color: T.textSub, lineHeight: 1.65, margin: "0 0 14px" } }, NUTRITION_DISCLAIMER), /* @__PURE__ */ React.createElement("button", { onClick: accepterCadre, className: "pressable", style: { width: "100%", padding: 14, background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1.2, cursor: "pointer" } }, "J'AI COMPRIS")))
   ) : diete ? /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 6px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub } }, "MA DI\xC8TE"), jourActif !== jourAujourdhui && /* @__PURE__ */ React.createElement("button", { onClick: () => setJourVu(null), style: { background: "none", border: "none", color: T.accent, fontSize: 10.5, fontWeight: 700, cursor: "pointer", padding: 0 } }, "Revenir \xE0 aujourd'hui")), diete.plan.note && /* @__PURE__ */ React.createElement("div", { style: { background: T.accentLight, border: `1px solid ${T.accent}33`, borderRadius: 12, padding: "10px 13px", marginBottom: 10, fontSize: 11.5, color: T.text, lineHeight: 1.6 } }, diete.plan.note), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 12 } }, [["entrainement", "JOUR D'ENTRA\xCENEMENT"], ["repos", "JOUR DE REPOS"]].map(([id, lab]) => /* @__PURE__ */ React.createElement("button", { key: id, onClick: () => setJourVu(id), className: "pressable", style: { flex: 1, padding: "10px 6px", background: jourActif === id ? T.accent : T.surface, color: jourActif === id ? "white" : T.textSub, border: `1px solid ${jourActif === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, cursor: "pointer" } }, lab, id === jourAujourdhui ? " \xB7" : ""))), repasDuJour.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Aucun repas pour cette journ\xE9e.", /* @__PURE__ */ React.createElement("br", null), "Ton coach finalise ta di\xE8te.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 9 } }, repasDuJour.map((r, i) => {
     const tot = totauxItems(r.items);
-    return /* @__PURE__ */ React.createElement("div", { key: r.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 15, padding: "13px 14px", animation: `fadeUp .3s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 1.4, color: T.text } }, dietMealLabel(r.meal_type).toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: T.accent } }, tot.kcal, " kcal")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 1 } }, r.items.map((it) => /* @__PURE__ */ React.createElement("div", { key: it.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderTop: `1px solid ${T.border}55` } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4 } }, it.food_name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, fontWeight: 800, color: T.textSub, flexShrink: 0 } }, Math.round(it.grams), " g"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => signaler(it, r.meal_type),
-        disabled: !!signales[it.id],
-        title: "Je n'aime pas cet aliment",
-        style: { flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: signales[it.id] ? T.accentLight : "transparent", border: `1px solid ${signales[it.id] ? T.accent : T.border}`, color: signales[it.id] ? T.accent : T.textMuted, fontSize: 9, fontWeight: 800, cursor: signales[it.id] ? "default" : "pointer", lineHeight: 1 }
-      },
-      signales[it.id] ? "OK" : "\u2715"
-    )))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 8, fontWeight: 600 } }, "P ", tot.protein, " g \xB7 G ", tot.carbs, " g \xB7 L ", tot.fat, " g", tot.fiber ? ` \xB7 Fibres ${tot.fiber} g` : ""));
-  }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" } }, "La croix signale \xE0 ton coach qu'un aliment ne te convient pas. Il te le remplacera."))) : /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 6px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA DI\xC8TE"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Ton coach n'a pas encore \xE9tabli ta di\xE8te.", /* @__PURE__ */ React.createElement("br", null), "Tes cibles ci-dessus restent valables en attendant.")), /* @__PURE__ */ React.createElement("div", { id: "forge-weigh-block", style: { padding: "14px 18px 0", scrollMarginTop: 80 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA PES\xC9E"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", step: "0.1", min: "30", max: "300", value: weightInput, onChange: (e) => setWeightInput(e.target.value), placeholder: lastWeight ? `Dernier : ${lastWeight} kg` : "Ton poids (kg)", style: __spreadProps(__spreadValues({}, inputStyle), { flex: 1 }) }), /* @__PURE__ */ React.createElement("button", { onClick: saveWeight, disabled: savingWeight || !weightInput, style: { flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer" } }, savingWeight ? "..." : "OK")), wMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: wMsg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 8 } }, wMsg), /* @__PURE__ */ React.createElement(WeightChart, { logs }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDisclaimer(!showDisclaimer), style: { background: "transparent", border: "none", color: T.textMuted, fontSize: 10, fontWeight: 600, textDecoration: "underline", cursor: "pointer" } }, "Avertissement nutritionnel"), showDisclaimer && /* @__PURE__ */ React.createElement("p", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, NUTRITION_DISCLAIMER)));
+    return /* @__PURE__ */ React.createElement("div", { key: r.id, style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 15, padding: "13px 14px", animation: `fadeUp .3s ease ${i * 0.05}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 1.4, color: T.text } }, dietMealLabel(r.meal_type).toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: T.accent } }, tot.kcal, " kcal")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 1 } }, r.items.map((it) => /* @__PURE__ */ React.createElement("div", { key: it.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderTop: `1px solid ${T.border}55` } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4 } }, it.food_name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, fontWeight: 800, color: T.textSub, flexShrink: 0 } }, Math.round(it.grams), " g"), (() => {
+      const marque = !!signales[it.id];
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => basculerSignalement(it, r.meal_type),
+          disabled: !!enCours[it.id],
+          "aria-pressed": marque,
+          title: marque ? "Signal\xE9 \xE0 ton coach \u2014 appuie pour annuler" : "Je n'aime pas cet aliment",
+          style: { flexShrink: 0, minWidth: 26, height: 26, padding: "0 7px", borderRadius: 8, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: marque ? 8.5 : 11, fontWeight: 800, letterSpacing: marque ? 0.4 : 0, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }
+        },
+        marque ? "ANNULER" : "\u2715"
+      );
+    })()))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 8, fontWeight: 600 } }, "P ", tot.protein, " g \xB7 G ", tot.carbs, " g \xB7 L ", tot.fat, " g", tot.fiber ? ` \xB7 Fibres ${tot.fiber} g` : ""));
+  }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" } }, "La croix signale \xE0 ton coach qu'un aliment ne te convient pas \u2014 il te le remplacera. Appui par erreur ? Appuie sur ANNULER, rien ne lui sera envoy\xE9."))) : /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px 6px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA DI\xC8TE"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 } }, "Ton coach n'a pas encore \xE9tabli ta di\xE8te.", /* @__PURE__ */ React.createElement("br", null), "Tes cibles ci-dessus restent valables en attendant.")), /* @__PURE__ */ React.createElement("div", { id: "forge-weigh-block", style: { padding: "14px 18px 0", scrollMarginTop: 80 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 } }, "MA PES\xC9E"), /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "number", inputMode: "decimal", step: "0.1", min: "30", max: "300", value: weightInput, onChange: (e) => setWeightInput(e.target.value), placeholder: lastWeight ? `Dernier : ${lastWeight} kg` : "Ton poids (kg)", style: __spreadProps(__spreadValues({}, inputStyle), { flex: 1 }) }), /* @__PURE__ */ React.createElement("button", { onClick: saveWeight, disabled: savingWeight || !weightInput, style: { flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer" } }, savingWeight ? "..." : "OK")), wMsg && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: wMsg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 8 } }, wMsg), /* @__PURE__ */ React.createElement(WeightChart, { logs }))), /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowDisclaimer(!showDisclaimer), style: { background: "transparent", border: "none", color: T.textMuted, fontSize: 10, fontWeight: 600, textDecoration: "underline", cursor: "pointer" } }, "Avertissement nutritionnel"), showDisclaimer && /* @__PURE__ */ React.createElement("p", { style: { fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" } }, NUTRITION_DISCLAIMER)));
 }
 const PHASE_TYPES = {
   prise_de_masse: { label: "Prise de masse", text: "var(--p-masse-tx)", bg: "var(--p-masse-bg)" },

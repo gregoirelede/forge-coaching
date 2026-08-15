@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.7 · Build v7q (545 Ko / 7010 lignes)
+### Fichier de référence pour Claude Code · Version 1.8 · Build v7r (546 Ko / 7060 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois | 559 226 o | 7060 |
 
 ## B.4 — État d'installation
 
@@ -173,6 +174,7 @@ forge-coaching/
 │   ├── 2026-08-15-diete-praticite.sql   ← coût, préparation, aliments habituels (v7q)
 │   ├── 2026-08-15-niveaux-aliments.sql  ← les niveaux sur les 3 286 aliments
 │   ├── 2026-08-15-diete-anais.sql       ← sa diète sans gluten, composée à la main
+│   ├── 2026-08-15-retour-reversible.sql ← le coaché peut annuler un signalement
 │   ├── A-JOUER-15-AOUT.sql              ← les 3 ci-dessus réunies, pour Greg
 │   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
 │   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
@@ -638,7 +640,9 @@ qui a servi au calcul, et un mot du coach affiché en tête.
 **`diet_items`** — un aliment dans un repas : `food_id`, `food_name`, `grams`, et les quatre
 valeurs pour 100 g **recopiées**.
 
-**`diet_feedback`** — « je n'aime pas cet aliment ». Écriture seule pour le coaché.
+**`diet_feedback`** — « je n'aime pas cet aliment ». Le coaché insère, relit et
+**retire** ses propres retours ; le coach lit et efface ceux de ses coachés.
+Index unique partiel `(coachee_id, item_id)` contre le double signalement.
 
 **`diet_consents`** — le consentement au cadre nutrition, donné par le **coaché**, horodaté et
 versionné. Aucune policy UPDATE ni DELETE, y compris pour le coach.
@@ -849,6 +853,17 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
   - Chaque aliment porte une croix : **« je n'aime pas »**. Elle ne modifie rien — elle prévient
     le coach, qui remplace. Un coaché qui abandonne un aliment en silence rend sa diète fausse
     sans que personne ne le sache.
+  - **Le signalement s'annule** *(v7r)*. Un appui par erreur ne doit pas être définitif : le
+    bouton bascule en ANNULER, et le retour est retiré de la base. L'état est **relu au
+    démarrage**, donc il survit à la fermeture de l'app — sans ça la croix repartait vierge à
+    chaque ouverture et le même aliment pouvait être signalé deux fois.
+
+> **Ce que ce correctif a appris** *(retour d'Anaïs, 15 août 2026)*. `diet_feedback` avait été
+> conçue en écriture seule, sur le modèle de `error_reports`. Le parallèle était faux : un
+> rapport d'erreur est une trace technique que personne ne relit, un retour sur un aliment est
+> un message adressé à quelqu'un à propos de sa propre alimentation. Son auteur doit pouvoir le
+> relire et le retirer. **Avant de copier un modèle de permissions, vérifier que les deux
+> données ont le même statut** — pas seulement la même forme.
 - **Progrès** — exercices groupés par muscle en accordéon, pastille colorée, record kg, nombre de semaines loguées, mini-graphique au clic.
 - **Accueil** — porte la carte **Bilan de la semaine** *(v7l)* : elle invite à faire le point,
   confirme quand c'est envoyé, et passe en vert quand le coach a répondu.
@@ -1254,9 +1269,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **15 août 2026** — v7q, 557 657 octets, 7010 lignes |
-| Contenu de ce build | Praticité : aliments habituels, plafonds budget / préparation |
-| Build précédent | 14 août 2026 — v7p, 550 890 octets. Diète personnalisée fixe |
+| Dernier build déployé | **15 août 2026** — v7r, 559 226 octets, 7060 lignes |
+| Contenu de ce build | Retour « je n'aime pas » annulable et persistant |
+| Build précédent | 15 août 2026 — v7q, 557 657 octets. Praticité des diètes |
 | **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
 | Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

@@ -5856,7 +5856,11 @@ function NutritionPage({ ctx }) {
   // null = on ne sait pas encore, false = pas encore donné, objet = donné
   const [consent, setConsent] = useState(null);
   const [jourVu, setJourVu] = useState(null);
+  // item_id → id du retour en base. Chargé au démarrage, pas seulement tenu en
+  // mémoire : sans ça, la croix repart vierge à chaque ouverture de l'app et le
+  // même aliment peut être signalé deux fois.
   const [signales, setSignales] = useState({});
+  const [enCours, setEnCours] = useState({});
   const [weightInput, setWeightInput] = useState("");
   const [savingWeight, setSavingWeight] = useState(false);
   const [wMsg, setWMsg] = useState("");
@@ -5889,6 +5893,16 @@ function NutritionPage({ ctx }) {
           if (error) throw error;
           setConsent(c || false);
         } catch (e) { if (!tableAbsente(e)) throw e; }
+        // Les aliments déjà signalés, relus depuis la base. Tant que la policy
+        // de lecture n'existe pas, la requête renvoie simplement zéro ligne :
+        // on retombe alors sur l'ancien comportement, sans erreur.
+        try {
+          const { data: fb } = await supabase.from("diet_feedback")
+            .select("id, item_id").eq("coachee_id", userId);
+          if (fb && fb.length) {
+            setSignales(Object.fromEntries(fb.filter(f => f.item_id).map(f => [f.item_id, f.id])));
+          }
+        } catch { /* la relecture est un confort, elle ne bloque rien */ }
       } catch {}
       setLoading(false);
     })();
@@ -5903,15 +5917,42 @@ function NutritionPage({ ctx }) {
     } catch { /* le refus laisse l'écran en place, il réessaiera */ }
   }
 
-  async function signaler(item, mealType) {
-    if (signales[item.id]) return;
-    setSignales(s => ({ ...s, [item.id]: true }));
+  // Signaler un aliment, ou revenir dessus. Un appui par erreur doit pouvoir
+  // s'annuler : sans ça le coach reçoit un signal faux et remplace un aliment
+  // qui convenait.
+  async function basculerSignalement(item, mealType) {
+    if (enCours[item.id]) return;
+    const dejaSignale = !!signales[item.id];
+    setEnCours(e => ({ ...e, [item.id]: true }));
+    // L'affichage bascule tout de suite ; on le remet en place si la base refuse.
+    setSignales(s => {
+      const n = { ...s };
+      if (dejaSignale) delete n[item.id]; else n[item.id] = "en-cours";
+      return n;
+    });
     try {
-      await supabase.from("diet_feedback").insert({
-        coachee_id: userId, item_id: item.id,
-        food_name: item.food_name, meal_label: dietMealLabel(mealType),
+      if (dejaSignale) {
+        const { error } = await supabase.from("diet_feedback")
+          .delete().eq("coachee_id", userId).eq("item_id", item.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("diet_feedback").insert({
+          coachee_id: userId, item_id: item.id,
+          food_name: item.food_name, meal_label: dietMealLabel(mealType),
+        }).select().single();
+        if (error) throw error;
+        setSignales(s => ({ ...s, [item.id]: data.id }));
+      }
+    } catch {
+      // Échec : on rétablit l'état d'avant plutôt que de laisser croire que
+      // c'est parti. Un retour perdu est moins grave qu'un retour imaginaire.
+      setSignales(s => {
+        const n = { ...s };
+        if (dejaSignale) n[item.id] = "inconnu"; else delete n[item.id];
+        return n;
       });
-    } catch { /* le retour est un confort, jamais un blocage */ }
+    }
+    setEnCours(e => { const n = { ...e }; delete n[item.id]; return n; });
   }
 
   const lastWeight = logs.length ? parseFloat(logs[logs.length - 1].weight_kg) : null;
@@ -6066,10 +6107,18 @@ function NutritionPage({ ctx }) {
                         <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderTop: `1px solid ${T.border}55` }}>
                           <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.text, lineHeight: 1.4 }}>{it.food_name}</div>
                           <div style={{ fontSize: 12.5, fontWeight: 800, color: T.textSub, flexShrink: 0 }}>{Math.round(it.grams)} g</div>
-                          <button onClick={() => signaler(it, r.meal_type)} disabled={!!signales[it.id]} title="Je n'aime pas cet aliment"
-                            style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: signales[it.id] ? T.accentLight : "transparent", border: `1px solid ${signales[it.id] ? T.accent : T.border}`, color: signales[it.id] ? T.accent : T.textMuted, fontSize: 9, fontWeight: 800, cursor: signales[it.id] ? "default" : "pointer", lineHeight: 1 }}>
-                            {signales[it.id] ? "OK" : "✕"}
-                          </button>
+                          {(() => {
+                            const marque = !!signales[it.id];
+                            return (
+                              <button onClick={() => basculerSignalement(it, r.meal_type)}
+                                disabled={!!enCours[it.id]}
+                                aria-pressed={marque}
+                                title={marque ? "Signalé à ton coach — appuie pour annuler" : "Je n'aime pas cet aliment"}
+                                style={{ flexShrink: 0, minWidth: 26, height: 26, padding: "0 7px", borderRadius: 8, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: marque ? 8.5 : 11, fontWeight: 800, letterSpacing: marque ? 0.4 : 0, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }}>
+                                {marque ? "ANNULER" : "✕"}
+                              </button>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>
@@ -6080,7 +6129,8 @@ function NutritionPage({ ctx }) {
                 );
               })}
               <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, padding: "2px 2px 0" }}>
-                La croix signale à ton coach qu'un aliment ne te convient pas. Il te le remplacera.
+                La croix signale à ton coach qu'un aliment ne te convient pas — il te le remplacera.
+                Appui par erreur ? Appuie sur ANNULER, rien ne lui sera envoyé.
               </div>
             </div>
           )}
