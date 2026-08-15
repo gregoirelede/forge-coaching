@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.8 · Build v7r (546 Ko / 7060 lignes)
+### Fichier de référence pour Claude Code · Version 1.9 · Build v7s (559 Ko / 7379 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7s** | **Table d'équivalences** : par quoi remplacer chaque aliment, à macro égale et quantité ajustée. Correction majeure au passage — une allergie saisie « gluten » ne filtrait presque rien | 572 620 o | 7379 |
 | **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois. Le signalement se lit d'un ✓ | 559 204 o | 7060 |
 
 ## B.4 — État d'installation
@@ -672,6 +673,56 @@ coaché mange **déjà** et que le coach a validés. Écrite par le coach seul ;
 > sort dès qu'un curseur se serre — ce qui évite qu'un homard entre dans une diète à budget serré
 > par simple absence de classement.
 >
+### La table d'équivalences *(v7s)* — aucune migration
+
+« Je n'ai pas de riz ce soir, je mets quoi ? » Le coaché appuie sur le nom d'un aliment et voit
+par quoi le remplacer, avec la quantité ajustée. **Sa diète n'est pas modifiée** : c'est une
+information, comme la table d'équivalences papier d'un diététicien. Côté coach, la feuille de
+remplacement annonce la quantité équivalente avant le clic.
+
+**Sur quoi l'équivalence est calée.** Avec un seul curseur — le grammage — on ne peut pas faire
+coïncider les calories ET les trois macros. On égalise donc la macro dont l'aliment est le
+porteur : féculent à glucides égaux, protéine à protéines égales, matière grasse à lipides
+égaux. À calories égales, échanger 90 g de poulet contre du riz ferait perdre 25 g de protéines
+sur le repas. L'écart calorique résiduel est affiché à côté de chaque proposition.
+
+> **Le classement ne peut pas se faire sur le seul écart calorique**, et ça ne se voit qu'en
+> essayant sur les vraies données : à 27 g de protéines et zéro écart, le homard et le bulot
+> sortaient devant le steak. Le coût et la préparation pèsent donc sur l'ORDRE, pas seulement en
+> filtre — d'autant qu'un coaché sans plafond ne filtre rien. La pénalité est exprimée en
+> équivalent-calories (60 par niveau de coût, 30 par niveau de préparation), ce qui rend le
+> compromis lisible.
+
+> **Trois défauts de données trouvés en éprouvant les équivalences sur la diète réelle d'Anaïs.**
+> Ils étaient invisibles jusque-là parce que sa diète avait été composée à la main :
+>
+> 1. **Une allergie saisie « gluten » ne filtrait quasiment rien** — voir `ALLERGENES_SYNONYMES`
+>    ci-dessous. Le plus grave des trois.
+> 2. **Le riz cru et la patate douce crue étaient classés « préparation immédiate ».** « Cru »
+>    veut dire « prêt à manger » pour une carotte, « à cuire » pour un féculent.
+> 3. **Rien n'empêchait la pomme de terre d'être proposée au petit-déjeuner.** Les pommes de
+>    terre et les légumineuses rejoignent les aliments salés, déjeuner et dîner seulement.
+
+### `ALLERGENES_SYNONYMES` — ce qu'un allergène recouvre vraiment
+
+Le filtre compare le terme déclaré au **nom** de l'aliment. Une allergie saisie « gluten » ne
+filtrait donc presque rien : aucun aliment Ciqual ne porte ce mot dans son nom, mais beaucoup
+portent « blé », « froment », « orge » ou « pâtes ». **Une coachée cœliaque se voyait proposer
+des crackers au froment.**
+
+La table étend chaque terme déclaré à tout ce qu'il recouvre — les 14 allergènes réglementaires,
+plus les formes qu'on rencontre réellement dans les noms Ciqual. Deux règles :
+
+- **On préfère exclure trop que trop peu.** Un faux positif écarte un aliment de plus, sans
+  gravité ; un faux négatif met un allergène dans une assiette. L'avoine figure dans la liste du
+  gluten pour cette raison : naturellement sans gluten, presque toujours contaminée en usine.
+- **Un terme inconnu de la table est conservé tel quel.** Le coach reste libre d'écrire ce qu'il
+  veut dans le champ Allergies.
+
+> **Le filtre dur vit dans UNE seule fonction, `alimentsAutorises`.** Le générateur et la table
+> d'équivalences s'en servent tous les deux. Le jour où l'un des deux se met à réécrire la règle
+> pour son compte, c'est ce jour-là qu'un allergène finit dans une assiette.
+
 > **Ordre de priorité dans le générateur**, et il compte : allergies (jamais assouplies) →
 > aliments détestés → préférences → **aliments habituels, qui échappent aux plafonds** → plafonds
 > de coût et de préparation. Si la personne mange déjà l'aliment, la question du budget est
@@ -853,6 +904,9 @@ Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios �
   - Chaque aliment porte une croix : **« je n'aime pas »**. Elle ne modifie rien — elle prévient
     le coach, qui remplace. Un coaché qui abandonne un aliment en silence rend sa diète fausse
     sans que personne ne le sache.
+  - **Par quoi le remplacer** *(v7s)*. Un appui sur le nom d'un aliment ouvre sa table
+    d'équivalences : trois à cinq aliments avec la quantité qui apporte la même chose. Sa diète
+    n'est pas modifiée — c'est un dépannage, pas une commande.
   - **Le signalement s'annule** *(v7r)*. Un appui par erreur ne doit pas être définitif : la
     croix devient un **✓** qui confirme l'envoi, et réappuyer dessus retire le retour de la base. L'état est **relu au
     démarrage**, donc il survit à la fermeture de l'app — sans ça la croix repartait vierge à
@@ -1269,9 +1323,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **15 août 2026** — v7r, 559 204 octets, 7060 lignes |
-| Contenu de ce build | Retour « je n'aime pas » annulable et persistant, signalé par un ✓ |
-| Build précédent | 15 août 2026 — v7q, 557 657 octets. Praticité des diètes |
+| Dernier build déployé | **15 août 2026** — v7s, 572 620 octets, 7379 lignes |
+| Contenu de ce build | Table d'équivalences des aliments + correction du filtre d'allergies |
+| Build précédent | 15 août 2026 — v7r, 559 204 octets. Retour annulable |
 | **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
 | Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

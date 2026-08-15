@@ -205,6 +205,7 @@ function requete(table) {
     },
     maybeSingle: async () => {
       if (absente) return { data: null, error: ERR_TABLE };
+      if (table === "foods") return { data: FOODS.find(f => f.id === q._f.id) || null, error: null };
       if (table === "diet_plans") return { data: PLAN, error: null };
       if (table === "diet_consents") return { data: CONSENT, error: null };
       if (table === "programs") return { data: PROGRAMME, error: null };
@@ -214,7 +215,7 @@ function requete(table) {
     then(res){
       if (absente) return Promise.resolve({ data: null, error: ERR_TABLE }).then(res);
       let d = [];
-      if (table === "foods") d = FOODS;
+      if (table === "foods") d = q._f.role ? FOODS.filter(f => f.role === q._f.role) : FOODS;
       if (table === "diet_meals") d = REPAS.filter(r => r.plan_id === q._f.plan_id);
       if (table === "diet_items") d = ITEMS.filter(i => (q._in.meal_id || []).includes(i.meal_id));
       if (table === "diet_feedback") d = RETOURS;
@@ -487,6 +488,73 @@ console.log("\n─── Le coaché consulte sa diète ───");
   console.log("\n─── Le coaché ne modifie rien ───");
   ok(!/AJOUTER UN ALIMENT|AJUSTER AUX CIBLES|REGÉNÉRER/.test(vue),
      "aucune commande d'édition ne lui est proposée");
+
+  // ── Table d'équivalences ────────────────────────────────────────────────
+  console.log("\n─── « Par quoi je peux le remplacer » ───");
+  await p.locator('button[title="Voir par quoi le remplacer"]').first().click();
+  await p.waitForTimeout(1200);
+  const feuille = await p.locator("body").innerText();
+  ok(/À LA PLACE DE/.test(feuille), "la feuille d'équivalences s'ouvre");
+  ok(/mêmes\s+glucides|mêmes\s+protéines|mêmes\s+lipides/.test(feuille),
+     "elle dit sur quelle macro l'équivalence est calée");
+  ok(/kcal/.test(feuille), "et affiche l'écart calorique");
+  ok(/n'est pas modifiée/.test(feuille),
+     "elle précise que la diète ne change pas — c'est une information, pas une commande");
+
+  console.log("\n─── AUCUN ALLERGÈNE PARMI LES ÉQUIVALENTS ───");
+  ok(!/[Cc]acahu|[Cc]revette/.test(feuille.split("À LA PLACE DE")[1] || ""),
+     "les allergènes ne sont pas proposés en remplacement");
+  await p.screenshot({ path: `${CAPTURES}diete-equivalences.png`, fullPage: true });
+
+  // Le calcul lui-même, en pur, sur des chiffres qu'on peut vérifier à la main.
+  const eq = await p.evaluate(({ foods }) => {
+    const nutri = { allergies: ["cacahuète", "crevette"], disliked_foods: [], dietary_preferences: [] };
+    // 100 g de poulet à 30,1 g de protéines → 30,1 g à retrouver ailleurs.
+    const poulet = { food_id: "f1", food_name: "Blanc de poulet cuit", grams: 100,
+                     kcal_100: 165, protein_100: 31, carbs_100: 0, fat_100: 3.6 };
+    const r = equivalents({ item: poulet, foods, nutriProfile: nutri, habituels: new Set(), mealType: "dejeuner" });
+    return {
+      role: r.role, vise: r.vise,
+      liste: r.liste.map(e => ({ n: e.food.name, g: e.grams, dk: e.dKcal, dp: e.dProt,
+                                 co: e.food.cost_level, pr: e.food.prep_level })),
+    };
+  }, { foods: FOODS });
+
+  console.log("\n─── Le calcul ───");
+  ok(eq.role === "proteine", `le rôle est reconnu (${eq.role})`);
+  ok(eq.vise === 31, `la cible est bien la protéine de l'aliment d'origine (${eq.vise} g)`);
+  ok(eq.liste.length > 0 && eq.liste.length <= 5, `${eq.liste.length} propositions, pas trente`);
+  ok(eq.liste.every(e => Math.abs(e.dp) <= 2),
+     "chaque équivalent apporte les mêmes protéines à 2 g près");
+  ok(eq.liste.every(e => e.g % 5 === 0), "les grammages sont arrondis à 5 g");
+  ok(eq.liste.every(e => e.g >= 5 && e.g <= 800),
+     "aucune quantité absurde — personne ne mange 1,5 kg de quoi que ce soit");
+  ok(!eq.liste.some(e => /cacahu|crevette/i.test(e.n)), "aucun allergène dans le calcul non plus");
+  ok(!eq.liste.some(e => e.n === "Blanc de poulet cuit"), "l'aliment ne se propose pas lui-même");
+  // Le classement ne peut PAS être le seul écart calorique. Sur les vraies
+  // données, à 27 g de protéines et zéro écart, le homard et le bulot
+  // sortaient devant le steak : imbattables au calcul, inutilisables en vrai.
+  // Le coût et la préparation pèsent donc sur l'ordre, pas seulement en filtre.
+  console.log("\n─── Le classement privilégie ce qui est faisable ───");
+  const premier = eq.liste[0];
+  ok(premier && (parseInt(premier.co) || 1) === 1,
+     `le premier proposé est un aliment bon marché (${premier?.n})`);
+  const iCher = eq.liste.findIndex(e => e.co === 3);
+  ok(iCher !== 0,
+     "un aliment cher ne passe pas premier, même s'il colle parfaitement aux calories");
+  if (iCher > 0) {
+    // La preuve que le coût a bien pesé : au moins un aliment classé AVANT le
+    // cher est plus éloigné de la cible calorique que lui.
+    const devant = eq.liste.slice(0, iCher);
+    const ecartCher = Math.abs(eq.liste[iCher].dk);
+    ok(devant.some(e => Math.abs(e.dk) > ecartCher),
+       `un aliment abordable mais moins précis passe devant les Saint-Jacques `
+       + `(${devant.map(e => e.dk).join(", ")} contre ${eq.liste[iCher].dk} kcal)`);
+  }
+  const penalite = e => Math.abs(e.dk) + ((parseInt(e.co) || 2) - 1) * 60 + ((parseInt(e.pr) || 2) - 1) * 30;
+  const scores = eq.liste.map(penalite);
+  ok(scores.every((v, i) => i === 0 || v >= scores[i-1]),
+     `l'ordre suit bien le compromis écart / coût / préparation (${eq.liste.map(e => e.dk).join(", ")} kcal)`);
   await ctx.close();
 }
 
@@ -570,6 +638,8 @@ console.log("\n─── Le coach ouvre la diète d'un coaché ───");
   ok(!/Beurre de cacahuète/.test(feuille), "le beurre de cacahuète n'est pas proposé");
   ok(!/Crevettes/.test(feuille), "les crevettes non plus");
   ok(/CRÉER UN ALIMENT/.test(feuille), "et le coach peut créer le sien si la base ne suffit pas");
+  ok(/ÉQUIVALENT/.test(feuille),
+     "chaque candidat annonce sa quantité équivalente AVANT le clic");
   await p.screenshot({ path: `${CAPTURES}diete-coach-picker.png`, fullPage: true });
 
   await p.locator("text=Filet de cabillaud cuit").first().click();
@@ -579,6 +649,11 @@ console.log("\n─── Le coach ouvre la diète d'un coaché ───");
   ok(remp.length === 1, "le remplacement est enregistré");
   ok(remp[0]?.vals.kcal_100 === 105 && remp[0]?.vals.protein_100 === 23,
      "avec les macros du NOUVEL aliment, recopiées et figées");
+  // 150 g de poulet à 31 g de protéines = 46,5 g. Le cabillaud en apporte 23
+  // pour 100 g : il en faut 200, pas 150. Reprendre le grammage de l'ancien
+  // aliment donnait une protéine amputée d'un tiers.
+  ok(remp[0]?.vals.grams === 200,
+     `et le grammage est RECALCULÉ pour équivaloir, pas recopié (${remp[0]?.vals.grams} g attendu 200)`);
   await ctx.close();
 }
 

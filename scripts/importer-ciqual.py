@@ -298,9 +298,16 @@ def niveaux(nom, ssgrp_code, role):
     # déjà attrapée ci-dessus (l'avocat, par exemple).
     if role in ("legume", "fruit") and cout == 2:
         cout = 1
-    # Un légume ou un féculent qui doit cuire n'est jamais « immédiat », même si
-    # son nom contient « nature ».
-    if role in ("legume", "feculent") and prep == 1 and not re.search(r"conserve|surgel|\bcru", n):
+    # « Cru » ne veut pas dire la même chose selon l'aliment. Une carotte crue
+    # ou une pomme crue se mangent telles quelles — préparation nulle. Du riz
+    # cru, une patate douce crue ou un flageolet cru demandent une cuisson :
+    # les classer « immédiats » les faisait remonter en tête des équivalences
+    # proposées à quelqu'un qui cherche justement quoi manger tout de suite.
+    if role == "feculent" and prep == 1 and re.search(r"\bcrue?s?\b|\bsec\b|\bs[èe]che?s?\b", n):
+        prep = 2
+    # Un légume qui doit cuire n'est pas immédiat non plus, sauf s'il arrive
+    # déjà prêt (conserve, surgelé) ou s'il se mange cru.
+    if role == "legume" and prep == 1 and not re.search(r"conserve|surgel|\bcrue?s?\b", n):
         prep = 2
     return cout, prep
 
@@ -312,6 +319,7 @@ TOUS_REPAS = ["petit_dejeuner", "collation_matin", "dejeuner", "collation", "din
 SALES = ["dejeuner", "diner"]
 SSGRP_SALES = {"0101", "0102", "0103", "0104", "0105", "0106",   # plats composés
                "0201",                                           # légumes
+               "0202", "0203",                                   # pommes de terre, légumineuses
                "0401", "0402", "0403", "0404", "0405", "0406",
                "0407", "0408", "0409", "0411"}                   # viandes, poissons
 
@@ -668,6 +676,24 @@ def main():
                      f"update public.foods set cost_level = {co}, prep_level = {pr}\n"
                      f" where coach_id is null and ciqual_code in (\n  "
                      + ",".join(echapper(c) for c in codes) + ");\n\n")
+        # Les repas où l'aliment est proposé. Même logique : on ne réécrit que
+        # ce qui diffère du défaut, donc uniquement les aliments salés.
+        sales = [a["code"] for a in retenus if a["repas"] == SALES and a["code"]]
+        autres = [a["code"] for a in retenus if a["repas"] != SALES and a["code"]]
+        fh.write("-- ── Repas où l'aliment est proposé ────────────────────────────────────────\n"
+                 "-- Les aliments salés — viandes, poissons, légumes, pommes de terre,\n"
+                 "-- légumineuses, plats composés — ne sont proposés qu'au déjeuner et au\n"
+                 "-- dîner. Sans ça le générateur peut mettre des pommes de terre au\n"
+                 "-- petit-déjeuner, et la table d'équivalences n'a plus rien de crédible.\n")
+        fh.write(f"-- {len(sales)} aliments salés\n"
+                 "update public.foods set meal_types = array['dejeuner','diner']\n"
+                 " where coach_id is null and ciqual_code in (\n  "
+                 + ",".join(echapper(c) for c in sales) + ");\n\n")
+        fh.write(f"-- {len(autres)} aliments proposés à tous les repas\n"
+                 "update public.foods set meal_types = array['petit_dejeuner','collation_matin','dejeuner','collation','diner']\n"
+                 " where coach_id is null and ciqual_code in (\n  "
+                 + ",".join(echapper(c) for c in autres) + ");\n\n")
+
         fh.write("-- ── Contrôle ──────────────────────────────────────────────────────────────\n"
                  "-- select cost_level, prep_level, count(*) from public.foods\n"
                  "--  where coach_id is null group by 1,2 order by 1,2;\n")
