@@ -574,17 +574,73 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
   return "equal";
 }
 
-// Timer hook
-// Joue une sonnerie de fin de repos (Web Audio — aucun fichier requis)
-function playRestChime() {
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SONNERIE DE FIN DE REPOS
+//
+//  POURQUOI CE N'EST PAS TROIS LIGNES, et pourquoi la première version ne
+//  sonnait jamais sur iPhone.
+//
+//  Un AudioContext créé ailleurs que dans un geste de l'utilisateur naît à
+//  l'état « suspended » et ne produit AUCUN son. C'est la politique d'autoplay
+//  de tous les navigateurs, et elle est sans appel sur iOS. Or la version
+//  d'origine créait un contexte neuf au moment précis où le chrono tombait à
+//  zéro — c'est-à-dire toujours hors geste. Les trois bips étaient programmés
+//  correctement, le navigateur les jetait en silence. Aucune erreur, aucun
+//  message : le genre de panne qu'on ne trouve qu'en écoutant.
+//
+//  Il faut donc trois choses, et les trois sont nécessaires :
+//    1. UN SEUL contexte, créé et débloqué au premier appui n'importe où dans
+//       l'app, puis conservé pour toute la session ;
+//    2. le réveiller à chaque geste et à chaque retour au premier plan — iOS
+//       le remet en veille dès que l'app passe en arrière-plan ;
+//    3. déclarer la session audio en « playback », sans quoi le petit
+//       interrupteur silencieux de l'iPhone coupe tout sans rien dire.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let _ctxAudio = null;
+let _audioArme = false;
+
+// La sonnerie est-elle réellement en état de sonner, maintenant ?
+function sonnerieArmee() {
+  return !!(_audioArme && _ctxAudio && _ctxAudio.state === "running");
+}
+
+// À N'APPELER QUE DEPUIS UN GESTE UTILISATEUR. Ailleurs, le navigateur refuse
+// et le contexte reste muet pour toute la session.
+function armerSonnerie() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
+    if (!AC) return false;
+    if (!_ctxAudio) _ctxAudio = new AC();
+    // Ignorer l'interrupteur silencieux quand le navigateur le permet
+    // (Safari 16.4+). Sans ça, un iPhone en silencieux reste muet.
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+    if (_ctxAudio.state === "running" && _audioArme) return true;
+    if (_ctxAudio.state === "suspended") _ctxAudio.resume();
+    // iOS ne tient le contexte pour débloqué qu'après une première lecture,
+    // même inaudible. Un échantillon d'un seul cadre suffit.
+    const src = _ctxAudio.createBufferSource();
+    src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
+    src.connect(_ctxAudio.destination);
+    src.start(0);
+    _audioArme = true;
+    return true;
+  } catch { return false; }
+}
+
+// Renvoie true si le son est effectivement parti.
+function playRestChime() {
+  // La vibration part d'abord : elle traverse le mode silencieux sur Android,
+  // et c'est le seul retour qui reste si le son est refusé. iOS ne la gère pas
+  // — l'appel est simplement ignoré, sans erreur.
+  try { if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]); } catch {}
+  const ctx = _ctxAudio;
+  if (!ctx) return false;
+  try {
+    if (ctx.state === "suspended") ctx.resume();
     const now = ctx.currentTime;
     // Trois bips ascendants façon sonnerie
-    const notes = [660, 880, 1046];
-    notes.forEach((freq, i) => {
+    [660, 880, 1046].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -596,32 +652,78 @@ function playRestChime() {
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.18);
     });
-    setTimeout(() => { try { ctx.close(); } catch {} }, 900);
-  } catch {}
+    // On NE FERME PLUS le contexte : le rouvrir hors geste le rendrait muet.
+    return ctx.state === "running";
+  } catch { return false; }
+}
+
+// LE TEMPS RESTANT SE CALCULE DEPUIS UNE HEURE DE FIN, jamais en retranchant
+// une seconde à chaque tick. La version d'origine décrémentait un compteur :
+// dès que le coaché verrouillait son téléphone ou changeait d'app — ce que
+// tout le monde fait pendant un repos — iOS gelait les minuteurs, le décompte
+// s'arrêtait, et reprenait au retour comme si de rien n'était. Deux minutes de
+// repos pouvaient en durer cinq sans que rien ne le signale.
+// Bouton « tester la sonnerie ». Il sert deux fois : l'appui débloque l'audio
+// du navigateur pour toute la session, et il dit au coaché si le son est
+// réellement sorti — la seule façon de découvrir en amont que le téléphone est
+// en silencieux, plutôt qu'au milieu d'une série.
+function TestSonnerie() {
+  const [retour, setRetour] = useState(null);
+  return (
+    <div style={{ paddingBottom: 13 }}>
+      <button className="pressable"
+        onClick={() => {
+          armerSonnerie();
+          const ok = playRestChime();
+          setRetour(ok
+            ? "Sonnerie jouée. Tu n'as rien entendu ? Vérifie le bouton silencieux et le volume de ton téléphone."
+            : "Ton navigateur bloque encore le son. Ferme puis rouvre l'app, et réessaie.");
+        }}
+        style={{ width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit" }}>
+        TESTER LA SONNERIE
+      </button>
+      {retour && (
+        <div style={{ fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 }}>{retour}</div>
+      )}
+    </div>
+  );
 }
 
 function useTimers(soundEnabledRef) {
   const [timers, setTimers] = useState({});
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimers(prev => {
-        let changed = false; const next = {};
-        for (const k in prev) {
-          const t = prev[k];
-          if (t.running && t.remaining > 0)        { next[k] = { ...t, remaining: t.remaining - 1 }; changed = true; }
-          else if (t.running && t.remaining === 0) {
-            next[k] = { ...t, running: false, done: true }; changed = true;
-            // Sonnerie de fin si activée dans les réglages
-            if (!soundEnabledRef || soundEnabledRef.current) playRestChime();
-          }
-          else next[k] = t;
+    const tick = () => setTimers(prev => {
+      let changed = false; const next = {};
+      const maintenant = Date.now();
+      for (const k in prev) {
+        const t = prev[k];
+        if (!t.running) { next[k] = t; continue; }
+        const reste = Math.max(0, Math.ceil((t.finAt - maintenant) / 1000));
+        if (reste > 0) {
+          if (reste !== t.remaining) changed = true;
+          next[k] = reste === t.remaining ? t : { ...t, remaining: reste };
+          continue;
         }
-        return changed ? next : prev;
-      });
-    }, 1000);
-    return () => clearInterval(id);
+        next[k] = { ...t, remaining: 0, running: false, done: true };
+        changed = true;
+        // On ne sonne QUE si le repos vient réellement de se terminer. Revenir
+        // dans l'app cinq minutes après la fin ne doit pas déclencher une
+        // sonnerie qui n'a plus aucun sens : l'écran suffit à dire que c'est
+        // fini.
+        const retard = maintenant - t.finAt;
+        if (retard < 2000 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime();
+      }
+      return changed ? next : prev;
+    });
+    const id = setInterval(tick, 500);
+    // Au retour au premier plan, on remet la pendule à l'heure sans attendre.
+    const reveil = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", reveil);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", reveil); };
   }, [soundEnabledRef]);
-  const start  = useCallback((k, s) => setTimers(p => ({ ...p, [k]: { total: s, remaining: s, running: true, done: false } })), []);
+  const start  = useCallback((k, s) => setTimers(p => ({
+    ...p, [k]: { total: s, remaining: s, running: true, done: false, finAt: Date.now() + s * 1000 },
+  })), []);
   const cancel = useCallback((k)    => setTimers(p => { const n = { ...p }; delete n[k]; return n; }), []);
   return { timers, start, cancel };
 }
@@ -1853,6 +1955,10 @@ function ProfilePage({ ctx }) {
               </div>
               <ToggleSwitch on={ctx.settings.restTimers && ctx.settings.restSound} disabled={!ctx.settings.restTimers} onChange={v => ctx.updateSetting("restSound", v)}/>
             </div>
+            {/* Le test n'est pas un gadget : l'appui débloque réellement l'audio
+                du navigateur, et c'est le seul moyen de vérifier AVANT la salle
+                que le téléphone n'est pas en silencieux. */}
+            {ctx.settings.restTimers && ctx.settings.restSound && <TestSonnerie/>}
           </div>
         </div>
       )}
@@ -2048,6 +2154,21 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const [settings, setSettings] = useState(() => loadSettings(userId));
   const soundEnabledRef = useRef(settings.restSound);
   useEffect(() => { soundEnabledRef.current = settings.restTimers && settings.restSound; }, [settings]);
+
+  // Débloque la sonnerie au TOUT PREMIER appui, où qu'il soit dans l'app, et la
+  // réveille à chaque retour au premier plan. C'est la seule fenêtre où le
+  // navigateur l'autorise : le faire au moment où le chrono sonne est trop tard.
+  useEffect(() => {
+    const armer = () => armerSonnerie();
+    const evts = ["pointerdown", "touchend", "keydown"];
+    evts.forEach(e => window.addEventListener(e, armer, { passive: true }));
+    const reveil = () => { if (document.visibilityState === "visible") armerSonnerie(); };
+    document.addEventListener("visibilitychange", reveil);
+    return () => {
+      evts.forEach(e => window.removeEventListener(e, armer));
+      document.removeEventListener("visibilitychange", reveil);
+    };
+  }, []);
   const updateSetting = useCallback((key, value) => {
     setSettings(prev => { const next = { ...prev, [key]: value }; saveSettings(userId, next); return next; });
   }, [userId]);

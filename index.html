@@ -1035,14 +1035,43 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
   if (cur < prev) return "down";
   return "equal";
 }
-function playRestChime() {
+let _ctxAudio = null;
+let _audioArme = false;
+function sonnerieArmee() {
+  return !!(_audioArme && _ctxAudio && _ctxAudio.state === "running");
+}
+function armerSonnerie() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
+    if (!AC) return false;
+    if (!_ctxAudio) _ctxAudio = new AC();
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = "playback";
+    } catch (e) {
+    }
+    if (_ctxAudio.state === "running" && _audioArme) return true;
+    if (_ctxAudio.state === "suspended") _ctxAudio.resume();
+    const src = _ctxAudio.createBufferSource();
+    src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
+    src.connect(_ctxAudio.destination);
+    src.start(0);
+    _audioArme = true;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+function playRestChime() {
+  try {
+    if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]);
+  } catch (e) {
+  }
+  const ctx = _ctxAudio;
+  if (!ctx) return false;
+  try {
+    if (ctx.state === "suspended") ctx.resume();
     const now = ctx.currentTime;
-    const notes = [660, 880, 1046];
-    notes.forEach((freq, i) => {
+    [660, 880, 1046].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -1056,39 +1085,66 @@ function playRestChime() {
       osc.start(t);
       osc.stop(t + 0.18);
     });
-    setTimeout(() => {
-      try {
-        ctx.close();
-      } catch (e) {
-      }
-    }, 900);
+    return ctx.state === "running";
   } catch (e) {
+    return false;
   }
+}
+function TestSonnerie() {
+  const [retour, setRetour] = useState(null);
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 13 } }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "pressable",
+      onClick: () => {
+        armerSonnerie();
+        const ok = playRestChime();
+        setRetour(ok ? "Sonnerie jou\xE9e. Tu n'as rien entendu ? V\xE9rifie le bouton silencieux et le volume de ton t\xE9l\xE9phone." : "Ton navigateur bloque encore le son. Ferme puis rouvre l'app, et r\xE9essaie.");
+      },
+      style: { width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, cursor: "pointer", fontFamily: "inherit" }
+    },
+    "TESTER LA SONNERIE"
+  ), retour && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 } }, retour));
 }
 function useTimers(soundEnabledRef) {
   const [timers, setTimers] = useState({});
   useEffect(() => {
-    const id = setInterval(() => {
-      setTimers((prev) => {
-        let changed = false;
-        const next = {};
-        for (const k in prev) {
-          const t = prev[k];
-          if (t.running && t.remaining > 0) {
-            next[k] = __spreadProps(__spreadValues({}, t), { remaining: t.remaining - 1 });
-            changed = true;
-          } else if (t.running && t.remaining === 0) {
-            next[k] = __spreadProps(__spreadValues({}, t), { running: false, done: true });
-            changed = true;
-            if (!soundEnabledRef || soundEnabledRef.current) playRestChime();
-          } else next[k] = t;
+    const tick = () => setTimers((prev) => {
+      let changed = false;
+      const next = {};
+      const maintenant = Date.now();
+      for (const k in prev) {
+        const t = prev[k];
+        if (!t.running) {
+          next[k] = t;
+          continue;
         }
-        return changed ? next : prev;
-      });
-    }, 1e3);
-    return () => clearInterval(id);
+        const reste = Math.max(0, Math.ceil((t.finAt - maintenant) / 1e3));
+        if (reste > 0) {
+          if (reste !== t.remaining) changed = true;
+          next[k] = reste === t.remaining ? t : __spreadProps(__spreadValues({}, t), { remaining: reste });
+          continue;
+        }
+        next[k] = __spreadProps(__spreadValues({}, t), { remaining: 0, running: false, done: true });
+        changed = true;
+        const retard = maintenant - t.finAt;
+        if (retard < 2e3 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime();
+      }
+      return changed ? next : prev;
+    });
+    const id = setInterval(tick, 500);
+    const reveil = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", reveil);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", reveil);
+    };
   }, [soundEnabledRef]);
-  const start = useCallback((k, s) => setTimers((p) => __spreadProps(__spreadValues({}, p), { [k]: { total: s, remaining: s, running: true, done: false } })), []);
+  const start = useCallback((k, s) => setTimers((p) => __spreadProps(__spreadValues({}, p), {
+    [k]: { total: s, remaining: s, running: true, done: false, finAt: Date.now() + s * 1e3 }
+  })), []);
   const cancel = useCallback((k) => setTimers((p) => {
     const n = __spreadValues({}, p);
     delete n[k];
@@ -1788,7 +1844,7 @@ function ProfilePage({ ctx }) {
   ), ctx.push.message && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 } }, ctx.push.message)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Chronom\xE8tres de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, "D\xE9marrer un minuteur \xE0 la validation d'une s\xE9rie")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers, onChange: (v) => {
     ctx.updateSetting("restTimers", v);
     if (!v) ctx.updateSetting("restSound", false);
-  } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), confirmUI, onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+  } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })), ctx.settings.restTimers && ctx.settings.restSound && /* @__PURE__ */ React.createElement(TestSonnerie, null))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), confirmUI, onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: async () => {
@@ -1885,6 +1941,19 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   useEffect(() => {
     soundEnabledRef.current = settings.restTimers && settings.restSound;
   }, [settings]);
+  useEffect(() => {
+    const armer = () => armerSonnerie();
+    const evts = ["pointerdown", "touchend", "keydown"];
+    evts.forEach((e) => window.addEventListener(e, armer, { passive: true }));
+    const reveil = () => {
+      if (document.visibilityState === "visible") armerSonnerie();
+    };
+    document.addEventListener("visibilitychange", reveil);
+    return () => {
+      evts.forEach((e) => window.removeEventListener(e, armer));
+      document.removeEventListener("visibilitychange", reveil);
+    };
+  }, []);
   const updateSetting = useCallback((key, value) => {
     setSettings((prev) => {
       const next = __spreadProps(__spreadValues({}, prev), { [key]: value });
