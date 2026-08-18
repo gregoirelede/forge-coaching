@@ -1,5 +1,5 @@
 # FORGE COACHING — CONTEXTE PROJET COMPLET
-### Fichier de référence pour Claude Code · Version 1.9 · Build v7s (559 Ko / 7379 lignes)
+### Fichier de référence pour Claude Code · Version 2.0 · Build v7t (562 Ko / 7500 lignes)
 
 > **Utilisation :** placer ce fichier à la racine du repo sous le nom `CLAUDE.md` — Claude Code le lira automatiquement à chaque session. Sinon, le coller en premier message.
 
@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7t** | **La sonnerie de repos fonctionne enfin**, et le chrono ne gèle plus écran verrouillé | 575 515 o | 7500 |
 | **v7s** | **Table d'équivalences** : par quoi remplacer chaque aliment, à macro égale et quantité ajustée. Correction majeure au passage — une allergie saisie « gluten » ne filtrait presque rien | 572 620 o | 7379 |
 | **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois. Le signalement se lit d'un ✓ | 559 204 o | 7060 |
 
@@ -1001,7 +1002,29 @@ Le réglage prend cinq formes selon ce que permet l'appareil :
 | `ios-non-installee` | Encart expliquant la règle d'Apple et la marche à suivre |
 | `indisponible` | « Non disponibles sur cet appareil » |
 
-> Sur iPhone, la sonnerie passe par le son du navigateur : téléphone non silencieux + au moins une interaction préalable avec l'app (règle iOS).
+> **La sonnerie de repos, et pourquoi elle ne sonnait pas** *(corrigé en v7t)*. Un `AudioContext`
+> créé ailleurs que dans un geste de l'utilisateur naît à l'état `suspended` et ne produit
+> **aucun** son — politique d'autoplay de tous les navigateurs, sans appel sur iOS. La version
+> d'origine en créait un neuf au moment précis où le chrono tombait à zéro, donc toujours hors
+> geste : les bips étaient programmés, le navigateur les jetait en silence, sans la moindre
+> erreur. Le genre de panne qu'on ne trouve qu'en écoutant.
+>
+> Ce qui la fait marcher, et les trois sont nécessaires : **un seul** contexte, débloqué au
+> premier appui n'importe où dans l'app et conservé toute la session ; réveillé à chaque geste et
+> à chaque retour au premier plan, iOS le remettant en veille en arrière-plan ; et
+> `navigator.audioSession.type = "playback"` (Safari 16.4+), sans quoi l'interrupteur silencieux
+> de l'iPhone coupe tout sans rien dire. Un bouton **TESTER LA SONNERIE** dans Profil permet au
+> coaché de vérifier avant la salle — l'appui débloque l'audio en même temps qu'il teste.
+>
+> Une vibration accompagne le son : elle traverse le mode silencieux sur Android. iOS ne la gère
+> pas, l'appel est simplement ignoré.
+>
+> **Le chronomètre se calcule depuis une heure de fin, jamais en retranchant une seconde par
+> tick** *(corrigé en v7t)*. iOS suspend les minuteurs dès que l'app passe en arrière-plan : avec
+> un compteur décrémenté, un coaché qui range son téléphone pendant son repos voyait le décompte
+> s'arrêter et reprendre à son retour. Deux minutes pouvaient en durer cinq sans que rien ne le
+> signale. Corollaire assumé : si le repos s'est terminé pendant l'absence, l'app affiche
+> « terminé » sans sonner — une sonnerie cinq minutes en retard n'a plus de sens.
 >
 > **Sur iPhone, les notifications n'existent QUE si l'app est installée sur l'écran d'accueil.**
 > C'est une règle d'Apple, pas une limite de l'app : Safari n'expose même pas `PushManager` hors
@@ -1097,6 +1120,13 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 # PARTIE L — BUGS CORRIGÉS (ne pas réintroduire)
 
 - **Modales mal positionnées** : un parent avec `transform` crée un bloc conteneur qui casse `position: fixed`.
+- **Son créé hors geste utilisateur (trouvé le 16 août 2026, v7t).** Un `AudioContext` instancié
+  ailleurs que dans un `pointerdown`/`touchend` naît `suspended` et reste muet pour de bon. Ne
+  jamais en créer un au moment où on veut jouer un son : le créer au premier appui et le garder.
+  Voir la note détaillée en Partie I.3.
+- **Compteur décrémenté au lieu d'une heure de fin (même date, v7t).** Tout décompte fondé sur
+  `setInterval` + `remaining - 1` gèle quand l'app passe en arrière-plan — iOS suspend les
+  minuteurs. Toujours stocker l'instant de fin et dériver le restant de `Date.now()`.
 - **Feuilles dont les boutons du bas sont incliquables (trouvé le 8 août 2026, v7l).** Même piège
   que le précédent, deuxième variante : la classe `.fade-in` posée sur chaque page anime
   `transform` avec `animation-fill-mode: forwards`. L'élément garde donc un `transform` après
@@ -1323,9 +1353,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **15 août 2026** — v7s, 572 620 octets, 7379 lignes |
-| Contenu de ce build | Table d'équivalences des aliments + correction du filtre d'allergies |
-| Build précédent | 15 août 2026 — v7r, 559 204 octets. Retour annulable |
+| Dernier build déployé | **16 août 2026** — v7t, 575 515 octets, 7500 lignes |
+| Contenu de ce build | Correction de la sonnerie de fin de repos et du gel du chronomètre |
+| Build précédent | 15 août 2026 — v7s, 572 620 octets. Table d'équivalences |
 | **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
 | Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
