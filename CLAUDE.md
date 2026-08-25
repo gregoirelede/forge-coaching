@@ -93,7 +93,8 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
-| **v7t** | **La sonnerie de repos fonctionne enfin**, et le chrono ne gèle plus écran verrouillé | 575 515 o | 7500 |
+| **v7u** | **La sonnerie passe le mode silencieux de l'iPhone** : elle sort désormais d'un élément `<audio>`, seul canal qu'iOS laisse sonner interrupteur baissé. Bandeau haut et barre d'onglets suivent enfin le mode sombre | 579 292 o | 7602 |
+| **v7t** | La sonnerie de repos est déclenchée dans un geste, et le chrono ne gèle plus écran verrouillé | 575 515 o | 7500 |
 | **v7s** | **Table d'équivalences** : par quoi remplacer chaque aliment, à macro égale et quantité ajustée. Correction majeure au passage — une allergie saisie « gluten » ne filtrait presque rien | 572 620 o | 7379 |
 | **v7r** | Le retour « je n'aime pas » devient **réversible**, et son état est relu en base au démarrage — un appui par erreur s'annule, et le même aliment ne peut plus partir deux fois. Le signalement se lit d'un ✓ | 559 204 o | 7060 |
 
@@ -177,6 +178,7 @@ forge-coaching/
 │   ├── 2026-08-15-niveaux-aliments.sql  ← les niveaux sur les 3 286 aliments
 │   ├── 2026-08-15-diete-anais.sql       ← sa diète sans gluten, composée à la main
 │   ├── 2026-08-15-retour-reversible.sql ← le coaché peut annuler un signalement
+│   ├── 2026-08-25-programme-meyssa.sql  ← son full body fessier, mercredi + dimanche
 │   ├── A-JOUER-15-AOUT.sql              ← les 3 ci-dessus réunies, pour Greg
 │   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
 │   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
@@ -197,7 +199,7 @@ forge-coaching/
 ├── 2025_11_03.7z                       ← archive Ciqual 2025 de l'ANSES (source)
 ├── scripts/
 │   └── importer-ciqual.py              ← archive Ciqual → SQL + JSON
-├── tests/                              ← 15 séries de tests, `npm test`
+├── tests/                              ← 17 séries de tests, `npm test`
 └── .claude/
     ├── settings.json                   ← autorisations durables (voir O.1)
     └── README.md
@@ -1002,22 +1004,41 @@ Le réglage prend cinq formes selon ce que permet l'appareil :
 | `ios-non-installee` | Encart expliquant la règle d'Apple et la marche à suivre |
 | `indisponible` | « Non disponibles sur cet appareil » |
 
-> **La sonnerie de repos, et pourquoi elle ne sonnait pas** *(corrigé en v7t)*. Un `AudioContext`
-> créé ailleurs que dans un geste de l'utilisateur naît à l'état `suspended` et ne produit
-> **aucun** son — politique d'autoplay de tous les navigateurs, sans appel sur iOS. La version
-> d'origine en créait un neuf au moment précis où le chrono tombait à zéro, donc toujours hors
-> geste : les bips étaient programmés, le navigateur les jetait en silence, sans la moindre
-> erreur. Le genre de panne qu'on ne trouve qu'en écoutant.
+> **La sonnerie de repos, et les DEUX raisons pour lesquelles elle ne sonnait pas.** Il a fallu
+> deux versions, et la première ne suffisait pas : c'est le meilleur exemple du dépôt d'un
+> diagnostic juste mais incomplet.
 >
-> Ce qui la fait marcher, et les trois sont nécessaires : **un seul** contexte, débloqué au
-> premier appui n'importe où dans l'app et conservé toute la session ; réveillé à chaque geste et
-> à chaque retour au premier plan, iOS le remettant en veille en arrière-plan ; et
-> `navigator.audioSession.type = "playback"` (Safari 16.4+), sans quoi l'interrupteur silencieux
-> de l'iPhone coupe tout sans rien dire. Un bouton **TESTER LA SONNERIE** dans Profil permet au
-> coaché de vérifier avant la salle — l'appui débloque l'audio en même temps qu'il teste.
+> **Première cause, corrigée en v7t.** Un `AudioContext` créé ailleurs que dans un geste de
+> l'utilisateur naît à l'état `suspended` et ne produit **aucun** son — politique d'autoplay de
+> tous les navigateurs, sans appel sur iOS. La version d'origine en créait un neuf au moment
+> précis où le chrono tombait à zéro, donc toujours hors geste : les bips étaient programmés, le
+> navigateur les jetait en silence, sans la moindre erreur. La v7t a donc mis en place **un seul**
+> contexte, débloqué au premier appui n'importe où dans l'app, conservé toute la session, réveillé
+> à chaque geste et à chaque retour au premier plan.
 >
-> Une vibration accompagne le son : elle traverse le mode silencieux sur Android. iOS ne la gère
-> pas, l'appel est simplement ignoré.
+> **Ça ne suffisait toujours pas, et Greg l'a signalé le 25 août.** Le point qui manquait est
+> documenté par WebKit et il est sans recours : **interrupteur silencieux baissé, iOS n'autorise
+> le son que depuis un élément `<audio>` HTML5. L'API Web Audio est muette dans cet état**, quel
+> que soit le soin apporté au déblocage du contexte. Or un iPhone qui va en salle est presque
+> toujours en silencieux. La v7u a donc déplacé la sonnerie sur un élément `<audio>` qui porte les
+> trois bips **synthétisés en WAV au démarrage** (`wavSonnerie`) et servis en data URI — rien à
+> héberger, aucune requête réseau. Le contexte Web Audio reste en second rideau, pour les
+> appareils où l'élément échoue.
+>
+> Trois conditions, toutes nécessaires : l'élément est débloqué par une **lecture muette dans le
+> premier appui réel** ; `navigator.audioSession.type = "playback"` (Safari 16.4+) ; et une
+> vibration accompagne le son, qui elle traverse le silencieux sur Android — iOS ignore l'appel.
+>
+> Un bouton **TESTER LA SONNERIE** dans Profil permet au coaché de vérifier avant la salle, et
+> affiche l'état réel de chaque canal (`diagnosticSonnerie`) : si le son ne sort pas sur un
+> appareil, on sait lequel des trois est en cause au lieu de deviner.
+>
+> **La leçon de méthode.** « Le son ne sort pas » a deux causes indépendantes qui donnent
+> exactement le même symptôme, et corriger la première ne révèle pas la seconde — l'app se tait
+> pareil. Un correctif audio n'est jamais prouvé par le code ni par les tests : il l'est par un
+> coaché qui entend le bip. Le test `test-chrono-sonnerie.mjs` vérifie ce qui est observable — un
+> seul contexte, débloqué par un geste, et l'élément `<audio>` réellement joué — pas qu'un son
+> soit audible. Aucune machine ne peut le prouver.
 >
 > **Le chronomètre se calcule depuis une heure de fin, jamais en retranchant une seconde par
 > tick** *(corrigé en v7t)*. iOS suspend les minuteurs dès que l'app passe en arrière-plan : avec
@@ -1124,6 +1145,17 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   ailleurs que dans un `pointerdown`/`touchend` naît `suspended` et reste muet pour de bon. Ne
   jamais en créer un au moment où on veut jouer un son : le créer au premier appui et le garder.
   Voir la note détaillée en Partie I.3.
+- **Web Audio sur iPhone en mode silencieux (trouvé le 25 août 2026, v7u).** Le correctif
+  ci-dessus était juste et ne suffisait pas. **Interrupteur silencieux baissé, iOS n'autorise le
+  son que depuis un élément `<audio>` HTML5** ; l'API Web Audio ne sort rien, contexte débloqué ou
+  non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
+  Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
+  rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Fonds de barres écrits en dur (trouvé le 25 août 2026, v7u).** Le bandeau haut et la barre
+  d'onglets sont floutés (`backdrop-filter`), donc leur fond doit être **semi-transparent** — ils
+  ne peuvent pas se contenter de `--surface`, et les cinq occurrences avaient fini en dur, blanches
+  en mode sombre. D'où `--bar-bg` et `--bar-bg-opaque` dans `theme.css`. Règle générale : une
+  couleur qui a besoin d'une transparence a besoin de SA variable, sinon elle finit en dur.
 - **Compteur décrémenté au lieu d'une heure de fin (même date, v7t).** Tout décompte fondé sur
   `setInterval` + `remaining - 1` gèle quand l'app passe en arrière-plan — iOS suspend les
   minuteurs. Toujours stocker l'instant de fin et dériver le restant de `Date.now()`.
@@ -1221,6 +1253,20 @@ objectif) se lit en base et ne se demande pas.
 - **Vérifier la durée** avec `estimateSessionMinutes` avant de livrer.
 - Écrire un programme en SQL court-circuite le constructeur de l'espace coach et
   ses garde-fous : **rejouer `tests/test-programme-*.mjs`** pour retrouver le filet.
+- **Ne jamais coder en dur un `library_exercise_id`.** Le SQL doit retrouver
+  l'exercice **par son nom** dans `exercises_library` et s'arrêter net si le nom ne
+  désigne pas exactement un exercice. Deux raisons : un identifiant recopié de
+  mémoire est faux tôt ou tard, et surtout ça permet d'écrire le programme sans
+  accès en lecture à la base — le connecteur Supabase tombe régulièrement en
+  « requires approval ». Modèle complet dans `sql/2026-08-25-programme-meyssa.sql` :
+  nom exact d'abord, motif de repli ensuite, `raise exception` si ambigu, et le
+  `muscle` saisi par le coach qui prime sur celui que je propose.
+- **Vérifier le SQL sur un Postgres local avant de le livrer.** La VM a
+  `/usr/lib/postgresql/16/bin` : on y reconstruit `profiles`, `programs` et
+  `exercises_library` en trois `create table`, on rejoue le script, et on éprouve
+  ce qui compte — qu'une relance ne crée pas un second programme, et qu'un exercice
+  renommé arrête tout **sans rien avoir modifié**. C'est ce qui a permis de livrer
+  le programme de Meyssa alors que la production était injoignable.
 
 ## P.4 — Casquette diététicien (règle du 14 août 2026)
 
@@ -1353,11 +1399,11 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **16 août 2026** — v7t, 575 515 octets, 7500 lignes |
-| Contenu de ce build | Correction de la sonnerie de fin de repos et du gel du chronomètre |
-| Build précédent | 15 août 2026 — v7s, 572 620 octets. Table d'équivalences |
-| **En attente** | **Rien.** 22 tables en base, RLS active partout. Les 3 286 aliments Ciqual sont chargés avec leurs niveaux de coût et de préparation, et la diète d'Anaïs y est (8 repas, 32 aliments) |
-| Vérification du déploiement | Faite le 15 août : workflow `success` sur `f390018`, et `index.html` sur `main` identique au build local à l'octet près (557 657 o, empreinte `10ff009bff`) |
+| Dernier build déployé | **25 août 2026** — v7u, 579 292 octets, 7602 lignes |
+| Contenu de ce build | La sonnerie sort d'un élément `<audio>` (le seul canal que le mode silencieux iOS laisse passer) · bandeau haut et barre d'onglets alignés sur le thème sombre |
+| Build précédent | 16 août 2026 — v7t, 575 515 octets. Déclenchement de la sonnerie dans un geste, chrono fondé sur une heure de fin |
+| **En attente** | **Le programme de Meyssa Razzouk.** `sql/2026-08-25-programme-meyssa.sql` est écrit, éprouvé sur une base Postgres locale et couvert par `tests/test-programme-meyssa.mjs`, mais **pas encore joué en production** : le connecteur Supabase a refusé tous les `execute_sql` de la session du 25 août (« requires approval »), alors que les outils de lecture de schéma passaient. Greg doit le coller dans le SQL Editor. Rien d'autre en attente : 22 tables en base, RLS active partout |
+| Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.

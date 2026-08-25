@@ -1,0 +1,487 @@
+{
+    "biblio": [
+        {
+            "id": "01123a44-9d88-40c1-8e2e-398d390299c3",
+            "name": "Abduction hanche machine",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "fdde5a5f-60a8-4699-9b20-87bf2a087622",
+            "name": "Adducteur à la machine",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "cfa02364-5126-4285-8b5e-8d5e0d0f89c2",
+            "name": "Chest press couché",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "228b6a4f-f897-419a-b2df-007253e4c35c",
+            "name": "Curl incliné haltères",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "0041492e-48dd-4cd5-83c4-50f5ba246e10",
+            "name": "Curl marteau supported",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "dfffda8b-d028-4f36-b373-e8198d5ebe58",
+            "name": "Développé incliné haltère",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "42c657ba-7ac2-4eab-8e2a-207f666bc01d",
+            "name": "Extension triceps banc",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "a8916818-32af-4400-8bf4-c21e01bbefe4",
+            "name": "Extension triceps overhead (Uni)",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "982ab8da-85f0-4f8d-970e-6b1f7e12fceb",
+            "name": "Hack squat",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "6c1ddd67-6ff9-4279-81ad-2fea3abf4091",
+            "name": "Hip thrust barre",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "31738b33-3a3f-4f45-bd26-4cbcd16a8f8f",
+            "name": "Leg curl assis",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "5055e64b-057b-45b2-8e84-ef9d7e8af711",
+            "name": "Leg curl couché",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "f913fc17-b542-48ef-a0f0-c906cd5e7367",
+            "name": "Leg extension",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "ac87f7d4-3600-4cbb-875a-f9c8b7426b94",
+            "name": "Mollet press horizontal",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "e00e083c-23a4-4166-83ca-15d365b66644",
+            "name": "Mollets assis machine",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "b2e4051a-2a13-4820-9dd4-99d10706d482",
+            "name": "Oiseau unilatéral poulie haute",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "603eff94-076b-4808-b37d-37677dfad5ca",
+            "name": "Presse à cuisse",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "20f72f33-393c-4fa0-824f-142f6889f17c",
+            "name": "Soulevé de terre roumain haltères",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "f7dda889-df92-4c0b-acba-22d3cc07ac80",
+            "name": "Split squat bulgare haltères",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "ffaa2e69-097b-4579-91be-567d76271120",
+            "name": "Tirage horizontal (Haut du dos)",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "5b1cf1c7-40d5-4011-a1fd-6d6915cd11fd",
+            "name": "Tirage horizontal sur banc (Uni)",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "0b76dab4-9a07-4f98-a0e2-9530deba2a22",
+            "name": "Tirage vertical",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "9ed8371f-a104-41f5-a811-ccfdce537a5e",
+            "name": "Tirage vertical au sol (Uni)",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "2c5f86ca-07b3-4403-b9f7-b128e1dba3ad",
+            "name": "Élévation Y (Uni)",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        },
+        {
+            "id": "27b49f46-6bb3-494b-ba34-92ad1ed3b0fb",
+            "name": "Élévation latérale haltères",
+            "muscle": "",
+            "coach_id": "11111111-1111-1111-1111-111111111111",
+            "video_url": null
+        }
+    ],
+    "week_structure": [
+        {
+            "day": "LUNDI",
+            "sessionId": null
+        },
+        {
+            "day": "MARDI",
+            "sessionId": null
+        },
+        {
+            "day": "MERCREDI",
+            "sessionId": 5
+        },
+        {
+            "day": "JEUDI",
+            "sessionId": null
+        },
+        {
+            "day": "VENDREDI",
+            "sessionId": null
+        },
+        {
+            "day": "SAMEDI",
+            "sessionId": null
+        },
+        {
+            "day": "DIMANCHE",
+            "sessionId": 6
+        }
+    ],
+    "sessions_structure": [
+        {
+            "id": 5,
+            "name": "FULL BODY A",
+            "exercises": [
+                {
+                    "reps": [
+                        "8-10",
+                        "8-10",
+                        "10-12",
+                        "10-12"
+                    ],
+                    "ordre": 1,
+                    "repos": "2'30",
+                    "muscle": "Fessier/Ischios",
+                    "series": 4,
+                    "exercice": "Hip thrust barre",
+                    "technique": null,
+                    "commentaire": "PAUSE 1 S EN HAUT",
+                    "library_exercise_id": "6c1ddd67-6ff9-4279-81ad-2fea3abf4091"
+                },
+                {
+                    "reps": [
+                        "8-10",
+                        "10-12",
+                        "10-12"
+                    ],
+                    "ordre": 2,
+                    "repos": "2'30",
+                    "muscle": "Fessier/Ischios",
+                    "series": 3,
+                    "exercice": "Soulevé de terre roumain haltères",
+                    "technique": null,
+                    "commentaire": "JUSQU'À L'ÉTIREMENT",
+                    "library_exercise_id": "20f72f33-393c-4fa0-824f-142f6889f17c"
+                },
+                {
+                    "reps": [
+                        "8-10",
+                        "8-10",
+                        "10-12",
+                        "12-15"
+                    ],
+                    "ordre": 3,
+                    "repos": "2'30",
+                    "muscle": "Quadriceps",
+                    "series": 4,
+                    "exercice": "Hack squat",
+                    "technique": null,
+                    "commentaire": "DESCENTE COMPLÈTE",
+                    "library_exercise_id": "982ab8da-85f0-4f8d-970e-6b1f7e12fceb"
+                },
+                {
+                    "reps": [
+                        "15-20",
+                        "15-20",
+                        "20-25"
+                    ],
+                    "ordre": 4,
+                    "repos": "1'15",
+                    "muscle": "Fessier/Ischios",
+                    "series": 3,
+                    "exercice": "Abduction hanche machine",
+                    "technique": "DS",
+                    "commentaire": "BUSTE PENCHÉ AVANT",
+                    "library_exercise_id": "01123a44-9d88-40c1-8e2e-398d390299c3"
+                },
+                {
+                    "reps": [
+                        "8-10",
+                        "10-12",
+                        "10-12"
+                    ],
+                    "ordre": 5,
+                    "repos": "2'00",
+                    "muscle": "Pectoraux",
+                    "series": 3,
+                    "exercice": "Développé incliné haltère",
+                    "technique": null,
+                    "commentaire": "BANC À 30°",
+                    "library_exercise_id": "dfffda8b-d028-4f36-b373-e8198d5ebe58"
+                },
+                {
+                    "reps": [
+                        "10-12",
+                        "10-12",
+                        "12-15"
+                    ],
+                    "ordre": 6,
+                    "repos": "2'00",
+                    "muscle": "Grand dorsal",
+                    "series": 3,
+                    "exercice": "Tirage vertical",
+                    "technique": null,
+                    "commentaire": "",
+                    "library_exercise_id": "0b76dab4-9a07-4f98-a0e2-9530deba2a22"
+                },
+                {
+                    "reps": [
+                        "12-15",
+                        "15-20",
+                        "15-20"
+                    ],
+                    "ordre": 7,
+                    "repos": "1'15",
+                    "muscle": "Deltoïde lat",
+                    "series": 3,
+                    "exercice": "Élévation latérale haltères",
+                    "technique": "Superset",
+                    "commentaire": "SANS ÉLAN",
+                    "library_exercise_id": "27b49f46-6bb3-494b-ba34-92ad1ed3b0fb"
+                },
+                {
+                    "reps": [
+                        "10-12",
+                        "12-15"
+                    ],
+                    "ordre": 8,
+                    "repos": "1'00",
+                    "muscle": "Triceps",
+                    "series": 2,
+                    "exercice": "Extension triceps banc",
+                    "technique": null,
+                    "commentaire": "",
+                    "library_exercise_id": "42c657ba-7ac2-4eab-8e2a-207f666bc01d"
+                }
+            ],
+            "abdosCardio": [
+                "3x45 s gainage planche",
+                "3x12 relevés de jambes genoux fléchis"
+            ]
+        },
+        {
+            "id": 6,
+            "name": "FULL BODY B",
+            "exercises": [
+                {
+                    "reps": [
+                        "8-10",
+                        "8-10",
+                        "10-12",
+                        "10-12"
+                    ],
+                    "ordre": 1,
+                    "repos": "2'00",
+                    "muscle": "Fessier/Ischios",
+                    "series": 4,
+                    "exercice": "Split squat bulgare haltères",
+                    "technique": null,
+                    "commentaire": "PAR JAMBE · BUSTE PENCHÉ",
+                    "library_exercise_id": "f7dda889-df92-4c0b-acba-22d3cc07ac80"
+                },
+                {
+                    "reps": [
+                        "12-15",
+                        "12-15",
+                        "15-20"
+                    ],
+                    "ordre": 2,
+                    "repos": "2'00",
+                    "muscle": "Fessier/Ischios",
+                    "series": 3,
+                    "exercice": "Hip thrust barre",
+                    "technique": null,
+                    "commentaire": "PLUS LÉGER QUE MERCREDI",
+                    "library_exercise_id": "6c1ddd67-6ff9-4279-81ad-2fea3abf4091"
+                },
+                {
+                    "reps": [
+                        "6-8",
+                        "8-10",
+                        "8-10"
+                    ],
+                    "ordre": 3,
+                    "repos": "2'30",
+                    "muscle": "Fessier/Ischios",
+                    "series": 3,
+                    "exercice": "Soulevé de terre roumain haltères",
+                    "technique": null,
+                    "commentaire": "PLUS LOURD QUE MERCREDI",
+                    "library_exercise_id": "20f72f33-393c-4fa0-824f-142f6889f17c"
+                },
+                {
+                    "reps": [
+                        "15-20",
+                        "15-20",
+                        "20-25"
+                    ],
+                    "ordre": 4,
+                    "repos": "1'15",
+                    "muscle": "Fessier/Ischios",
+                    "series": 3,
+                    "exercice": "Abduction hanche machine",
+                    "technique": "DS",
+                    "commentaire": "BUSTE PENCHÉ AVANT",
+                    "library_exercise_id": "01123a44-9d88-40c1-8e2e-398d390299c3"
+                },
+                {
+                    "reps": [
+                        "10-12",
+                        "12-15",
+                        "12-15"
+                    ],
+                    "ordre": 5,
+                    "repos": "1'30",
+                    "muscle": "Ischios",
+                    "series": 3,
+                    "exercice": "Leg curl assis",
+                    "technique": null,
+                    "commentaire": "DESCENTE EN 3 S",
+                    "library_exercise_id": "31738b33-3a3f-4f45-bd26-4cbcd16a8f8f"
+                },
+                {
+                    "reps": [
+                        "10-12",
+                        "10-12",
+                        "12-15"
+                    ],
+                    "ordre": 6,
+                    "repos": "2'00",
+                    "muscle": "Haut du dos",
+                    "series": 3,
+                    "exercice": "Tirage horizontal (Haut du dos)",
+                    "technique": null,
+                    "commentaire": "",
+                    "library_exercise_id": "ffaa2e69-097b-4579-91be-567d76271120"
+                },
+                {
+                    "reps": [
+                        "8-10",
+                        "10-12",
+                        "10-12"
+                    ],
+                    "ordre": 7,
+                    "repos": "2'00",
+                    "muscle": "Pectoraux",
+                    "series": 3,
+                    "exercice": "Chest press couché",
+                    "technique": null,
+                    "commentaire": "",
+                    "library_exercise_id": "cfa02364-5126-4285-8b5e-8d5e0d0f89c2"
+                },
+                {
+                    "reps": [
+                        "10-12",
+                        "12-15"
+                    ],
+                    "ordre": 8,
+                    "repos": "1'00",
+                    "muscle": "Biceps",
+                    "series": 2,
+                    "exercice": "Curl incliné haltères",
+                    "technique": "Superset",
+                    "commentaire": "",
+                    "library_exercise_id": "228b6a4f-f897-419a-b2df-007253e4c35c"
+                },
+                {
+                    "reps": [
+                        "12-15",
+                        "12-15",
+                        "15-20"
+                    ],
+                    "ordre": 9,
+                    "repos": "1'00",
+                    "muscle": "Mollets",
+                    "series": 3,
+                    "exercice": "Mollet press horizontal",
+                    "technique": null,
+                    "commentaire": "PAUSE 1 S EN BAS",
+                    "library_exercise_id": "ac87f7d4-3600-4cbb-875a-f9c8b7426b94"
+                }
+            ],
+            "abdosCardio": [
+                "3x45 s gainage planche",
+                "3x15 crunchs à la poulie"
+            ]
+        }
+    ]
+}
