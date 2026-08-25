@@ -28,6 +28,14 @@
   --input-bg: #EDE8DF;
   --shadow: rgba(30, 40, 32, 0.08);
 
+  /* Barres translucides — en-tête collant et barre d'onglets. Elles sont
+     floutées (backdrop-filter), donc leur fond doit être semi-transparent :
+     ce sont les deux seules couleurs de l'app qui ne peuvent pas se contenter
+     de --surface. Elles étaient écrites en dur, et restaient donc blanches en
+     mode sombre — le défaut signalé le 25 août 2026. */
+  --bar-bg: rgba(255, 252, 247, 0.92);
+  --bar-bg-opaque: rgba(255, 252, 247, 0.95);
+
   /* Accent avec transparence — remplace les concaténations T.accent + "55" */
   --accent-a10: rgba(45, 106, 79, 0.09);
   --accent-a20: rgba(45, 106, 79, 0.21);
@@ -84,6 +92,10 @@
   --input-bg: #232A25;
   --shadow: rgba(0, 0, 0, 0.45);
 
+  /* Même teinte que --surface (#1B211D), en semi-transparent pour le flou. */
+  --bar-bg: rgba(27, 33, 29, 0.92);
+  --bar-bg-opaque: rgba(27, 33, 29, 0.95);
+
   --accent-a10: rgba(79, 169, 127, 0.10);
   --accent-a20: rgba(79, 169, 127, 0.22);
   --accent-a33: rgba(79, 169, 127, 0.34);
@@ -136,6 +148,9 @@
     --danger: #E4695A;
     --input-bg: #232A25;
     --shadow: rgba(0, 0, 0, 0.45);
+
+    --bar-bg: rgba(27, 33, 29, 0.92);
+    --bar-bg-opaque: rgba(27, 33, 29, 0.95);
 
     --accent-a10: rgba(79, 169, 127, 0.10);
     --accent-a20: rgba(79, 169, 127, 0.22);

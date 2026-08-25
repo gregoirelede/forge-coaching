@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const CAPTURES = import.meta.dirname + "/captures/";
 mkdirSync(CAPTURES, { recursive: true });
@@ -36,6 +36,7 @@ const lire = (p) => p.evaluate(() => {
   return {
     attr: document.documentElement.getAttribute("data-theme"),
     bg: v("--bg"), text: v("--text"), accent: v("--accent"),
+    barre: v("--bar-bg"), barreOpaque: v("--bar-bg-opaque"),
     corpsBg: getComputedStyle(document.body).backgroundColor,
     metaColor: meta && meta.getAttribute("content"),
   };
@@ -50,6 +51,7 @@ console.log("\n─── Thème clair ───");
   ok(t.bg === "#F5F1EB", `--bg = ${t.bg} (charte Forest & Sand d'origine)`);
   ok(t.accent === "#2D6A4F", `--accent = ${t.accent}`);
   ok(t.metaColor === "#F5F1EB", `barre d'état alignée : ${t.metaColor}`);
+  ok(/255,\s*252,\s*247/.test(t.barre), `barres translucides claires : ${t.barre}`);
   await p.screenshot({ path: `${OUT}/theme-clair.png` });
   await ctx.close();
 }
@@ -64,8 +66,30 @@ console.log("\n─── Thème sombre ───");
   ok(t.accent === "#4FA97F", `--accent = ${t.accent} (éclairci pour rester lisible)`);
   ok(t.corpsBg === "rgb(20, 24, 21)", `fond de page réellement sombre : ${t.corpsBg}`);
   ok(t.metaColor === "#141815", `barre d'état alignée : ${t.metaColor}`);
+  // Le défaut signalé le 25 août 2026 : les deux barres restaient blanches.
+  ok(/27,\s*33,\s*29/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
+  ok(/27,\s*33,\s*29/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
   await p.screenshot({ path: `${OUT}/theme-sombre.png` });
   await ctx.close();
+}
+
+// ── Aucune barre ne court-circuite le thème ─────────────────────────────────
+// Une variable juste ne sert à rien si un composant écrit la couleur en dur à
+// côté : c'était exactement le défaut. On le vérifie sur le fichier livré.
+console.log("\n─── Aucune couleur de barre écrite en dur ───");
+{
+  // `URL` est déjà pris plus haut par l'adresse de test : on passe par le chemin.
+  const html = readFileSync(import.meta.dirname + "/../index.html", "utf8");
+  // Les deux seules occurrences légitimes sont les définitions de la variable
+  // elle-même, dans le bloc de thème clair. Toute autre est un composant qui
+  // écrit la couleur à côté du thème.
+  const toutes = (html.match(/rgba\(255,\s*252,\s*247/g) || []).length;
+  const definitions = (html.match(/--bar-bg(-opaque)?:\s*rgba\(255,\s*252,\s*247/g) || []).length;
+  const enDur = toutes - definitions;
+  ok(definitions === 2, `la palette claire définit bien les deux variables (${definitions})`);
+  ok(enDur === 0, `aucun composant n'écrit un fond de barre en dur (${enDur})`);
+  const viaVariable = (html.match(/var\(--bar-bg/g) || []).length;
+  ok(viaVariable >= 5, `les ${viaVariable} barres passent par la variable de thème`);
 }
 
 // ── Automatique : suit le téléphone ──────────────────────────────────────────

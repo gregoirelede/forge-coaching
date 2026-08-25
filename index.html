@@ -42,6 +42,14 @@
   --input-bg: #EDE8DF;
   --shadow: rgba(30, 40, 32, 0.08);
 
+  /* Barres translucides — en-tête collant et barre d'onglets. Elles sont
+     floutées (backdrop-filter), donc leur fond doit être semi-transparent :
+     ce sont les deux seules couleurs de l'app qui ne peuvent pas se contenter
+     de --surface. Elles étaient écrites en dur, et restaient donc blanches en
+     mode sombre — le défaut signalé le 25 août 2026. */
+  --bar-bg: rgba(255, 252, 247, 0.92);
+  --bar-bg-opaque: rgba(255, 252, 247, 0.95);
+
   /* Accent avec transparence — remplace les concaténations T.accent + "55" */
   --accent-a10: rgba(45, 106, 79, 0.09);
   --accent-a20: rgba(45, 106, 79, 0.21);
@@ -98,6 +106,10 @@
   --input-bg: #232A25;
   --shadow: rgba(0, 0, 0, 0.45);
 
+  /* Même teinte que --surface (#1B211D), en semi-transparent pour le flou. */
+  --bar-bg: rgba(27, 33, 29, 0.92);
+  --bar-bg-opaque: rgba(27, 33, 29, 0.95);
+
   --accent-a10: rgba(79, 169, 127, 0.10);
   --accent-a20: rgba(79, 169, 127, 0.22);
   --accent-a33: rgba(79, 169, 127, 0.34);
@@ -150,6 +162,9 @@
     --danger: #E4695A;
     --input-bg: #232A25;
     --shadow: rgba(0, 0, 0, 0.45);
+
+    --bar-bg: rgba(27, 33, 29, 0.92);
+    --bar-bg-opaque: rgba(27, 33, 29, 0.95);
 
     --accent-a10: rgba(79, 169, 127, 0.10);
     --accent-a20: rgba(79, 169, 127, 0.22);
@@ -1035,36 +1050,126 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
   if (cur < prev) return "down";
   return "equal";
 }
+function wavSonnerie() {
+  const tauxEch = 22050, bips = [660, 880, 1046], duree = 0.16, ecart = 0.02;
+  const total = Math.round(tauxEch * (bips.length * (duree + ecart)));
+  const octets = new ArrayBuffer(44 + total * 2);
+  const vue = new DataView(octets);
+  const txt = (pos2, s) => {
+    for (let i = 0; i < s.length; i++) vue.setUint8(pos2 + i, s.charCodeAt(i));
+  };
+  txt(0, "RIFF");
+  vue.setUint32(4, 36 + total * 2, true);
+  txt(8, "WAVEfmt ");
+  vue.setUint32(16, 16, true);
+  vue.setUint16(20, 1, true);
+  vue.setUint16(22, 1, true);
+  vue.setUint32(24, tauxEch, true);
+  vue.setUint32(28, tauxEch * 2, true);
+  vue.setUint16(32, 2, true);
+  vue.setUint16(34, 16, true);
+  txt(36, "data");
+  vue.setUint32(40, total * 2, true);
+  let pos = 44;
+  for (const freq of bips) {
+    const n = Math.round(tauxEch * duree);
+    for (let i = 0; i < n; i++) {
+      const env = Math.min(1, i / (tauxEch * 0.01)) * Math.pow(1 - i / n, 2);
+      vue.setInt16(pos, Math.round(Math.sin(2 * Math.PI * freq * i / tauxEch) * 26e3 * env), true);
+      pos += 2;
+    }
+    pos += Math.round(tauxEch * ecart) * 2;
+  }
+  let bin = "";
+  const u8 = new Uint8Array(octets);
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return "data:audio/wav;base64," + btoa(bin);
+}
 let _ctxAudio = null;
 let _audioArme = false;
+let _elSonnerie = null;
 function sonnerieArmee() {
-  return !!(_audioArme && _ctxAudio && _ctxAudio.state === "running");
+  return !!(_elSonnerie && _audioArme) || !!(_ctxAudio && _ctxAudio.state === "running");
+}
+function diagnosticSonnerie() {
+  return {
+    element: !!_elSonnerie,
+    elementArme: _audioArme,
+    contexte: _ctxAudio ? _ctxAudio.state : "absent",
+    sessionAudio: (() => {
+      try {
+        return navigator.audioSession ? navigator.audioSession.type : "non g\xE9r\xE9e";
+      } catch (e) {
+        return "non g\xE9r\xE9e";
+      }
+    })(),
+    vibration: !!navigator.vibrate
+  };
 }
 function armerSonnerie() {
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return false;
-    if (!_ctxAudio) _ctxAudio = new AC();
-    try {
-      if (navigator.audioSession) navigator.audioSession.type = "playback";
-    } catch (e) {
-    }
-    if (_ctxAudio.state === "running" && _audioArme) return true;
-    if (_ctxAudio.state === "suspended") _ctxAudio.resume();
-    const src = _ctxAudio.createBufferSource();
-    src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
-    src.connect(_ctxAudio.destination);
-    src.start(0);
-    _audioArme = true;
-    return true;
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
   } catch (e) {
-    return false;
   }
+  try {
+    if (!_elSonnerie) {
+      _elSonnerie = new Audio(wavSonnerie());
+      _elSonnerie.preload = "auto";
+      _elSonnerie.setAttribute("playsinline", "");
+    }
+    if (!_audioArme) {
+      const v = _elSonnerie.volume;
+      _elSonnerie.volume = 0;
+      const p = _elSonnerie.play();
+      const finir = () => {
+        try {
+          _elSonnerie.pause();
+          _elSonnerie.currentTime = 0;
+          _elSonnerie.volume = v;
+        } catch (e) {
+        }
+      };
+      if (p && p.then) p.then(() => {
+        _audioArme = true;
+        finir();
+      }).catch(() => {
+        finir();
+      });
+      else {
+        _audioArme = true;
+        finir();
+      }
+    }
+  } catch (e) {
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      if (!_ctxAudio) _ctxAudio = new AC();
+      if (_ctxAudio.state === "suspended") _ctxAudio.resume();
+      const src = _ctxAudio.createBufferSource();
+      src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
+      src.connect(_ctxAudio.destination);
+      src.start(0);
+    }
+  } catch (e) {
+  }
+  return sonnerieArmee();
 }
 function playRestChime() {
   try {
     if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]);
   } catch (e) {
+  }
+  if (_elSonnerie) {
+    try {
+      _elSonnerie.currentTime = 0;
+      const p = _elSonnerie.play();
+      if (p && p.catch) p.catch(() => {
+      });
+      return true;
+    } catch (e) {
+    }
   }
   const ctx = _ctxAudio;
   if (!ctx) return false;
@@ -1099,12 +1204,17 @@ function TestSonnerie() {
       onClick: () => {
         armerSonnerie();
         const ok = playRestChime();
-        setRetour(ok ? "Sonnerie jou\xE9e. Tu n'as rien entendu ? V\xE9rifie le bouton silencieux et le volume de ton t\xE9l\xE9phone." : "Ton navigateur bloque encore le son. Ferme puis rouvre l'app, et r\xE9essaie.");
+        const d = diagnosticSonnerie();
+        setRetour({
+          ok,
+          texte: ok ? "Sonnerie envoy\xE9e. Tu n'as rien entendu ? Monte le volume \u2014 et sur iPhone, v\xE9rifie le petit interrupteur sur le c\xF4t\xE9." : "Le son est encore bloqu\xE9. Ferme compl\xE8tement l'app, rouvre-la, touche l'\xE9cran une fois, puis r\xE9essaie.",
+          detail: `audio ${d.element ? d.elementArme ? "pr\xEAt" : "en attente" : "absent"} \xB7 session ${d.sessionAudio} \xB7 contexte ${d.contexte} \xB7 vibration ${d.vibration ? "oui" : "non"}`
+        });
       },
       style: { width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, cursor: "pointer", fontFamily: "inherit" }
     },
     "TESTER LA SONNERIE"
-  ), retour && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 } }, retour));
+  ), retour && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: retour.ok ? T.textSub : T.warnText, lineHeight: 1.5 } }, retour.texte), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, marginTop: 4, fontFamily: "monospace" } }, retour.detail)));
 }
 function useTimers(soundEnabledRef) {
   const [timers, setTimers] = useState({});
@@ -1895,7 +2005,7 @@ function BottomTabBar({ activePage, onNavigate, showNutrition, weighReminder }) 
     { id: "progress", label: "Progr\xE8s", icon: "progress" },
     { id: "profile", label: "Profil", icon: "profile" }
   ];
-  return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
     const isActive = activePage === tab.id;
     const showDot = tab.id === "nutrition" && weighReminder;
     return /* @__PURE__ */ React.createElement("button", { key: tab.id, onClick: () => onNavigate(tab.id), className: "tab-bar-btn", style: { background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? T.accent : T.textMuted, transition: "color .2s" } }, /* @__PURE__ */ React.createElement("div", { style: { position: "relative", transition: "transform .25s cubic-bezier(0.34,1.56,0.64,1)", transform: isActive ? "scale(1.1)" : "scale(1)" } }, /* @__PURE__ */ React.createElement(Icon, { name: tab.icon, size: 22, color: isActive ? T.accent : T.textMuted, filled: isActive, stroke: 2 }), showDot && /* @__PURE__ */ React.createElement("span", { style: { position: "absolute", top: -2, right: -4, width: 9, height: 9, borderRadius: "50%", background: T.danger, border: `1.5px solid ${T.surface}` } })), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: isActive ? 800 : 600, letterSpacing: 0.3, transition: "all .2s" } }, tab.label));
@@ -2241,7 +2351,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         .page-backward{animation:pageInBackward .35s cubic-bezier(0.32,0.72,0.34,1) both}
         .sheet-backdrop{animation:sheetFadeIn .25s ease both}
         .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
-      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx }), page === "parcours" && /* @__PURE__ */ React.createElement(ParcoursPage, { ctx }), page === "nutrition" && /* @__PURE__ */ React.createElement(NutritionPage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
+      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 } }, "FORGE COACHING")), /* @__PURE__ */ React.createElement(SyncDot, { status: syncStatus })), /* @__PURE__ */ React.createElement("div", { key: page + (workoutSubView || "") + (profileSubView || ""), className: pageTransition === "backward" ? "page-backward" : "page-forward" }, page === "home" && /* @__PURE__ */ React.createElement(HomePage, { ctx }), page === "workout" && /* @__PURE__ */ React.createElement(WorkoutPage, { ctx }), page === "progress" && /* @__PURE__ */ React.createElement(ProgressPage, { ctx }), page === "profile" && /* @__PURE__ */ React.createElement(ProfilePage, { ctx }), page === "parcours" && /* @__PURE__ */ React.createElement(ParcoursPage, { ctx }), page === "nutrition" && /* @__PURE__ */ React.createElement(NutritionPage, { ctx })), sheetExercise && /* @__PURE__ */ React.createElement(
     ExerciseSheet,
     {
       exercise: sheetExercise,
@@ -3131,7 +3241,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
   })), /* @__PURE__ */ React.createElement("button", { onClick: () => {
     setPicker({ sessionIdx: sIdx });
     setPickerSearch("");
-  }, style: { width: "100%", marginTop: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "10px", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "+ Ajouter un exercice depuis la biblioth\xE8que"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1 } }, "ABDOS / CARDIO (une ligne par item)"), /* @__PURE__ */ React.createElement("textarea", { value: (s.abdosCardio || []).join("\n"), onChange: (e) => updateAbdos(sIdx, e.target.value), placeholder: "3x1 min gainage\n3x \xE9chec relev\xE9 de jambes", rows: 2, style: __spreadProps(__spreadValues({}, inputStyle), { padding: "8px 10px", fontSize: 12, resize: "vertical", marginTop: 4 }) })))))), /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.95)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 } }, msg && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, marginBottom: 8 } }, msg), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: doSaveDraft, disabled: saving, style: { flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "Brouillon"), /* @__PURE__ */ React.createElement("button", { onClick: doActivate, disabled: saving, style: { flex: 2, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: "white" }), " ...") : "ACTIVER LE PROGRAMME"))), picker && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setPicker(null), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, color: T.text, letterSpacing: 2, marginBottom: 12 } }, "CHOISIR UN EXERCICE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: pickerSearch, onChange: (e) => setPickerSearch(e.target.value), placeholder: "Rechercher...", style: __spreadProps(__spreadValues({}, inputStyle), { marginBottom: 12 }), autoFocus: true }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, library.filter((e) => e.name.toLowerCase().includes(pickerSearch.toLowerCase())).map((libEx) => {
+  }, style: { width: "100%", marginTop: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "10px", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "+ Ajouter un exercice depuis la biblioth\xE8que"), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("label", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1 } }, "ABDOS / CARDIO (une ligne par item)"), /* @__PURE__ */ React.createElement("textarea", { value: (s.abdosCardio || []).join("\n"), onChange: (e) => updateAbdos(sIdx, e.target.value), placeholder: "3x1 min gainage\n3x \xE9chec relev\xE9 de jambes", rows: 2, style: __spreadProps(__spreadValues({}, inputStyle), { padding: "8px 10px", fontSize: 12, resize: "vertical", marginTop: 4 }) })))))), /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg-opaque)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 } }, msg && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, marginBottom: 8 } }, msg), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 10 } }, /* @__PURE__ */ React.createElement("button", { onClick: doSaveDraft, disabled: saving, style: { flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "Brouillon"), /* @__PURE__ */ React.createElement("button", { onClick: doActivate, disabled: saving, style: { flex: 2, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 } }, saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Spinner, { size: 14, color: "white" }), " ...") : "ACTIVER LE PROGRAMME"))), picker && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setPicker(null), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 18, color: T.text, letterSpacing: 2, marginBottom: 12 } }, "CHOISIR UN EXERCICE"), /* @__PURE__ */ React.createElement("input", { type: "text", value: pickerSearch, onChange: (e) => setPickerSearch(e.target.value), placeholder: "Rechercher...", style: __spreadProps(__spreadValues({}, inputStyle), { marginBottom: 12 }), autoFocus: true }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, library.filter((e) => e.name.toLowerCase().includes(pickerSearch.toLowerCase())).map((libEx) => {
     const mStyle = muscleColors[libEx.muscle] || { bg: T.surface2, text: T.textSub };
     return /* @__PURE__ */ React.createElement("button", { key: libEx.id, onClick: () => addExerciseToSession(picker.sessionIdx, libEx), style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: T.text } }, libEx.name)), /* @__PURE__ */ React.createElement("span", { style: { background: mStyle.bg, color: mStyle.text, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 700 } }, libEx.muscle));
   }), library.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textMuted, fontSize: 12, padding: 20 } }, "Ta biblioth\xE8que est vide. Ajoute des exercices dans l'onglet Biblioth\xE8que.")))), importOpen && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sheet-backdrop", onClick: () => setImportOpen(false), style: { position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 } }), /* @__PURE__ */ React.createElement("div", { className: "sheet", style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 } }, "IMPORTER UN PROGRAMME"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: T.textMuted, marginBottom: 16, lineHeight: 1.5 } }, "Choisis un coach\xE9 : son programme actif sera copi\xE9 ici comme base. Tu pourras tout ajuster avant d'activer."), importError && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 12 } }, importError), importLoading ? /* @__PURE__ */ React.createElement("div", { style: { padding: 30, textAlign: "center" } }, /* @__PURE__ */ React.createElement(Spinner, { size: 22 })) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, (coachees || []).filter((c) => c.id !== coachee.id && c.is_active !== false).length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: T.textMuted, fontSize: 12, padding: 20 } }, "Aucun autre coach\xE9 disponible. Cr\xE9e d'abord un programme pour un autre coach\xE9.") : (coachees || []).filter((c) => c.id !== coachee.id && c.is_active !== false).map((c) => /* @__PURE__ */ React.createElement("button", { key: c.id, onClick: () => importFromCoachee(c), className: "pressable", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 17, color: "white" } }, (c.name || "?")[0].toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, c.name), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 2 } }, c.access_code)), /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 18, color: T.borderStrong })))), /* @__PURE__ */ React.createElement("button", { onClick: () => setImportOpen(false), style: { width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" } }, "Annuler"))));
@@ -3402,7 +3512,7 @@ function CoachTabBar({ activePage, onNavigate }) {
     { id: "suivi", label: "Suivi", icon: "trending" },
     { id: "library", label: "Exercices", icon: "workout" }
   ];
-  return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
+  return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` } }, tabs.map((tab) => {
     const isActive = activePage === tab.id;
     return /* @__PURE__ */ React.createElement("button", { key: tab.id, onClick: () => onNavigate(tab.id), className: "tab-bar-btn", style: { background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? T.accent : T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: tab.icon, size: 22, color: isActive ? T.accent : T.textMuted, filled: isActive }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: isActive ? 800 : 600 } }, tab.label));
   }));
@@ -3464,7 +3574,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
         .quick-card:active{transform:scale(.985)}
         .sheet-backdrop{animation:sheetFadeIn .25s ease both}
         .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
-      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 } }, "FORGE \xB7 COACH")), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, title: "D\xE9connexion", style: { background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "logout", size: 18, color: T.textMuted }))), selectedCoachee ? /* @__PURE__ */ React.createElement(CoacheeDetailPage, { ctx, coachee: selectedCoachee, onBack: () => {
+      `), /* @__PURE__ */ React.createElement("div", { style: { position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement(ForgeLogo, { size: 28 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 } }, "FORGE \xB7 COACH")), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, title: "D\xE9connexion", style: { background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" } }, /* @__PURE__ */ React.createElement(Icon, { name: "logout", size: 18, color: T.textMuted }))), selectedCoachee ? /* @__PURE__ */ React.createElement(CoacheeDetailPage, { ctx, coachee: selectedCoachee, onBack: () => {
     setSelectedCoachee(null);
     reloadCoachees();
   }, onChanged: reloadCoachees }) : /* @__PURE__ */ React.createElement(React.Fragment, null, page === "coachees" && /* @__PURE__ */ React.createElement(CoachListPage, { ctx }), page === "suivi" && /* @__PURE__ */ React.createElement(CoachFollowUpPage, { ctx }), page === "library" && /* @__PURE__ */ React.createElement(CoachLibraryPage, { ctx }), /* @__PURE__ */ React.createElement(CoachTabBar, { activePage: page, onNavigate: setPage })), showNewModal && /* @__PURE__ */ React.createElement(NewCoacheeModal, { supabase, onClose: () => setShowNewModal(false), onCreated: reloadCoachees }));
