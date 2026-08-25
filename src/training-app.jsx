@@ -597,35 +597,115 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
 //       interrupteur silencieux de l'iPhone coupe tout sans rien dire.
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── Le vrai obstacle : l'interrupteur silencieux de l'iPhone ───────────────
+//
+// WebKit le documente noir sur blanc : quand le petit interrupteur latéral est
+// sur silencieux, iOS autorise le son des **éléments <audio> HTML5** et refuse
+// celui de la **Web Audio API**. Une sonnerie faite d'oscillateurs Web Audio ne
+// peut donc PAS sonner sur un iPhone en silencieux — quoi qu'on fasse du
+// contexte, de son état ou de la session audio.
+//
+// C'est pour ça que la première correction ne suffisait pas : elle réparait le
+// déblocage du contexte, ce qui était nécessaire, mais laissait le son sur le
+// canal que le téléphone coupe.
+//
+// La sonnerie est donc synthétisée en WAV et jouée par un vrai <audio>. On
+// garde le contexte Web Audio en second rideau, pour les navigateurs où
+// l'élément échoue.
+
+// Fabrique un WAV mono 16 bits contenant les trois bips ascendants. Généré au
+// vol : rien à héberger, et l'index.html n'enfle pas de 30 Ko.
+function wavSonnerie() {
+  const tauxEch = 22050, bips = [660, 880, 1046], duree = 0.16, ecart = 0.02;
+  const total = Math.round(tauxEch * (bips.length * (duree + ecart)));
+  const octets = new ArrayBuffer(44 + total * 2);
+  const vue = new DataView(octets);
+  const txt = (pos, s) => { for (let i = 0; i < s.length; i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
+  txt(0, "RIFF"); vue.setUint32(4, 36 + total * 2, true); txt(8, "WAVEfmt ");
+  vue.setUint32(16, 16, true); vue.setUint16(20, 1, true); vue.setUint16(22, 1, true);
+  vue.setUint32(24, tauxEch, true); vue.setUint32(28, tauxEch * 2, true);
+  vue.setUint16(32, 2, true); vue.setUint16(34, 16, true);
+  txt(36, "data"); vue.setUint32(40, total * 2, true);
+  let pos = 44;
+  for (const freq of bips) {
+    const n = Math.round(tauxEch * duree);
+    for (let i = 0; i < n; i++) {
+      // Enveloppe douce : une attaque franche produit un claquement.
+      const env = Math.min(1, i / (tauxEch * 0.01)) * Math.pow(1 - i / n, 2);
+      vue.setInt16(pos, Math.round(Math.sin((2 * Math.PI * freq * i) / tauxEch) * 26000 * env), true);
+      pos += 2;
+    }
+    pos += Math.round(tauxEch * ecart) * 2;
+  }
+  let bin = "";
+  const u8 = new Uint8Array(octets);
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
 let _ctxAudio = null;
 let _audioArme = false;
+let _elSonnerie = null;   // <audio> : le seul canal qui passe le mode silencieux
 
 // La sonnerie est-elle réellement en état de sonner, maintenant ?
 function sonnerieArmee() {
-  return !!(_audioArme && _ctxAudio && _ctxAudio.state === "running");
+  return !!(_elSonnerie && _audioArme) || !!(_ctxAudio && _ctxAudio.state === "running");
+}
+
+// Ce que le bouton de test affiche pour qu'on sache OÙ ça bloque, plutôt que
+// de deviner. Sans ça, « pas de son » peut vouloir dire cinq choses.
+function diagnosticSonnerie() {
+  return {
+    element: !!_elSonnerie,
+    elementArme: _audioArme,
+    contexte: _ctxAudio ? _ctxAudio.state : "absent",
+    sessionAudio: (() => { try { return navigator.audioSession ? navigator.audioSession.type : "non gérée"; } catch { return "non gérée"; } })(),
+    vibration: !!navigator.vibrate,
+  };
 }
 
 // À N'APPELER QUE DEPUIS UN GESTE UTILISATEUR. Ailleurs, le navigateur refuse
 // et le contexte reste muet pour toute la session.
 function armerSonnerie() {
+  // 1 — La session audio en « playback » : c'est elle qui sort le son de la
+  // catégorie « ambiante », celle que l'interrupteur silencieux coupe.
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+
+  // 2 — L'élément <audio>, canal principal. On le débloque en le jouant en
+  // silence dans le geste : iOS n'autorise ensuite les lectures programmées
+  // que sur un élément déjà joué au moins une fois par l'utilisateur.
+  try {
+    if (!_elSonnerie) {
+      _elSonnerie = new Audio(wavSonnerie());
+      _elSonnerie.preload = "auto";
+      _elSonnerie.setAttribute("playsinline", "");
+    }
+    if (!_audioArme) {
+      const v = _elSonnerie.volume;
+      _elSonnerie.volume = 0;
+      const p = _elSonnerie.play();
+      const finir = () => {
+        try { _elSonnerie.pause(); _elSonnerie.currentTime = 0; _elSonnerie.volume = v; } catch {}
+      };
+      if (p && p.then) p.then(() => { _audioArme = true; finir(); }).catch(() => { finir(); });
+      else { _audioArme = true; finir(); }
+    }
+  } catch {}
+
+  // 3 — Le contexte Web Audio, en second rideau pour les navigateurs où
+  // l'élément échoue. Il reste inutile sur un iPhone en silencieux.
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return false;
-    if (!_ctxAudio) _ctxAudio = new AC();
-    // Ignorer l'interrupteur silencieux quand le navigateur le permet
-    // (Safari 16.4+). Sans ça, un iPhone en silencieux reste muet.
-    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
-    if (_ctxAudio.state === "running" && _audioArme) return true;
-    if (_ctxAudio.state === "suspended") _ctxAudio.resume();
-    // iOS ne tient le contexte pour débloqué qu'après une première lecture,
-    // même inaudible. Un échantillon d'un seul cadre suffit.
-    const src = _ctxAudio.createBufferSource();
-    src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
-    src.connect(_ctxAudio.destination);
-    src.start(0);
-    _audioArme = true;
-    return true;
-  } catch { return false; }
+    if (AC) {
+      if (!_ctxAudio) _ctxAudio = new AC();
+      if (_ctxAudio.state === "suspended") _ctxAudio.resume();
+      const src = _ctxAudio.createBufferSource();
+      src.buffer = _ctxAudio.createBuffer(1, 1, 22050);
+      src.connect(_ctxAudio.destination);
+      src.start(0);
+    }
+  } catch {}
+  return sonnerieArmee();
 }
 
 // Renvoie true si le son est effectivement parti.
@@ -634,6 +714,16 @@ function playRestChime() {
   // et c'est le seul retour qui reste si le son est refusé. iOS ne la gère pas
   // — l'appel est simplement ignoré, sans erreur.
   try { if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]); } catch {}
+  // L'élément <audio> d'abord : c'est le seul canal qui passe l'interrupteur
+  // silencieux de l'iPhone.
+  if (_elSonnerie) {
+    try {
+      _elSonnerie.currentTime = 0;
+      const p = _elSonnerie.play();
+      if (p && p.catch) p.catch(() => {});
+      return true;
+    } catch { /* on retombe sur la Web Audio ci-dessous */ }
+  }
   const ctx = _ctxAudio;
   if (!ctx) return false;
   try {
@@ -675,15 +765,27 @@ function TestSonnerie() {
         onClick={() => {
           armerSonnerie();
           const ok = playRestChime();
-          setRetour(ok
-            ? "Sonnerie jouée. Tu n'as rien entendu ? Vérifie le bouton silencieux et le volume de ton téléphone."
-            : "Ton navigateur bloque encore le son. Ferme puis rouvre l'app, et réessaie.");
+          const d = diagnosticSonnerie();
+          setRetour({
+            ok,
+            texte: ok
+              ? "Sonnerie envoyée. Tu n'as rien entendu ? Monte le volume — et sur iPhone, vérifie le petit interrupteur sur le côté."
+              : "Le son est encore bloqué. Ferme complètement l'app, rouvre-la, touche l'écran une fois, puis réessaie.",
+            detail: `audio ${d.element ? (d.elementArme ? "prêt" : "en attente") : "absent"}`
+              + ` · session ${d.sessionAudio} · contexte ${d.contexte}`
+              + ` · vibration ${d.vibration ? "oui" : "non"}`,
+          });
         }}
         style={{ width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit" }}>
         TESTER LA SONNERIE
       </button>
       {retour && (
-        <div style={{ fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 }}>{retour}</div>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 10.5, color: retour.ok ? T.textSub : T.warnText, lineHeight: 1.5 }}>{retour.texte}</div>
+          {/* Le détail technique sert au coach quand un coaché dit « ça ne
+              marche pas » : il le lit et sait quoi chercher, au lieu de deviner. */}
+          <div style={{ fontSize: 9, color: T.textMuted, marginTop: 4, fontFamily: "monospace" }}>{retour.detail}</div>
+        </div>
       )}
     </div>
   );
@@ -2091,7 +2193,7 @@ function BottomTabBar({ activePage, onNavigate, showNutrition, weighReminder }) 
     { id: "profile",  label: "Profil",   icon: "profile" },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
       {tabs.map(tab => {
         const isActive = activePage === tab.id;
         const showDot = tab.id === "nutrition" && weighReminder;
@@ -2492,7 +2594,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
       `}</style>
 
       {/* Top mini-status bar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 }}>FORGE COACHING</div>
@@ -3967,7 +4069,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
       </div>
 
       {/* Barre d'actions fixe */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.95)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg-opaque)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 }}>
         {msg && <div style={{ textAlign: "center", fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, marginBottom: 8 }}>{msg}</div>}
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={doSaveDraft} disabled={saving} style={{ flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Brouillon</button>
@@ -4515,7 +4617,7 @@ function CoachTabBar({ activePage, onNavigate }) {
     { id: "library",  label: "Exercices", icon: "workout" },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
       {tabs.map(tab => {
         const isActive = activePage === tab.id;
         return (
@@ -4582,7 +4684,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
         .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
       `}</style>
 
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(255,252,247,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
           <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 }}>FORGE · COACH</div>

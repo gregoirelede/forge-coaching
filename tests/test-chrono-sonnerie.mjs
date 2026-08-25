@@ -31,7 +31,15 @@ const ok = (c, m) => { if (!c) ko++; console.log(`  ${c ? "OK   " : "ECHEC"}  ${
 
 const injection = `
 // ── Instrumentation de l'audio ────────────────────────────────────────────
-window.__audio = { crees: 0, resumes: 0 };
+window.__audio = { crees: 0, resumes: 0, lectures: 0, sources: [] };
+// L'élément <audio> est désormais le canal principal : sur iPhone en mode
+// silencieux, c'est le SEUL que le système laisse sonner.
+const _play = HTMLMediaElement.prototype.play;
+HTMLMediaElement.prototype.play = function () {
+  window.__audio.lectures++;
+  window.__audio.sources.push(String(this.src || "").slice(0, 24));
+  return _play.call(this);
+};
 const _AC = window.AudioContext || window.webkitAudioContext;
 function ACSuivi() {
   window.__audio.crees++;
@@ -129,9 +137,15 @@ console.log("\n─── Le premier appui débloque le son ───");
     crees: window.__audio.crees,
     armee: sonnerieArmee(),
     session: navigator.audioSession.type,
+    wav: window.__audio.sources[0] || null,
+    lectures: window.__audio.lectures,
   }));
   ok(apres.crees === 1, `un seul contexte audio est créé (${apres.crees})`);
   ok(apres.armee === true, "la sonnerie est armée");
+  ok(apres.wav && apres.wav.startsWith("data:audio/wav"),
+     "un élément <audio> porte la sonnerie, synthétisée en WAV");
+  ok(apres.lectures >= 1,
+     `l'élément est bien débloqué par une lecture dans le geste (${apres.lectures})`);
   ok(apres.session === "playback",
      `la session audio est déclarée « playback » (${apres.session}) — sinon l'interrupteur silencieux de l'iPhone coupe tout`);
 }
@@ -139,10 +153,13 @@ console.log("\n─── Le premier appui débloque le son ───");
 console.log("\n─── Le contexte est RÉUTILISÉ, jamais recréé ───");
 {
   const r = await p.evaluate(() => {
+    const avant = window.__audio.lectures;
     const res = [playRestChime(), playRestChime(), playRestChime()];
-    return { res, crees: window.__audio.crees };
+    return { res, crees: window.__audio.crees, jouees: window.__audio.lectures - avant };
   });
   ok(r.res.every(Boolean), "trois sonneries de suite partent toutes");
+  ok(r.jouees === 3,
+     `chaque sonnerie passe par l'élément <audio> (${r.jouees} lectures) — le canal que le mode silencieux laisse passer`);
   ok(r.crees === 1,
      `toujours un seul contexte après trois sonneries (${r.crees}) — l'ancienne version en créait un par bip`);
 }
