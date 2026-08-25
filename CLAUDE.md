@@ -1402,7 +1402,7 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 | Dernier build déployé | **25 août 2026** — v7u, 579 292 octets, 7602 lignes |
 | Contenu de ce build | La sonnerie sort d'un élément `<audio>` (le seul canal que le mode silencieux iOS laisse passer) · bandeau haut et barre d'onglets alignés sur le thème sombre |
 | Build précédent | 16 août 2026 — v7t, 575 515 octets. Déclenchement de la sonnerie dans un geste, chrono fondé sur une heure de fin |
-| **En attente** | **Le programme de Meyssa Razzouk.** `sql/2026-08-25-programme-meyssa.sql` est écrit, éprouvé sur une base Postgres locale et couvert par `tests/test-programme-meyssa.mjs`, mais **pas encore joué en production** : le connecteur Supabase a refusé tous les `execute_sql` de la session du 25 août (« requires approval »), alors que les outils de lecture de schéma passaient. Greg doit le coller dans le SQL Editor. Rien d'autre en attente : 22 tables en base, RLS active partout |
+| **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
