@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7v** | **Regénérer une diète demande confirmation** — le bouton écrasait 8 repas sans rien demander, et la diète composée à la main d'une coachée cœliaque y est passée | 579 906 o | 7628 |
 | **v7u** | **La sonnerie passe le mode silencieux de l'iPhone** : elle sort désormais d'un élément `<audio>`, seul canal qu'iOS laisse sonner interrupteur baissé. Bandeau haut et barre d'onglets suivent enfin le mode sombre | 579 292 o | 7602 |
 | **v7t** | La sonnerie de repos est déclenchée dans un geste, et le chrono ne gèle plus écran verrouillé | 575 515 o | 7500 |
 | **v7s** | **Table d'équivalences** : par quoi remplacer chaque aliment, à macro égale et quantité ajustée. Correction majeure au passage — une allergie saisie « gluten » ne filtrait presque rien | 572 620 o | 7379 |
@@ -1151,6 +1152,14 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Action destructrice sans confirmation (trouvé le 26 août 2026, v7v).** Le bouton
+  « REGÉNÉRER LA DIÈTE » remplaçait les 8 repas d'un coaché sans rien demander. Il n'y a
+  **aucun historique des diètes**, et le plan gratuit de Supabase ne fait **aucune sauvegarde** :
+  une diète écrasée n'existe plus nulle part. La diète sans gluten d'Anaïs, composée à la main,
+  y est passée le 24 août. Règle : toute action qui détruit des données passe par `useConfirm`,
+  la confirmation **nomme ce qui sera perdu** (« les 8 repas et 28 aliments actuels »), et elle
+  n'apparaît **que** s'il y a réellement quelque chose à perdre — la première génération part
+  directement.
 - **Fonds de barres écrits en dur (trouvé le 25 août 2026, v7u).** Le bandeau haut et la barre
   d'onglets sont floutés (`backdrop-filter`), donc leur fond doit être **semi-transparent** — ils
   ne peuvent pas se contenter de `--surface`, et les cinq occurrences avaient fini en dur, blanches
@@ -1399,9 +1408,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **25 août 2026** — v7u, 579 292 octets, 7602 lignes |
-| Contenu de ce build | La sonnerie sort d'un élément `<audio>` (le seul canal que le mode silencieux iOS laisse passer) · bandeau haut et barre d'onglets alignés sur le thème sombre |
-| Build précédent | 16 août 2026 — v7t, 575 515 octets. Déclenchement de la sonnerie dans un geste, chrono fondé sur une heure de fin |
+| Dernier build déployé | **26 août 2026** — v7v, 579 906 octets, 7628 lignes |
+| Contenu de ce build | Regénérer une diète demande confirmation quand il y a quelque chose à écraser |
+| Build précédent | 25 août 2026 — v7u, 579 292 octets. Sonnerie sur élément `<audio>`, barres alignées sur le thème sombre |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

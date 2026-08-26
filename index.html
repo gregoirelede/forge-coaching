@@ -4308,6 +4308,7 @@ function CoachNutritionView({ ctx, coachee }) {
   const [section, setSection] = useState("parametres");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const { confirm, confirmUI } = useConfirm();
   const reload = useCallback(async () => {
     const [{ data: prof }, np, wl, prog, phs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", coachee.id).single(),
@@ -4398,6 +4399,16 @@ function CoachNutritionView({ ctx, coachee }) {
     if (!foods.length) {
       setMsg("La base d'aliments est vide : la table Ciqual n'a pas encore \xE9t\xE9 import\xE9e");
       return;
+    }
+    if (diete) {
+      const nb = (diete.repas || []).length, na = (diete.items || []).length;
+      const ok = await confirm({
+        title: "REG\xC9N\xC9RER LA DI\xC8TE ?",
+        message: `Les ${nb} repas et ${na} aliments actuels seront remplac\xE9s par un tirage neuf. Tous les grammages et remplacements faits \xE0 la main seront perdus, et c'est d\xE9finitif. Pour ne changer qu'un aliment, ferme ceci et touche-le directement dans la di\xE8te.`,
+        confirmLabel: "TOUT REMPLACER",
+        danger: true
+      });
+      if (!ok) return;
     }
     setBusy(true);
     setMsg("");
@@ -4597,7 +4608,7 @@ function CoachNutritionView({ ctx, coachee }) {
       onChoose: (f) => poserAliment(picker.mealId, f, picker.item),
       onClose: () => setPicker(null)
     }
-  ));
+  ), confirmUI);
 }
 function NutritionPage({ ctx }) {
   const { supabase, userId, appData, refreshWeighedToday } = ctx;

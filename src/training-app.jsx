@@ -5639,6 +5639,11 @@ function CoachNutritionView({ ctx, coachee }) {
   const [section, setSection] = useState("parametres"); // parametres | sante | cibles | diete | poids
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  // Placé ICI, avec les autres hooks, et surtout AVANT les `return` anticipés
+  // plus bas : un hook appelé après un return n'est pas exécuté à tous les
+  // rendus, et React refuse alors de rendre le composant. Le piège s'est déjà
+  // produit dans ce composant précis.
+  const { confirm, confirmUI } = useConfirm();
 
   const reload = useCallback(async () => {
     const [{ data: prof }, np, wl, prog, phs] = await Promise.all([
@@ -5730,6 +5735,26 @@ function CoachNutritionView({ ctx, coachee }) {
       return;
     }
     if (!foods.length) { setMsg("La base d'aliments est vide : la table Ciqual n'a pas encore été importée"); return; }
+
+    // REGÉNÉRER ÉCRASE TOUT, et sans retour possible : il n'y a pas d'historique
+    // des diètes, et le plan gratuit de Supabase ne fait aucune sauvegarde.
+    // Le 24 août 2026, un appui de trop a effacé une diète composée à la main
+    // pour une coachée cœliaque, remplacée par un tirage aléatoire. On ne
+    // demande rien quand il n'y a rien à perdre — la première génération part
+    // directement.
+    if (diete) {
+      const nb = (diete.repas || []).length, na = (diete.items || []).length;
+      const ok = await confirm({
+        title: "REGÉNÉRER LA DIÈTE ?",
+        message: `Les ${nb} repas et ${na} aliments actuels seront remplacés par un tirage neuf. `
+               + "Tous les grammages et remplacements faits à la main seront perdus, et c'est définitif. "
+               + "Pour ne changer qu'un aliment, ferme ceci et touche-le directement dans la diète.",
+        confirmLabel: "TOUT REMPLACER",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
     setBusy(true); setMsg("");
     try {
       const d = genererDiete({ cibles: targets, nutriProfile: nutri, foods, habituels: idsHabituels });
@@ -6251,6 +6276,7 @@ function CoachNutritionView({ ctx, coachee }) {
           onClose={() => setPicker(null)}
         />
       )}
+      {confirmUI}
     </div>
   );
 }
