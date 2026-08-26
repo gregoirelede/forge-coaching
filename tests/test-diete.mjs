@@ -688,6 +688,61 @@ console.log("\n─── Le coach génère une première diète ───");
   console.log("\n─── Le coach peut préparer avant que le coaché ait consenti ───");
   ok(/En attente/.test(await p.locator("body").innerText()),
      "il est prévenu que le coaché n'a pas encore accepté le cadre");
+  // Rien à écraser la première fois : on ne demande pas de confirmation pour
+  // une action qui ne détruit rien.
+  ok(!/TOUT REMPLACER/.test(await p.locator("body").innerText()),
+     "aucune confirmation demandée pour la PREMIÈRE diète — il n'y a rien à perdre");
+  await ctx.close();
+}
+
+// ═══ 5 bis. REGÉNÉRER DEMANDE CONFIRMATION ═════════════════════════════════
+//
+// Le 24 août 2026, un appui de trop sur ce bouton a effacé une diète composée
+// à la main pour une coachée cœliaque, remplacée par un tirage aléatoire. Il
+// n'y a pas d'historique des diètes et le plan gratuit de Supabase ne fait
+// aucune sauvegarde : une fois écrasée, elle n'existe plus nulle part.
+console.log("\n─── Regénérer par-dessus une diète existante ───");
+{
+  const { ctx, p, erreurs } = await ouvrir({ role: "coach" });
+  await p.locator("text=Marie Dupont").first().click();
+  await p.waitForTimeout(1100);
+  await p.locator("text=Nutrition").last().click();
+  await p.waitForTimeout(900);
+  await p.locator("button", { hasText: /^Diète$/ }).click();
+  await p.waitForTimeout(1000);
+  ok(/REGÉNÉRER LA DIÈTE/.test(await p.locator("body").innerText()),
+     "le bouton annonce qu'il va regénérer, pas générer");
+
+  console.log("\n─── ANNULER NE TOUCHE À RIEN ───");
+  await p.evaluate(() => { window.__journal.inserts = []; window.__journal.updates = []; });
+  await p.locator("text=REGÉNÉRER LA DIÈTE").click();
+  await p.waitForTimeout(700);
+  const feuille = await p.locator("body").innerText();
+  ok(/REGÉNÉRER LA DIÈTE \?/.test(feuille), "une confirmation s'ouvre");
+  ok(/seront remplacés par un tirage neuf/.test(feuille),
+     "elle dit ce qui sera perdu, pas seulement « êtes-vous sûr »");
+  ok(/définitif/.test(feuille), "et qu'il n'y a pas de retour en arrière");
+  ok(/TOUT REMPLACER/.test(feuille), "le bouton de confirmation nomme l'action");
+  await p.screenshot({ path: `${CAPTURES}diete-confirmation.png`, fullPage: true });
+
+  await p.locator("button", { hasText: /^Annuler$/ }).click();
+  await p.waitForTimeout(900);
+  const apresAnnul = await p.evaluate(() => window.__journal);
+  ok(apresAnnul.inserts.filter(i => i.table === "diet_plans").length === 0
+     && apresAnnul.inserts.filter(i => i.table === "diet_meals").length === 0,
+     "ANNULER n'écrit rien en base — la diète existante est intacte");
+  ok(/Blanc de poulet cuit/.test(await p.locator("body").innerText()),
+     "et elle est toujours affichée");
+
+  console.log("\n─── CONFIRMER remplace bien ───");
+  await p.locator("text=REGÉNÉRER LA DIÈTE").click();
+  await p.waitForTimeout(700);
+  await p.locator("button", { hasText: /TOUT REMPLACER/ }).click();
+  await p.waitForTimeout(2400);
+  const apresOk = await p.evaluate(() => window.__journal);
+  ok(apresOk.inserts.filter(i => i.table === "diet_meals").length === 8,
+     `confirmer regénère bien les 8 repas (${apresOk.inserts.filter(i => i.table === "diet_meals").length})`);
+  ok(erreurs.length === 0, `aucune erreur applicative (${erreurs.length})${erreurs[0] ? " : " + erreurs[0].slice(0, 90) : ""}`);
   await ctx.close();
 }
 
