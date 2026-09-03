@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7w** | **Cinq sonneries au choix** · plus de bip à l'ouverture de l'app · plus de carte « Lecture en cours » sur l'écran verrouillé · **la semaine bascule le lundi à minuit pour tout le monde** · « commencer la séance » ouvre la séance du jour | 588 345 o | 7884 |
 | **v7v** | **Regénérer une diète demande confirmation** — le bouton écrasait 8 repas sans rien demander, et la diète composée à la main d'une coachée cœliaque y est passée | 579 906 o | 7628 |
 | **v7u** | **La sonnerie passe le mode silencieux de l'iPhone** : elle sort désormais d'un élément `<audio>`, seul canal qu'iOS laisse sonner interrupteur baissé. Bandeau haut et barre d'onglets suivent enfin le mode sombre | 579 292 o | 7602 |
 | **v7t** | La sonnerie de repos est déclenchée dans un geste, et le chrono ne gèle plus écran verrouillé | 575 515 o | 7500 |
@@ -1034,6 +1035,25 @@ Le réglage prend cinq formes selon ce que permet l'appareil :
 > affiche l'état réel de chaque canal (`diagnosticSonnerie`) : si le son ne sort pas sur un
 > appareil, on sait lequel des trois est en cause au lieu de deviner.
 >
+> **Cinq sonneries au choix** *(v7w)* : Cloche, Gong de salle, Marimba, Chrono, Ascension. Elles
+> sont **synthétisées au démarrage** à partir de `SONNERIES` (les notes) et `TIMBRES` (les
+> harmoniques et l'enveloppe) — rien à héberger, aucune requête réseau, et l'index.html n'enfle
+> pas de 200 Ko de fichiers audio. Un appui sur une sonnerie la choisit **et** la fait entendre :
+> l'appui est un geste, c'est donc le seul moment où le navigateur autorise la lecture. Le choix
+> vit en localStorage (`restSoundStyle`), comme les autres réglages.
+>
+> **Le son ne se prépare que si le coaché en veut** *(v7w)*. Le déblocage était inconditionnel :
+> chez quelqu'un qui avait coupé la sonnerie, l'app touchait quand même à la session audio du
+> téléphone. Un réglage coupé doit couper la préparation, pas seulement l'effet.
+>
+> **Ce que l'app ne peut PAS faire : un chronomètre dans la Dynamic Island.** Les Live Activities
+> d'iOS relèvent d'ActivityKit, réservé aux applications natives — aucune API web n'y donne
+> accès, et l'équivalent Android (service de premier plan avec notification persistante) est
+> fermé de la même façon à une PWA. La seule surface système offerte à une page web est justement
+> la carte « Lecture en cours », celle qu'on vient de faire disparaître parce qu'elle affichait
+> l'app comme un lecteur de musique. Il n'y a pas de troisième voie sans passer par une app
+> native publiée sur les stores — écarté en Partie B.1.
+>
 > **La leçon de méthode.** « Le son ne sort pas » a deux causes indépendantes qui donnent
 > exactement le même symptôme, et corriger la première ne révèle pas la seconde — l'app se tait
 > pareil. Un correctif audio n'est jamais prouvé par le code ni par les tests : il l'est par un
@@ -1070,7 +1090,10 @@ Ne pas les remettre en cause sans validation explicite de ma part.
 1. **Charge et reps comparées indépendamment**, jamais par tonnage. Code couleur vert/rouge sur chaque bulle séparément.
 2. Comparaison **strictement avec la semaine immédiatement précédente**. Modifier la semaine N recalcule uniquement les couleurs de N+1, jamais au-delà.
 3. **Échec musculaire supposé à chaque série** — c'est le fondement de la comparaison.
-4. **Numérotation des semaines continue** depuis le début du coaching, quel que soit le changement de programme.
+4. **Numérotation des semaines continue** depuis le début du coaching, quel que soit le
+   changement de programme. **Une semaine va du LUNDI au DIMANCHE**, pour tout le monde : la
+   semaine 1 est la semaine civile de la création du compte, et la bascule se fait le lundi à
+   minuit, heure locale — jamais au jour ni à l'heure d'inscription (corrigé le 3 septembre 2026).
 5. **Semaine "en cours"** = déterminée par la date, **jamais** par la validation d'une série. Loguer dans une semaine future ne doit pas déplacer la semaine en cours (bug corrigé en v7b).
 6. Stockage **hybride localStorage + Supabase**.
 7. **L'IA sert au coach** pour remplir sa bibliothèque de recettes. **Jamais** de génération par client et par semaine (budget). Une image par recette maximum, réutilisée.
@@ -1152,6 +1175,32 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **`HTMLMediaElement.volume` est en LECTURE SEULE sur iOS (trouvé le 3 septembre 2026, v7w).**
+  Le déblocage de l'audio jouait la sonnerie avec `volume = 0` : sur iPhone l'affectation est
+  ignorée **sans lever d'erreur**, et le bip partait à plein volume à chaque ouverture de l'app —
+  y compris chez un coaché qui avait coupé le son. Pour rendre un élément muet, `muted = true`.
+  Mieux : débloquer sur un élément qui ne contient **que du silence**, pour que même un `muted`
+  ignoré ne produise rien.
+- **`audioSession.type = "playback"` déclare l'app comme lecteur multimédia (même date, v7w).**
+  C'est ce qui permet de sonner interrupteur silencieux baissé, et c'est **la même chose** qui
+  fait apparaître une carte « Lecture en cours » avec un bouton play sur l'écran verrouillé. Il
+  n'existe pas de réglage qui donne l'un sans l'autre : on n'élève donc la session que le temps
+  du bip, et on la redescend à `auto` dès qu'il est fini (`onended` + un `setTimeout` de filet).
+- **Une action qui ne s'arme que « au cas où » ne doit pas s'armer du tout (même date, v7w).**
+  Le déblocage audio tournait sans condition, chez tout le monde. Un réglage coupé doit couper
+  la préparation, pas seulement l'effet final — sinon les effets de bord du dispositif restent.
+- **Compter des tranches de 7 jours depuis un timestamp ne fait PAS des semaines (même date, v7w).**
+  `currentWeekFromDate` partait de l'instant de création du compte : un coaché inscrit un jeudi
+  à 14 h changeait de semaine le jeudi suivant à 14 h. Deux erreurs dans une ligne — le mauvais
+  jour ET la mauvaise heure. Toute semaine se calcule en ancrant les **deux** bouts sur le lundi
+  00:00 de leur semaine civile (`lundiDeLaSemaine`), et avec `Math.round` : les changements
+  d'heure décalent l'écart d'une heure et feraient perdre un jour deux fois par an.
+- **Un bouton qui navigue sans dire OÙ (même date, v7w).** « COMMENCER LA SÉANCE » appelait
+  `navigate("workout")` sans toucher à `activeSessionId`, initialisé une fois pour toutes à la
+  première séance du programme : le bouton ouvrait donc la séance du lundi quel que soit le jour.
+  Corollaire à ne pas rater : `onClick={maFonction}` passe **l'événement React** en premier
+  argument — passer d'une fonction sans paramètre à une fonction paramétrée oblige à réécrire
+  tous les `onClick` en flèche.
 - **Action destructrice sans confirmation (trouvé le 26 août 2026, v7v).** Le bouton
   « REGÉNÉRER LA DIÈTE » remplaçait les 8 repas d'un coaché sans rien demander. Il n'y a
   **aucun historique des diètes**, et le plan gratuit de Supabase ne fait **aucune sauvegarde** :
@@ -1408,9 +1457,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **26 août 2026** — v7v, 579 906 octets, 7628 lignes |
-| Contenu de ce build | Regénérer une diète demande confirmation quand il y a quelque chose à écraser |
-| Build précédent | 25 août 2026 — v7u, 579 292 octets. Sonnerie sur élément `<audio>`, barres alignées sur le thème sombre |
+| Dernier build déployé | **3 septembre 2026** — v7w, 588 345 octets, 7884 lignes |
+| Contenu de ce build | Sonneries au choix, correction du son parasite à l'ouverture et de la carte « Lecture en cours » · semaine lundi→dimanche · « commencer la séance » ouvre la bonne séance |
+| Build précédent | 26 août 2026 — v7v, 579 906 octets. Confirmation avant de regénérer une diète |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

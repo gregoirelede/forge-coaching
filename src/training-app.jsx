@@ -255,15 +255,38 @@ function tableAbsente(error) {
   return error.code === "42P01" || /does not exist|schema cache/i.test(error.message || "");
 }
 
-// Calcule la semaine de coaching en cours à partir de la date de création du compte.
-// Semaine 1 = la semaine de la création. Figée : ne dépend que du temps écoulé.
+// Les jours tels que les programmes les nomment. Indexés comme getDay(),
+// donc dimanche en 0 — une seule définition, pour que rien ne diverge.
+const JOURS_SEMAINE = { 0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI" };
+
+// Le lundi 00:00 de la semaine qui contient cette date, en heure locale.
+// getDay() rend 0 pour dimanche : on décale pour que lundi vaille 0.
+function lundiDeLaSemaine(d) {
+  const j = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  j.setDate(j.getDate() - ((j.getDay() + 6) % 7));
+  return j;
+}
+
+// Calcule la semaine de coaching en cours à partir de la date de création du
+// compte. Semaine 1 = la semaine civile de la création.
+//
+// UNE SEMAINE VA DU LUNDI AU DIMANCHE, POUR TOUT LE MONDE. La version d'origine
+// comptait des tranches de 7 jours depuis l'INSTANT de création : un coaché
+// inscrit un jeudi à 14 h changeait de semaine le jeudi suivant à 14 h. Deux
+// défauts dans la même ligne — le mauvais jour, et la mauvaise heure — et
+// personne ne basculait le lundi.
+//
+// On ancre donc les deux bouts sur le lundi de leur semaine : la différence
+// est un multiple exact de 7 jours, et le passage se fait à minuit.
+//
+// `Math.round` et non `Math.floor` : les changements d'heure d'été décalent
+// l'écart d'une heure, ce qui ferait perdre un jour entier deux fois par an.
 function currentWeekFromDate(createdAtISO) {
   if (!createdAtISO) return 1;
   const start = new Date(createdAtISO);
   if (isNaN(start.getTime())) return 1;
-  const now = new Date();
-  const days = Math.floor((now - start) / 86400000);
-  return Math.max(1, Math.floor(days / 7) + 1);
+  const jours = Math.round((lundiDeLaSemaine(new Date()) - lundiDeLaSemaine(start)) / 86400000);
+  return Math.max(1, Math.floor(jours / 7) + 1);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -467,8 +490,8 @@ const settingsKey = (userId) => `forge_settings_${userId}`;
 function loadSettings(userId) {
   try {
     const s = JSON.parse(localStorage.getItem(settingsKey(userId)) || "null");
-    return { restTimers: true, restSound: true, ...(s || {}) };
-  } catch { return { restTimers: true, restSound: true }; }
+    return { restTimers: true, restSound: true, restSoundStyle: SONNERIE_DEFAUT, ...(s || {}) };
+  } catch { return { restTimers: true, restSound: true, restSoundStyle: SONNERIE_DEFAUT }; }
 }
 function saveSettings(userId, s) {
   try { localStorage.setItem(settingsKey(userId), JSON.stringify(s)); } catch {}
@@ -615,9 +638,103 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
 
 // Fabrique un WAV mono 16 bits contenant les trois bips ascendants. Généré au
 // vol : rien à héberger, et l'index.html n'enfle pas de 30 Ko.
-function wavSonnerie() {
-  const tauxEch = 22050, bips = [660, 880, 1046], duree = 0.16, ecart = 0.02;
-  const total = Math.round(tauxEch * (bips.length * (duree + ecart)));
+// ═══ LES SONNERIES DISPONIBLES ═══════════════════════════════════════════════
+//
+// Chacune est une liste de partiels : { f, t, d, a, h } — fréquence en Hz,
+// instant de départ et durée en secondes, amplitude, et le profil de timbre.
+// Tout est synthétisé au démarrage : rien à héberger, aucune requête réseau,
+// et l'index.html n'enfle pas de 200 Ko de fichiers audio.
+//
+// « h » décide de la couleur du son, et c'est lui qui fait la différence entre
+// un bip d'ascenseur et quelque chose qu'on a envie d'entendre 40 fois par
+// séance : le nombre d'harmoniques, leur poids, et la vitesse d'extinction.
+const SONNERIES = {
+  cloche: {
+    nom: "Cloche", detail: "Trois notes claires qui montent. Neutre, passe partout.",
+    notes: [
+      { f: 784,  t: 0,    d: 0.55, a: 0.9,  h: "cloche" },
+      { f: 988,  t: 0.14, d: 0.55, a: 0.9,  h: "cloche" },
+      { f: 1319, t: 0.28, d: 0.85, a: 1.0,  h: "cloche" },
+    ],
+  },
+  gong: {
+    nom: "Gong de salle", detail: "Un coup grave et long, comme la cloche d'un ring.",
+    notes: [
+      { f: 196, t: 0, d: 1.60, a: 1.0, h: "gong" },
+      { f: 294, t: 0, d: 1.40, a: 0.5, h: "gong" },
+    ],
+  },
+  marimba: {
+    nom: "Marimba", detail: "Bois chaud, attaque douce. La moins agressive à répétition.",
+    notes: [
+      { f: 523, t: 0,    d: 0.40, a: 0.9, h: "bois" },
+      { f: 659, t: 0.11, d: 0.40, a: 0.9, h: "bois" },
+      { f: 784, t: 0.22, d: 0.65, a: 1.0, h: "bois" },
+    ],
+  },
+  chrono: {
+    nom: "Chrono", detail: "Double bip sec et net. C'est celui qui perce le bruit d'une salle.",
+    notes: [
+      { f: 1046, t: 0,    d: 0.11, a: 0.85, h: "net" },
+      { f: 1046, t: 0.17, d: 0.11, a: 0.85, h: "net" },
+      { f: 1568, t: 0.34, d: 0.20, a: 1.0,  h: "net" },
+    ],
+  },
+  ascension: {
+    nom: "Ascension", detail: "Arpège montant de cinq notes. Le plus énergique.",
+    notes: [
+      { f: 523,  t: 0,    d: 0.28, a: 0.7, h: "cloche" },
+      { f: 659,  t: 0.08, d: 0.28, a: 0.8, h: "cloche" },
+      { f: 784,  t: 0.16, d: 0.28, a: 0.9, h: "cloche" },
+      { f: 1046, t: 0.24, d: 0.36, a: 1.0, h: "cloche" },
+      { f: 1319, t: 0.32, d: 0.70, a: 1.0, h: "cloche" },
+    ],
+  },
+};
+const SONNERIE_DEFAUT = "cloche";
+
+// Les harmoniques de chaque timbre : [rang, poids]. Un rang non entier donne
+// un partiel inharmonique — c'est exactement ce qui distingue une cloche ou un
+// gong d'un orgue.
+const TIMBRES = {
+  cloche:  { partiels: [[1, 1], [2, 0.42], [3, 0.18], [4.2, 0.10]], decroissance: 3.2, attaque: 0.004 },
+  gong:    { partiels: [[1, 1], [1.48, 0.6], [2.34, 0.35], [3.1, 0.2], [4.7, 0.12]], decroissance: 1.6, attaque: 0.010 },
+  bois:    { partiels: [[1, 1], [3.9, 0.30], [10.5, 0.08]], decroissance: 6.0, attaque: 0.003 },
+  net:     { partiels: [[1, 1], [2, 0.30], [3, 0.15], [5, 0.06]], decroissance: 5.0, attaque: 0.002 },
+};
+
+// Rend une sonnerie en WAV mono 16 bits, renvoyé en data URI.
+function wavSonnerie(styleId) {
+  const style = SONNERIES[styleId] || SONNERIES[SONNERIE_DEFAUT];
+  const tauxEch = 22050;
+  const fin = Math.max(...style.notes.map(n => n.t + n.d));
+  const total = Math.ceil(tauxEch * (fin + 0.05));
+  const ech = new Float32Array(total);
+
+  for (const note of style.notes) {
+    const timbre = TIMBRES[note.h] || TIMBRES.cloche;
+    const depart = Math.round(note.t * tauxEch);
+    const n = Math.round(note.d * tauxEch);
+    const attaque = Math.max(1, Math.round(timbre.attaque * tauxEch));
+    for (let i = 0; i < n && depart + i < total; i++) {
+      const s = i / tauxEch;
+      // Attaque courte puis extinction exponentielle : c'est l'enveloppe d'un
+      // objet frappé. Une coupure franche produirait un claquement.
+      const env = Math.min(1, i / attaque) * Math.exp(-timbre.decroissance * s);
+      let v = 0;
+      for (const [rang, poids] of timbre.partiels) {
+        v += Math.sin(2 * Math.PI * note.f * rang * s) * poids;
+      }
+      ech[depart + i] += (v / timbre.partiels.length) * env * note.a;
+    }
+  }
+
+  // Normalisation : chaque sonnerie sort au même niveau, quel que soit le
+  // nombre de notes qui se superposent.
+  let crete = 0;
+  for (let i = 0; i < total; i++) crete = Math.max(crete, Math.abs(ech[i]));
+  const gain = crete > 0 ? 0.82 / crete : 0;
+
   const octets = new ArrayBuffer(44 + total * 2);
   const vue = new DataView(octets);
   const txt = (pos, s) => { for (let i = 0; i < s.length; i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
@@ -626,17 +743,28 @@ function wavSonnerie() {
   vue.setUint32(24, tauxEch, true); vue.setUint32(28, tauxEch * 2, true);
   vue.setUint16(32, 2, true); vue.setUint16(34, 16, true);
   txt(36, "data"); vue.setUint32(40, total * 2, true);
-  let pos = 44;
-  for (const freq of bips) {
-    const n = Math.round(tauxEch * duree);
-    for (let i = 0; i < n; i++) {
-      // Enveloppe douce : une attaque franche produit un claquement.
-      const env = Math.min(1, i / (tauxEch * 0.01)) * Math.pow(1 - i / n, 2);
-      vue.setInt16(pos, Math.round(Math.sin((2 * Math.PI * freq * i) / tauxEch) * 26000 * env), true);
-      pos += 2;
-    }
-    pos += Math.round(tauxEch * ecart) * 2;
+  for (let i = 0; i < total; i++) {
+    vue.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.round(ech[i] * gain * 32767))), true);
   }
+  let bin = "";
+  const u8 = new Uint8Array(octets);
+  const PAS = 8192; // btoa sur 200 000 arguments d'un coup fait sauter la pile
+  for (let i = 0; i < u8.length; i += PAS) bin += String.fromCharCode.apply(null, u8.subarray(i, i + PAS));
+  return "data:audio/wav;base64," + btoa(bin);
+}
+
+// Un WAV de silence pur, 50 ms. C'est LUI qu'on joue pour débloquer l'audio
+// dans le premier geste — voir la note sur `.volume` plus bas.
+function wavSilence() {
+  const tauxEch = 8000, total = 400;
+  const octets = new ArrayBuffer(44 + total * 2);
+  const vue = new DataView(octets);
+  const txt = (pos, s) => { for (let i = 0; i < s.length; i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
+  txt(0, "RIFF"); vue.setUint32(4, 36 + total * 2, true); txt(8, "WAVEfmt ");
+  vue.setUint32(16, 16, true); vue.setUint16(20, 1, true); vue.setUint16(22, 1, true);
+  vue.setUint32(24, tauxEch, true); vue.setUint32(28, tauxEch * 2, true);
+  vue.setUint16(32, 2, true); vue.setUint16(34, 16, true);
+  txt(36, "data"); vue.setUint32(40, total * 2, true);
   let bin = "";
   const u8 = new Uint8Array(octets);
   for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
@@ -646,6 +774,8 @@ function wavSonnerie() {
 let _ctxAudio = null;
 let _audioArme = false;
 let _elSonnerie = null;   // <audio> : le seul canal qui passe le mode silencieux
+let _elSilence = null;    // l'élément qui sert UNIQUEMENT au déblocage
+let _styleArme = null;    // le style actuellement chargé dans _elSonnerie
 
 // La sonnerie est-elle réellement en état de sonner, maintenant ?
 function sonnerieArmee() {
@@ -658,42 +788,91 @@ function diagnosticSonnerie() {
   return {
     element: !!_elSonnerie,
     elementArme: _audioArme,
+    style: _styleArme || "—",
     contexte: _ctxAudio ? _ctxAudio.state : "absent",
     sessionAudio: (() => { try { return navigator.audioSession ? navigator.audioSession.type : "non gérée"; } catch { return "non gérée"; } })(),
     vibration: !!navigator.vibrate,
   };
 }
 
-// À N'APPELER QUE DEPUIS UN GESTE UTILISATEUR. Ailleurs, le navigateur refuse
-// et le contexte reste muet pour toute la session.
-function armerSonnerie() {
-  // 1 — La session audio en « playback » : c'est elle qui sort le son de la
-  // catégorie « ambiante », celle que l'interrupteur silencieux coupe.
-  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+// Charge (ou recharge) le WAV du style demandé dans l'élément de sonnerie.
+function chargerSonnerie(styleId) {
+  const id = SONNERIES[styleId] ? styleId : SONNERIE_DEFAUT;
+  if (_elSonnerie && _styleArme === id) return;
+  if (!_elSonnerie) {
+    _elSonnerie = new Audio();
+    _elSonnerie.preload = "auto";
+    _elSonnerie.setAttribute("playsinline", "");
+  }
+  _elSonnerie.src = wavSonnerie(id);
+  _styleArme = id;
+}
 
-  // 2 — L'élément <audio>, canal principal. On le débloque en le jouant en
-  // silence dans le geste : iOS n'autorise ensuite les lectures programmées
-  // que sur un élément déjà joué au moins une fois par l'utilisateur.
+// ── LE WIDGET « LECTURE EN COURS », ET POURQUOI IL APPARAISSAIT ──────────────
+//
+// `navigator.audioSession.type = "playback"` est ce qui permet de sonner
+// interrupteur silencieux baissé. Mais c'est AUSSI ce qui déclare l'app comme
+// un lecteur multimédia : iOS affiche alors une carte « Lecture en cours » sur
+// l'écran verrouillé, avec un bouton play, exactement comme une app de musique.
+//
+// Les deux sont la même chose côté système : il n'y a pas de réglage qui donne
+// l'un sans l'autre. La seule sortie est de n'être un lecteur QUE le temps du
+// bip — on élève la session juste avant, on la redescend juste après.
+function eleverSession() {
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+}
+function redescendreSession() {
+  try { if (navigator.audioSession) navigator.audioSession.type = "auto"; } catch {}
+  // Et on efface la carte que le système vient peut-être d'afficher.
   try {
-    if (!_elSonnerie) {
-      _elSonnerie = new Audio(wavSonnerie());
-      _elSonnerie.preload = "auto";
-      _elSonnerie.setAttribute("playsinline", "");
+    if (navigator.mediaSession) {
+      navigator.mediaSession.playbackState = "none";
+      navigator.mediaSession.metadata = null;
     }
+  } catch {}
+}
+
+// À N'APPELER QUE DEPUIS UN GESTE UTILISATEUR. Ailleurs, le navigateur refuse
+// et l'élément reste muet pour toute la session.
+function armerSonnerie(styleId) {
+  chargerSonnerie(styleId);
+
+  // ── LE DÉBLOCAGE SE FAIT SUR UN ÉLÉMENT DE SILENCE, PAS SUR LA SONNERIE ──
+  //
+  // La version précédente débloquait la sonnerie elle-même en la jouant avec
+  // `volume = 0`. Sur iOS, `HTMLMediaElement.volume` est en LECTURE SEULE :
+  // l'affectation est ignorée sans erreur, et le bip partait à plein volume à
+  // l'ouverture de l'app. C'est le son que Greg entendait au lancement.
+  //
+  // `muted = true` fonctionne, lui — mais débloquer un élément qui ne contient
+  // que du silence est plus sûr : même si un jour une plateforme ignorait
+  // `muted`, il n'y aurait toujours rien à entendre.
+  try {
     if (!_audioArme) {
-      const v = _elSonnerie.volume;
-      _elSonnerie.volume = 0;
-      const p = _elSonnerie.play();
-      const finir = () => {
-        try { _elSonnerie.pause(); _elSonnerie.currentTime = 0; _elSonnerie.volume = v; } catch {}
+      if (!_elSilence) {
+        _elSilence = new Audio(wavSilence());
+        _elSilence.preload = "auto";
+        _elSilence.muted = true;
+        _elSilence.setAttribute("playsinline", "");
+      }
+      const p = _elSilence.play();
+      const ok = () => {
+        _audioArme = true;
+        // Le même geste débloque tous les éléments <audio> de la page : on en
+        // profite pour amorcer la sonnerie, muette elle aussi.
+        try {
+          _elSonnerie.muted = true;
+          const q = _elSonnerie.play();
+          const finir = () => { try { _elSonnerie.pause(); _elSonnerie.currentTime = 0; _elSonnerie.muted = false; } catch {} };
+          if (q && q.then) q.then(finir).catch(finir); else finir();
+        } catch {}
       };
-      if (p && p.then) p.then(() => { _audioArme = true; finir(); }).catch(() => { finir(); });
-      else { _audioArme = true; finir(); }
+      if (p && p.then) p.then(ok).catch(() => {}); else ok();
     }
   } catch {}
 
-  // 3 — Le contexte Web Audio, en second rideau pour les navigateurs où
-  // l'élément échoue. Il reste inutile sur un iPhone en silencieux.
+  // Le contexte Web Audio, en second rideau pour les navigateurs où l'élément
+  // échoue. Il reste inutile sur un iPhone en silencieux.
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) {
@@ -709,39 +888,51 @@ function armerSonnerie() {
 }
 
 // Renvoie true si le son est effectivement parti.
-function playRestChime() {
+function playRestChime(styleId) {
   // La vibration part d'abord : elle traverse le mode silencieux sur Android,
   // et c'est le seul retour qui reste si le son est refusé. iOS ne la gère pas
   // — l'appel est simplement ignoré, sans erreur.
   try { if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]); } catch {}
+
+  if (styleId && SONNERIES[styleId] && _styleArme !== styleId) chargerSonnerie(styleId);
+
   // L'élément <audio> d'abord : c'est le seul canal qui passe l'interrupteur
-  // silencieux de l'iPhone.
-  if (_elSonnerie) {
+  // silencieux de l'iPhone. On n'est un « lecteur multimédia » que le temps du
+  // bip, sinon la carte Lecture en cours resterait affichée en permanence.
+  if (_elSonnerie && _audioArme) {
     try {
+      eleverSession();
+      _elSonnerie.muted = false;
       _elSonnerie.currentTime = 0;
       const p = _elSonnerie.play();
       if (p && p.catch) p.catch(() => {});
+      const rendre = () => redescendreSession();
+      _elSonnerie.onended = rendre;
+      // Filet : si `ended` ne part pas (lecture refusée, onglet masqué), on
+      // redescend quand même, sinon la carte resterait à l'écran.
+      setTimeout(rendre, 2500);
       return true;
-    } catch { /* on retombe sur la Web Audio ci-dessous */ }
+    } catch {}
   }
+
   const ctx = _ctxAudio;
   if (!ctx) return false;
   try {
     if (ctx.state === "suspended") ctx.resume();
+    const style = SONNERIES[_styleArme] || SONNERIES[SONNERIE_DEFAUT];
     const now = ctx.currentTime;
-    // Trois bips ascendants façon sonnerie
-    [660, 880, 1046].forEach((freq, i) => {
+    for (const note of style.notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.value = freq;
-      const t = now + i * 0.18;
+      osc.frequency.value = note.f;
+      const t = now + note.t;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+      gain.gain.linearRampToValueAtTime(0.32 * note.a, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.d);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(t); osc.stop(t + 0.18);
-    });
+      osc.start(t); osc.stop(t + note.d + 0.02);
+    }
     // On NE FERME PLUS le contexte : le rouvrir hors geste le rendrait muet.
     return ctx.state === "running";
   } catch { return false; }
@@ -757,14 +948,14 @@ function playRestChime() {
 // du navigateur pour toute la session, et il dit au coaché si le son est
 // réellement sorti — la seule façon de découvrir en amont que le téléphone est
 // en silencieux, plutôt qu'au milieu d'une série.
-function TestSonnerie() {
+function TestSonnerie({ style }) {
   const [retour, setRetour] = useState(null);
   return (
     <div style={{ paddingBottom: 13 }}>
       <button className="pressable"
         onClick={() => {
-          armerSonnerie();
-          const ok = playRestChime();
+          armerSonnerie(style);
+          const ok = playRestChime(style);
           const d = diagnosticSonnerie();
           setRetour({
             ok,
@@ -791,7 +982,7 @@ function TestSonnerie() {
   );
 }
 
-function useTimers(soundEnabledRef) {
+function useTimers(soundEnabledRef, styleRef) {
   const [timers, setTimers] = useState({});
   useEffect(() => {
     const tick = () => setTimers(prev => {
@@ -813,7 +1004,7 @@ function useTimers(soundEnabledRef) {
         // sonnerie qui n'a plus aucun sens : l'écran suffit à dire que c'est
         // fini.
         const retard = maintenant - t.finAt;
-        if (retard < 2000 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime();
+        if (retard < 2000 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime(styleRef && styleRef.current);
       }
       return changed ? next : prev;
     });
@@ -822,7 +1013,7 @@ function useTimers(soundEnabledRef) {
     const reveil = () => { if (document.visibilityState === "visible") tick(); };
     document.addEventListener("visibilitychange", reveil);
     return () => { clearInterval(id); document.removeEventListener("visibilitychange", reveil); };
-  }, [soundEnabledRef]);
+  }, [soundEnabledRef, styleRef]);
   const start  = useCallback((k, s) => setTimers(p => ({
     ...p, [k]: { total: s, remaining: s, running: true, done: false, finAt: Date.now() + s * 1000 },
   })), []);
@@ -1154,7 +1345,7 @@ function ErrorScreen({ title, message, onLogout, actionLabel = "Se déconnecter"
 //  PAGE : HOME
 // ═══════════════════════════════════════════════════════════════════════════════
 function HomePage({ ctx }) {
-  const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout, setActiveSessionId } = ctx;
+  const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout } = ctx;
   const { client, week } = appData;
 
   const stats = useMemo(() => {
@@ -1181,7 +1372,7 @@ function HomePage({ ctx }) {
       </div>
       <div style={{ padding: "0 18px" }}>
         {todaySession ? (
-          <div className="hero-card" onClick={openWorkout} style={{ background: `linear-gradient(135deg, #064E3B 0%, #065F46 35%, #0D9488 70%, #2DD4BF 100%)`, borderRadius: 22, padding: "22px 22px 24px", color: "white", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "0 10px 30px rgba(13,148,136,0.25)" }}>
+          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: `linear-gradient(135deg, #064E3B 0%, #065F46 35%, #0D9488 70%, #2DD4BF 100%)`, borderRadius: 22, padding: "22px 22px 24px", color: "white", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "0 10px 30px rgba(13,148,136,0.25)" }}>
             <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }}/>
             <div style={{ position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }}/>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, position: "relative" }}>
@@ -1230,7 +1421,7 @@ function HomePage({ ctx }) {
         </div>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, margin: "0 -18px", padding: "0 18px 4px" }}>
           {upcomingSessions.map((w, i) => (
-            <div key={w.dayIdx} className="upcoming-card" onClick={() => { setActiveSessionId(w.sess.id); openWorkout(); }} style={{ flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` }}>
+            <div key={w.dayIdx} className="upcoming-card" onClick={() => openWorkout(w.sess.id)} style={{ flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` }}>
               <div style={{ fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1.5 }}>{w.day.slice(0,3)}</div>
               <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 2, lineHeight: 1.1, marginTop: 6, minHeight: 36 }}>{w.sess.name}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 9, color: T.textMuted }}>
@@ -2060,7 +2251,36 @@ function ProfilePage({ ctx }) {
             {/* Le test n'est pas un gadget : l'appui débloque réellement l'audio
                 du navigateur, et c'est le seul moyen de vérifier AVANT la salle
                 que le téléphone n'est pas en silencieux. */}
-            {ctx.settings.restTimers && ctx.settings.restSound && <TestSonnerie/>}
+            {ctx.settings.restTimers && ctx.settings.restSound && (<>
+              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: T.textMuted, padding: "4px 0 8px" }}>QUELLE SONNERIE</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 12 }}>
+                {Object.entries(SONNERIES).map(([id, s]) => {
+                  const choisi = (ctx.settings.restSoundStyle || SONNERIE_DEFAUT) === id;
+                  return (
+                    <button key={id} className="pressable"
+                      onClick={() => {
+                        ctx.updateSetting("restSoundStyle", id);
+                        // L'appui est un geste : on en profite pour débloquer
+                        // l'audio ET faire entendre le son. Choisir une
+                        // sonnerie sans l'entendre n'aurait aucun sens.
+                        armerSonnerie(id);
+                        playRestChime(id);
+                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 11, textAlign: "left", width: "100%", padding: "10px 12px", background: choisi ? T.accentLight : T.bg, border: `1.5px solid ${choisi ? T.accent : T.border}`, borderRadius: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${choisi ? T.accent : T.borderStrong}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {choisi && <div style={{ width: 9, height: 9, borderRadius: "50%", background: T.accent }}/>}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: choisi ? T.accentDark : T.text }}>{s.nom}</div>
+                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1, lineHeight: 1.4 }}>{s.detail}</div>
+                      </div>
+                      <Icon name="play" size={13} color={choisi ? T.accent : T.textMuted} filled/>
+                    </button>
+                  );
+                })}
+              </div>
+              <TestSonnerie style={ctx.settings.restSoundStyle}/>
+            </>)}
           </div>
         </div>
       )}
@@ -2257,24 +2477,40 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const soundEnabledRef = useRef(settings.restSound);
   useEffect(() => { soundEnabledRef.current = settings.restTimers && settings.restSound; }, [settings]);
 
+  const soundStyleRef = useRef(settings.restSoundStyle);
+  useEffect(() => { soundStyleRef.current = settings.restSoundStyle; }, [settings]);
+
   // Débloque la sonnerie au TOUT PREMIER appui, où qu'il soit dans l'app, et la
   // réveille à chaque retour au premier plan. C'est la seule fenêtre où le
   // navigateur l'autorise : le faire au moment où le chrono sonne est trop tard.
+  //
+  // MAIS SEULEMENT SI LE COACHÉ VEUT DU SON. La version précédente armait sans
+  // condition, ce qui touchait à la session audio du téléphone — et donc
+  // affichait la carte « Lecture en cours » — chez quelqu'un qui avait
+  // explicitement coupé la sonnerie. On ne prépare pas un son que personne
+  // n'a demandé.
+  const sonVoulu = settings.restTimers && settings.restSound;
   useEffect(() => {
-    const armer = () => armerSonnerie();
+    if (!sonVoulu) return;
+    const armer = () => armerSonnerie(soundStyleRef.current);
     const evts = ["pointerdown", "touchend", "keydown"];
     evts.forEach(e => window.addEventListener(e, armer, { passive: true }));
-    const reveil = () => { if (document.visibilityState === "visible") armerSonnerie(); };
+    const reveil = () => { if (document.visibilityState === "visible") armerSonnerie(soundStyleRef.current); };
     document.addEventListener("visibilitychange", reveil);
     return () => {
       evts.forEach(e => window.removeEventListener(e, armer));
       document.removeEventListener("visibilitychange", reveil);
     };
-  }, []);
+  }, [sonVoulu]);
+
+  // Changer de sonnerie recharge le WAV sans attendre le prochain repos.
+  useEffect(() => {
+    if (sonVoulu) chargerSonnerie(settings.restSoundStyle);
+  }, [sonVoulu, settings.restSoundStyle]);
   const updateSetting = useCallback((key, value) => {
     setSettings(prev => { const next = { ...prev, [key]: value }; saveSettings(userId, next); return next; });
   }, [userId]);
-  const { timers, start, cancel } = useTimers(soundEnabledRef);
+  const { timers, start, cancel } = useTimers(soundEnabledRef, soundStyleRef);
   // Thème clair/sombre — stocké localement, comme les chronos et la sonnerie
   const { theme, setTheme } = useTheme();
   // Notifications push — abonnement de CET appareil
@@ -2403,10 +2639,16 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   }, [userId, isDemo]);
 
   // ── Quand appData arrive, initialiser activeSessionId ──
+  // Sur la séance D'AUJOURD'HUI si le coaché s'entraîne aujourd'hui. Le
+  // repli sur la première séance programmée ne vaut que pour un jour de
+  // repos : sinon, ouvrir l'onglet Séances un mercredi affichait le lundi.
   useEffect(() => {
     if (appData && !activeSessionId) {
-      const firstActive = appData.sessions.find(s => appData.week.some(w => w.sessionId === s.id));
-      if (firstActive) setActiveSessionId(firstActive.id);
+      const jour = JOURS_SEMAINE[new Date().getDay()];
+      const duJour = appData.week.find(w => w.day === jour && w.sessionId != null);
+      const cible = (duJour && appData.sessions.find(s => s.id === duJour.sessionId))
+                 || appData.sessions.find(s => appData.week.some(w => w.sessionId === s.id));
+      if (cible) setActiveSessionId(cible.id);
     }
   }, [appData, activeSessionId]);
 
@@ -2529,8 +2771,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   const activeSessions = appData.sessions.filter(s => appData.week.some(w => w.sessionId === s.id));
 
   // ── Aujourd'hui ──
-  const dayMap = { 0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI" };
-  const todayDay = dayMap[new Date().getDay()];
+  const todayDay = JOURS_SEMAINE[new Date().getDay()];
   const todayWeekEntry = appData.week.find(w => w.day === todayDay);
   const todaySession = todayWeekEntry ? appData.sessions.find(s => s.id === todayWeekEntry.sessionId) : null;
 
@@ -2545,7 +2786,22 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     allCompletedSets, allSetLogs,
     toggleSet, updateLog, timers, cancel,
     navigate,
-    openWorkout: () => navigate("workout"),
+    // Ouvre la page Séances. Avec un identifiant, elle ouvre CETTE séance-là.
+    //
+    // Sans l'argument, la page affichait `activeSessionId`, initialisé une
+    // seule fois à la première séance programmée de la semaine — donc celle du
+    // lundi. « COMMENCER LA SÉANCE » depuis l'accueil un mercredi ouvrait la
+    // séance du lundi, quel que soit le jour.
+    //
+    // On ramène aussi la semaine affichée sur la semaine en cours : le coaché
+    // qui vient de consulter une semaine passée doit loguer dans la bonne.
+    // Ça ne touche pas à `currentWeek`, qui reste déterminé par la date seule
+    // (règle J.5).
+    openWorkout: (sessionId) => {
+      if (sessionId != null) setActiveSessionId(sessionId);
+      setViewedWeek(currentWeek);
+      navigate("workout");
+    },
     openExerciseSheet: (ex) => setSheetExercise(ex),
     weighedToday, refreshWeighedToday,
     settings, updateSetting,
