@@ -31,13 +31,16 @@ const ok = (c, m) => { if (!c) ko++; console.log(`  ${c ? "OK   " : "ECHEC"}  ${
 
 const injection = `
 // ── Instrumentation de l'audio ────────────────────────────────────────────
-window.__audio = { crees: 0, resumes: 0, lectures: 0, sources: [] };
+window.__audio = { crees: 0, resumes: 0, lectures: 0, sources: [], audibles: 0, sessions: [] };
 // L'élément <audio> est désormais le canal principal : sur iPhone en mode
 // silencieux, c'est le SEUL que le système laisse sonner.
 const _play = HTMLMediaElement.prototype.play;
 HTMLMediaElement.prototype.play = function () {
   window.__audio.lectures++;
-  window.__audio.sources.push(String(this.src || "").slice(0, 24));
+  window.__audio.sources.push(String(this.src || "").slice(0, 30));
+  // Une lecture NON muette d'un fichier qui n'est pas le silence de déblocage
+  // est un son que le coaché entend réellement.
+  if (!this.muted) window.__audio.audibles++;
   return _play.call(this);
 };
 const _AC = window.AudioContext || window.webkitAudioContext;
@@ -51,8 +54,16 @@ function ACSuivi() {
 window.AudioContext = ACSuivi;
 window.webkitAudioContext = ACSuivi;
 // Safari 16.4+ expose cette API ; on la simule pour vérifier qu'on la règle.
+// On enregistre CHAQUE affectation de audioSession.type : c'est elle qui fait
+// apparaître la carte « Lecture en cours » sur l'écran verrouillé.
+const _session = { _t: "auto" };
+Object.defineProperty(_session, "type", {
+  get() { return this._t; },
+  set(v) { this._t = v; window.__audio.sessions.push(v); },
+  configurable: true,
+});
 Object.defineProperty(navigator, "audioSession", {
-  value: { type: "auto" }, configurable: true, writable: true,
+  value: _session, configurable: true, writable: true,
 });
 
 // ── Horloge décalable, pour simuler un téléphone verrouillé ───────────────
@@ -127,18 +138,20 @@ console.log("\n─── Avant tout geste ───");
      `elle ne crée PAS de contexte audio à la volée (${sansGeste.crees}) — c'était la cause du bug`);
 }
 
-console.log("\n─── Le premier appui débloque le son ───");
+console.log("\n─── Le premier appui débloque le son, EN SILENCE ───");
 {
   // Un vrai appui, pas un appel de fonction : c'est la seule chose que le
   // navigateur reconnaît.
   await p.mouse.click(195, 400);
-  await p.waitForTimeout(400);
+  await p.waitForTimeout(500);
   const apres = await p.evaluate(() => ({
     crees: window.__audio.crees,
     armee: sonnerieArmee(),
     session: navigator.audioSession.type,
     wav: window.__audio.sources[0] || null,
     lectures: window.__audio.lectures,
+    audibles: window.__audio.audibles,
+    sessions: window.__audio.sessions,
   }));
   ok(apres.crees === 1, `un seul contexte audio est créé (${apres.crees})`);
   ok(apres.armee === true, "la sonnerie est armée");
@@ -146,23 +159,75 @@ console.log("\n─── Le premier appui débloque le son ───");
      "un élément <audio> porte la sonnerie, synthétisée en WAV");
   ok(apres.lectures >= 1,
      `l'élément est bien débloqué par une lecture dans le geste (${apres.lectures})`);
-  ok(apres.session === "playback",
-     `la session audio est déclarée « playback » (${apres.session}) — sinon l'interrupteur silencieux de l'iPhone coupe tout`);
+
+  // ── LE BUG DU 3 SEPTEMBRE 2026 ──
+  // La version précédente débloquait la SONNERIE en la jouant avec volume = 0.
+  // Sur iOS, `volume` est en lecture seule : le bip partait à plein volume à
+  // chaque ouverture de l'app.
+  ok(apres.audibles === 0,
+     `AUCUN son audible au déblocage (${apres.audibles}) — c'est le bip qui partait à l'ouverture de l'app`);
+
+  // ── ET LE WIDGET « LECTURE EN COURS » ──
+  // audioSession.type = "playback" déclare l'app comme lecteur multimédia :
+  // iOS affiche alors une carte avec un bouton play sur l'écran verrouillé.
+  // Elle ne doit exister QUE le temps d'un bip.
+  ok(apres.session !== "playback",
+     `la session audio n'est PAS laissée en « playback » (${apres.session}) — sinon la carte Lecture en cours reste affichée`);
+  ok(!apres.sessions.includes("playback"),
+     `elle n'y est même jamais passée au simple déblocage (${apres.sessions.join(",") || "aucune"})`);
 }
 
 console.log("\n─── Le contexte est RÉUTILISÉ, jamais recréé ───");
 {
   const r = await p.evaluate(() => {
-    const avant = window.__audio.lectures;
+    const avant = window.__audio.lectures, avantAud = window.__audio.audibles;
+    window.__audio.sessions = [];
     const res = [playRestChime(), playRestChime(), playRestChime()];
-    return { res, crees: window.__audio.crees, jouees: window.__audio.lectures - avant };
+    return { res, crees: window.__audio.crees, jouees: window.__audio.lectures - avant,
+             audibles: window.__audio.audibles - avantAud, sessions: window.__audio.sessions };
   });
   ok(r.res.every(Boolean), "trois sonneries de suite partent toutes");
   ok(r.jouees === 3,
      `chaque sonnerie passe par l'élément <audio> (${r.jouees} lectures) — le canal que le mode silencieux laisse passer`);
+  ok(r.audibles === 3, `et les trois sont RÉELLEMENT audibles (${r.audibles})`);
   ok(r.crees === 1,
      `toujours un seul contexte après trois sonneries (${r.crees}) — l'ancienne version en créait un par bip`);
+  ok(r.sessions.includes("playback"),
+     "la session monte en « playback » pour sonner — c'est ce qui passe l'interrupteur silencieux");
+
+  console.log("\n─── Et la carte « Lecture en cours » disparaît ───");
+  await p.waitForTimeout(2800);
+  const apres = await p.evaluate(() => ({
+    session: navigator.audioSession.type,
+    etat: navigator.mediaSession ? navigator.mediaSession.playbackState : "absente",
+  }));
+  ok(apres.session === "auto",
+     `la session redescend à « auto » une fois le bip fini (${apres.session})`);
+  ok(apres.etat === "none" || apres.etat === "absente",
+     `et l'app ne se déclare plus en lecture (${apres.etat})`);
 }
+
+console.log("\n─── Les sonneries au choix ───");
+{
+  const r = await p.evaluate(() => {
+    const ids = Object.keys(SONNERIES);
+    const tailles = ids.map(id => wavSonnerie(id).length);
+    const distinctes = new Set(tailles).size;
+    window.__audio.sources = [];
+    playRestChime("gong");
+    const apresGong = window.__audio.sources[0] || "";
+    playRestChime("marimba");
+    return { ids, distinctes, defaut: SONNERIE_DEFAUT,
+             changee: (window.__audio.sources[1] || "") !== apresGong,
+             nommees: ids.every(id => SONNERIES[id].nom && SONNERIES[id].detail) };
+  });
+  ok(r.ids.length >= 4, `${r.ids.length} sonneries proposées : ${r.ids.join(", ")}`);
+  ok(r.distinctes === r.ids.length, "elles produisent toutes un son DIFFÉRENT, pas le même WAV renommé");
+  ok(r.nommees, "chacune porte un nom et une description lisibles par le coaché");
+  ok(SONNERIE_STYLE_ATTENDU(r.defaut), `la sonnerie par défaut est valide (${r.defaut})`);
+  ok(r.changee, "changer de style change réellement le fichier joué");
+}
+function SONNERIE_STYLE_ATTENDU(v) { return typeof v === "string" && v.length > 0; }
 
 console.log("\n─── Retour au premier plan ───");
 {
@@ -222,6 +287,41 @@ console.log("\n─── Le chrono de repos ───");
 
 console.log("\n─── Aucune erreur applicative ───");
 ok(erreurs.length === 0, `aucune erreur JS (${erreurs.length})${erreurs[0] ? " : " + erreurs[0].slice(0, 90) : ""}`);
+
+// ═══ 3. SONNERIE COUPÉE : ON NE TOUCHE À RIEN ══════════════════════════════
+//
+// Le coaché qui a coupé le son ne doit pas voir l'app s'annoncer comme lecteur
+// multimédia auprès du système, ni entendre quoi que ce soit. La version
+// précédente armait sans condition.
+console.log("\n─── Quand le coaché a coupé la sonnerie ───");
+{
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const p2 = await ctx2.newPage();
+  const err2 = [];
+  p2.on("pageerror", e => err2.push(e.message));
+  await p2.addInitScript(injection);
+  await p2.addInitScript(() => {
+    localStorage.setItem("forge_settings_c1", JSON.stringify({ restTimers: true, restSound: false }));
+  });
+  await p2.route("**/cdn.jsdelivr.net/**", r =>
+    r.fulfill({ status: 200, contentType: "application/javascript", body: "/* stub */" }));
+  await p2.goto(URL, { waitUntil: "domcontentloaded" });
+  await p2.waitForTimeout(2600);
+  await p2.mouse.click(195, 400);
+  await p2.waitForTimeout(600);
+  const r = await p2.evaluate(() => ({
+    audibles: window.__audio.audibles,
+    lectures: window.__audio.lectures,
+    sessions: window.__audio.sessions,
+    session: navigator.audioSession.type,
+  }));
+  ok(r.audibles === 0, `aucun son audible (${r.audibles})`);
+  ok(r.lectures === 0, `aucune lecture audio du tout (${r.lectures}) — on ne prépare pas un son que personne n'a demandé`);
+  ok(r.sessions.length === 0 && r.session === "auto",
+     `la session audio du téléphone n'est jamais touchée (${r.sessions.join(",") || "aucune"})`);
+  ok(err2.length === 0, `aucune erreur JS (${err2.length})`);
+  await ctx2.close();
+}
 
 await b.close();
 console.log(`\n${ko === 0 ? "TOUS LES CONTROLES SONT PASSES." : ko + " CONTROLE(S) EN ECHEC."}`);

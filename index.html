@@ -747,13 +747,18 @@ function tableAbsente(error) {
   if (!error) return false;
   return error.code === "42P01" || /does not exist|schema cache/i.test(error.message || "");
 }
+const JOURS_SEMAINE = { 0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI" };
+function lundiDeLaSemaine(d) {
+  const j = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  j.setDate(j.getDate() - (j.getDay() + 6) % 7);
+  return j;
+}
 function currentWeekFromDate(createdAtISO) {
   if (!createdAtISO) return 1;
   const start = new Date(createdAtISO);
   if (isNaN(start.getTime())) return 1;
-  const now = /* @__PURE__ */ new Date();
-  const days = Math.floor((now - start) / 864e5);
-  return Math.max(1, Math.floor(days / 7) + 1);
+  const jours = Math.round((lundiDeLaSemaine(/* @__PURE__ */ new Date()) - lundiDeLaSemaine(start)) / 864e5);
+  return Math.max(1, Math.floor(jours / 7) + 1);
 }
 const THEME_KEY = "forge_theme";
 const THEME_MODES = ["auto", "clair", "sombre"];
@@ -933,9 +938,9 @@ const settingsKey = (userId) => `forge_settings_${userId}`;
 function loadSettings(userId) {
   try {
     const s = JSON.parse(localStorage.getItem(settingsKey(userId)) || "null");
-    return __spreadValues({ restTimers: true, restSound: true }, s || {});
+    return __spreadValues({ restTimers: true, restSound: true, restSoundStyle: SONNERIE_DEFAUT }, s || {});
   } catch (e) {
-    return { restTimers: true, restSound: true };
+    return { restTimers: true, restSound: true, restSoundStyle: SONNERIE_DEFAUT };
   }
 }
 function saveSettings(userId, s) {
@@ -1050,13 +1055,89 @@ function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompl
   if (cur < prev) return "down";
   return "equal";
 }
-function wavSonnerie() {
-  const tauxEch = 22050, bips = [660, 880, 1046], duree = 0.16, ecart = 0.02;
-  const total = Math.round(tauxEch * (bips.length * (duree + ecart)));
+const SONNERIES = {
+  cloche: {
+    nom: "Cloche",
+    detail: "Trois notes claires qui montent. Neutre, passe partout.",
+    notes: [
+      { f: 784, t: 0, d: 0.55, a: 0.9, h: "cloche" },
+      { f: 988, t: 0.14, d: 0.55, a: 0.9, h: "cloche" },
+      { f: 1319, t: 0.28, d: 0.85, a: 1, h: "cloche" }
+    ]
+  },
+  gong: {
+    nom: "Gong de salle",
+    detail: "Un coup grave et long, comme la cloche d'un ring.",
+    notes: [
+      { f: 196, t: 0, d: 1.6, a: 1, h: "gong" },
+      { f: 294, t: 0, d: 1.4, a: 0.5, h: "gong" }
+    ]
+  },
+  marimba: {
+    nom: "Marimba",
+    detail: "Bois chaud, attaque douce. La moins agressive \xE0 r\xE9p\xE9tition.",
+    notes: [
+      { f: 523, t: 0, d: 0.4, a: 0.9, h: "bois" },
+      { f: 659, t: 0.11, d: 0.4, a: 0.9, h: "bois" },
+      { f: 784, t: 0.22, d: 0.65, a: 1, h: "bois" }
+    ]
+  },
+  chrono: {
+    nom: "Chrono",
+    detail: "Double bip sec et net. C'est celui qui perce le bruit d'une salle.",
+    notes: [
+      { f: 1046, t: 0, d: 0.11, a: 0.85, h: "net" },
+      { f: 1046, t: 0.17, d: 0.11, a: 0.85, h: "net" },
+      { f: 1568, t: 0.34, d: 0.2, a: 1, h: "net" }
+    ]
+  },
+  ascension: {
+    nom: "Ascension",
+    detail: "Arp\xE8ge montant de cinq notes. Le plus \xE9nergique.",
+    notes: [
+      { f: 523, t: 0, d: 0.28, a: 0.7, h: "cloche" },
+      { f: 659, t: 0.08, d: 0.28, a: 0.8, h: "cloche" },
+      { f: 784, t: 0.16, d: 0.28, a: 0.9, h: "cloche" },
+      { f: 1046, t: 0.24, d: 0.36, a: 1, h: "cloche" },
+      { f: 1319, t: 0.32, d: 0.7, a: 1, h: "cloche" }
+    ]
+  }
+};
+const SONNERIE_DEFAUT = "cloche";
+const TIMBRES = {
+  cloche: { partiels: [[1, 1], [2, 0.42], [3, 0.18], [4.2, 0.1]], decroissance: 3.2, attaque: 4e-3 },
+  gong: { partiels: [[1, 1], [1.48, 0.6], [2.34, 0.35], [3.1, 0.2], [4.7, 0.12]], decroissance: 1.6, attaque: 0.01 },
+  bois: { partiels: [[1, 1], [3.9, 0.3], [10.5, 0.08]], decroissance: 6, attaque: 3e-3 },
+  net: { partiels: [[1, 1], [2, 0.3], [3, 0.15], [5, 0.06]], decroissance: 5, attaque: 2e-3 }
+};
+function wavSonnerie(styleId) {
+  const style = SONNERIES[styleId] || SONNERIES[SONNERIE_DEFAUT];
+  const tauxEch = 22050;
+  const fin = Math.max(...style.notes.map((n) => n.t + n.d));
+  const total = Math.ceil(tauxEch * (fin + 0.05));
+  const ech = new Float32Array(total);
+  for (const note of style.notes) {
+    const timbre = TIMBRES[note.h] || TIMBRES.cloche;
+    const depart = Math.round(note.t * tauxEch);
+    const n = Math.round(note.d * tauxEch);
+    const attaque = Math.max(1, Math.round(timbre.attaque * tauxEch));
+    for (let i = 0; i < n && depart + i < total; i++) {
+      const s = i / tauxEch;
+      const env = Math.min(1, i / attaque) * Math.exp(-timbre.decroissance * s);
+      let v = 0;
+      for (const [rang, poids] of timbre.partiels) {
+        v += Math.sin(2 * Math.PI * note.f * rang * s) * poids;
+      }
+      ech[depart + i] += v / timbre.partiels.length * env * note.a;
+    }
+  }
+  let crete = 0;
+  for (let i = 0; i < total; i++) crete = Math.max(crete, Math.abs(ech[i]));
+  const gain = crete > 0 ? 0.82 / crete : 0;
   const octets = new ArrayBuffer(44 + total * 2);
   const vue = new DataView(octets);
-  const txt = (pos2, s) => {
-    for (let i = 0; i < s.length; i++) vue.setUint8(pos2 + i, s.charCodeAt(i));
+  const txt = (pos, s) => {
+    for (let i = 0; i < s.length; i++) vue.setUint8(pos + i, s.charCodeAt(i));
   };
   txt(0, "RIFF");
   vue.setUint32(4, 36 + total * 2, true);
@@ -1070,16 +1151,34 @@ function wavSonnerie() {
   vue.setUint16(34, 16, true);
   txt(36, "data");
   vue.setUint32(40, total * 2, true);
-  let pos = 44;
-  for (const freq of bips) {
-    const n = Math.round(tauxEch * duree);
-    for (let i = 0; i < n; i++) {
-      const env = Math.min(1, i / (tauxEch * 0.01)) * Math.pow(1 - i / n, 2);
-      vue.setInt16(pos, Math.round(Math.sin(2 * Math.PI * freq * i / tauxEch) * 26e3 * env), true);
-      pos += 2;
-    }
-    pos += Math.round(tauxEch * ecart) * 2;
+  for (let i = 0; i < total; i++) {
+    vue.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, Math.round(ech[i] * gain * 32767))), true);
   }
+  let bin = "";
+  const u8 = new Uint8Array(octets);
+  const PAS = 8192;
+  for (let i = 0; i < u8.length; i += PAS) bin += String.fromCharCode.apply(null, u8.subarray(i, i + PAS));
+  return "data:audio/wav;base64," + btoa(bin);
+}
+function wavSilence() {
+  const tauxEch = 8e3, total = 400;
+  const octets = new ArrayBuffer(44 + total * 2);
+  const vue = new DataView(octets);
+  const txt = (pos, s) => {
+    for (let i = 0; i < s.length; i++) vue.setUint8(pos + i, s.charCodeAt(i));
+  };
+  txt(0, "RIFF");
+  vue.setUint32(4, 36 + total * 2, true);
+  txt(8, "WAVEfmt ");
+  vue.setUint32(16, 16, true);
+  vue.setUint16(20, 1, true);
+  vue.setUint16(22, 1, true);
+  vue.setUint32(24, tauxEch, true);
+  vue.setUint32(28, tauxEch * 2, true);
+  vue.setUint16(32, 2, true);
+  vue.setUint16(34, 16, true);
+  txt(36, "data");
+  vue.setUint32(40, total * 2, true);
   let bin = "";
   const u8 = new Uint8Array(octets);
   for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
@@ -1088,6 +1187,8 @@ function wavSonnerie() {
 let _ctxAudio = null;
 let _audioArme = false;
 let _elSonnerie = null;
+let _elSilence = null;
+let _styleArme = null;
 function sonnerieArmee() {
   return !!(_elSonnerie && _audioArme) || !!(_ctxAudio && _ctxAudio.state === "running");
 }
@@ -1095,6 +1196,7 @@ function diagnosticSonnerie() {
   return {
     element: !!_elSonnerie,
     elementArme: _audioArme,
+    style: _styleArme || "\u2014",
     contexte: _ctxAudio ? _ctxAudio.state : "absent",
     sessionAudio: (() => {
       try {
@@ -1106,39 +1208,68 @@ function diagnosticSonnerie() {
     vibration: !!navigator.vibrate
   };
 }
-function armerSonnerie() {
+function chargerSonnerie(styleId) {
+  const id = SONNERIES[styleId] ? styleId : SONNERIE_DEFAUT;
+  if (_elSonnerie && _styleArme === id) return;
+  if (!_elSonnerie) {
+    _elSonnerie = new Audio();
+    _elSonnerie.preload = "auto";
+    _elSonnerie.setAttribute("playsinline", "");
+  }
+  _elSonnerie.src = wavSonnerie(id);
+  _styleArme = id;
+}
+function eleverSession() {
   try {
     if (navigator.audioSession) navigator.audioSession.type = "playback";
   } catch (e) {
   }
+}
+function redescendreSession() {
   try {
-    if (!_elSonnerie) {
-      _elSonnerie = new Audio(wavSonnerie());
-      _elSonnerie.preload = "auto";
-      _elSonnerie.setAttribute("playsinline", "");
+    if (navigator.audioSession) navigator.audioSession.type = "auto";
+  } catch (e) {
+  }
+  try {
+    if (navigator.mediaSession) {
+      navigator.mediaSession.playbackState = "none";
+      navigator.mediaSession.metadata = null;
     }
+  } catch (e) {
+  }
+}
+function armerSonnerie(styleId) {
+  chargerSonnerie(styleId);
+  try {
     if (!_audioArme) {
-      const v = _elSonnerie.volume;
-      _elSonnerie.volume = 0;
-      const p = _elSonnerie.play();
-      const finir = () => {
+      if (!_elSilence) {
+        _elSilence = new Audio(wavSilence());
+        _elSilence.preload = "auto";
+        _elSilence.muted = true;
+        _elSilence.setAttribute("playsinline", "");
+      }
+      const p = _elSilence.play();
+      const ok = () => {
+        _audioArme = true;
         try {
-          _elSonnerie.pause();
-          _elSonnerie.currentTime = 0;
-          _elSonnerie.volume = v;
+          _elSonnerie.muted = true;
+          const q = _elSonnerie.play();
+          const finir = () => {
+            try {
+              _elSonnerie.pause();
+              _elSonnerie.currentTime = 0;
+              _elSonnerie.muted = false;
+            } catch (e) {
+            }
+          };
+          if (q && q.then) q.then(finir).catch(finir);
+          else finir();
         } catch (e) {
         }
       };
-      if (p && p.then) p.then(() => {
-        _audioArme = true;
-        finir();
-      }).catch(() => {
-        finir();
+      if (p && p.then) p.then(ok).catch(() => {
       });
-      else {
-        _audioArme = true;
-        finir();
-      }
+      else ok();
     }
   } catch (e) {
   }
@@ -1156,17 +1287,23 @@ function armerSonnerie() {
   }
   return sonnerieArmee();
 }
-function playRestChime() {
+function playRestChime(styleId) {
   try {
     if (navigator.vibrate) navigator.vibrate([120, 80, 120, 80, 240]);
   } catch (e) {
   }
-  if (_elSonnerie) {
+  if (styleId && SONNERIES[styleId] && _styleArme !== styleId) chargerSonnerie(styleId);
+  if (_elSonnerie && _audioArme) {
     try {
+      eleverSession();
+      _elSonnerie.muted = false;
       _elSonnerie.currentTime = 0;
       const p = _elSonnerie.play();
       if (p && p.catch) p.catch(() => {
       });
+      const rendre = () => redescendreSession();
+      _elSonnerie.onended = rendre;
+      setTimeout(rendre, 2500);
       return true;
     } catch (e) {
     }
@@ -1175,35 +1312,36 @@ function playRestChime() {
   if (!ctx) return false;
   try {
     if (ctx.state === "suspended") ctx.resume();
+    const style = SONNERIES[_styleArme] || SONNERIES[SONNERIE_DEFAUT];
     const now = ctx.currentTime;
-    [660, 880, 1046].forEach((freq, i) => {
+    for (const note of style.notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.value = freq;
-      const t = now + i * 0.18;
+      osc.frequency.value = note.f;
+      const t = now + note.t;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(1e-3, t + 0.16);
+      gain.gain.linearRampToValueAtTime(0.32 * note.a, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(1e-3, t + note.d);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(t);
-      osc.stop(t + 0.18);
-    });
+      osc.stop(t + note.d + 0.02);
+    }
     return ctx.state === "running";
   } catch (e) {
     return false;
   }
 }
-function TestSonnerie() {
+function TestSonnerie({ style }) {
   const [retour, setRetour] = useState(null);
   return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 13 } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       className: "pressable",
       onClick: () => {
-        armerSonnerie();
-        const ok = playRestChime();
+        armerSonnerie(style);
+        const ok = playRestChime(style);
         const d = diagnosticSonnerie();
         setRetour({
           ok,
@@ -1216,7 +1354,7 @@ function TestSonnerie() {
     "TESTER LA SONNERIE"
   ), retour && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: retour.ok ? T.textSub : T.warnText, lineHeight: 1.5 } }, retour.texte), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, marginTop: 4, fontFamily: "monospace" } }, retour.detail)));
 }
-function useTimers(soundEnabledRef) {
+function useTimers(soundEnabledRef, styleRef) {
   const [timers, setTimers] = useState({});
   useEffect(() => {
     const tick = () => setTimers((prev) => {
@@ -1238,7 +1376,7 @@ function useTimers(soundEnabledRef) {
         next[k] = __spreadProps(__spreadValues({}, t), { remaining: 0, running: false, done: true });
         changed = true;
         const retard = maintenant - t.finAt;
-        if (retard < 2e3 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime();
+        if (retard < 2e3 && (!soundEnabledRef || soundEnabledRef.current)) playRestChime(styleRef && styleRef.current);
       }
       return changed ? next : prev;
     });
@@ -1251,7 +1389,7 @@ function useTimers(soundEnabledRef) {
       clearInterval(id);
       document.removeEventListener("visibilitychange", reveil);
     };
-  }, [soundEnabledRef]);
+  }, [soundEnabledRef, styleRef]);
   const start = useCallback((k, s) => setTimers((p) => __spreadProps(__spreadValues({}, p), {
     [k]: { total: s, remaining: s, running: true, done: false, finAt: Date.now() + s * 1e3 }
   })), []);
@@ -1498,7 +1636,7 @@ function ErrorScreen({ title, message, onLogout, actionLabel = "Se d\xE9connecte
   return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: 22, gap: 14 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert", size: 42, color: T.danger }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, textAlign: "center", maxWidth: 340, lineHeight: 1.6 } }, message), onLogout && /* @__PURE__ */ React.createElement("button", { onClick: onLogout, style: { marginTop: 14, padding: "10px 22px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, letterSpacing: 0.8, cursor: "pointer" } }, actionLabel));
 }
 function HomePage({ ctx }) {
-  const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout, setActiveSessionId } = ctx;
+  const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout } = ctx;
   const { client, week } = appData;
   const stats = useMemo(() => {
     const completedSets = Object.values(allCompletedSets).filter(Boolean).length;
@@ -1513,14 +1651,11 @@ function HomePage({ ctx }) {
     return { completedSets, weeksTrained: wT.size, totalSessions: tS.size };
   }, [allCompletedSets]);
   const upcomingSessions = week.map((w, i) => __spreadProps(__spreadValues({}, w), { dayIdx: i, sess: appData.sessions.find((s) => s.id === w.sessionId) })).filter((w) => w.sess);
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, letterSpacing: 1, fontWeight: 600 } }, "BONJOUR"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 2, lineHeight: 1, marginTop: 4 } }, client.name.toUpperCase())), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, todaySession ? /* @__PURE__ */ React.createElement("div", { className: "hero-card", onClick: openWorkout, style: { background: `linear-gradient(135deg, #064E3B 0%, #065F46 35%, #0D9488 70%, #2DD4BF 100%)`, borderRadius: 22, padding: "22px 22px 24px", color: "white", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "0 10px 30px rgba(13,148,136,0.25)" } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" } }), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, position: "relative" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 2, opacity: 0.75 } }, "S\xC9ANCE DU JOUR \xB7 ", todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 3, lineHeight: 1, marginTop: 4 } }, todaySession.name)), /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(255,255,255,0.18)", padding: "6px 10px", borderRadius: 8, fontSize: 9, fontWeight: 800, letterSpacing: 1, backdropFilter: "blur(10px)" } }, "S", currentWeek)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 14, marginBottom: 18, fontSize: 11, opacity: 0.9, position: "relative" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 14, color: "white" }), /* @__PURE__ */ React.createElement("span", null, todaySession.exercises.length, " exercices")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 14, color: "white" }), /* @__PURE__ */ React.createElement("span", null, "~", estimateSessionMinutes(todaySession), " min"))), /* @__PURE__ */ React.createElement("button", { style: { background: "white", color: "#064E3B", border: "none", borderRadius: 14, padding: "13px 20px", fontSize: 13, fontWeight: 800, letterSpacing: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", position: "relative" } }, /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 14, color: "#064E3B", filled: true }), " COMMENCER LA S\xC9ANCE")) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 22, padding: "30px 22px", textAlign: "center", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 2, color: T.textMuted } }, todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 3, lineHeight: 1, marginTop: 6 } }, "JOUR DE REPOS"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, marginTop: 10, lineHeight: 1.6 } }, "Profite de cette journ\xE9e pour r\xE9cup\xE9rer.", /* @__PURE__ */ React.createElement("br", null), "La r\xE9cup\xE9ration fait partie du programme."))), /* @__PURE__ */ React.createElement("div", { style: { padding: "18px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 } }, [
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 100 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, letterSpacing: 1, fontWeight: 600 } }, "BONJOUR"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 2, lineHeight: 1, marginTop: 4 } }, client.name.toUpperCase())), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, todaySession ? /* @__PURE__ */ React.createElement("div", { className: "hero-card", onClick: () => openWorkout(todaySession.id), style: { background: `linear-gradient(135deg, #064E3B 0%, #065F46 35%, #0D9488 70%, #2DD4BF 100%)`, borderRadius: 22, padding: "22px 22px 24px", color: "white", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "0 10px 30px rgba(13,148,136,0.25)" } }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" } }), /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, position: "relative" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 2, opacity: 0.75 } }, "S\xC9ANCE DU JOUR \xB7 ", todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 3, lineHeight: 1, marginTop: 4 } }, todaySession.name)), /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(255,255,255,0.18)", padding: "6px 10px", borderRadius: 8, fontSize: 9, fontWeight: 800, letterSpacing: 1, backdropFilter: "blur(10px)" } }, "S", currentWeek)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 14, marginBottom: 18, fontSize: 11, opacity: 0.9, position: "relative" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 14, color: "white" }), /* @__PURE__ */ React.createElement("span", null, todaySession.exercises.length, " exercices")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 14, color: "white" }), /* @__PURE__ */ React.createElement("span", null, "~", estimateSessionMinutes(todaySession), " min"))), /* @__PURE__ */ React.createElement("button", { style: { background: "white", color: "#064E3B", border: "none", borderRadius: 14, padding: "13px 20px", fontSize: 13, fontWeight: 800, letterSpacing: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", position: "relative" } }, /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 14, color: "#064E3B", filled: true }), " COMMENCER LA S\xC9ANCE")) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 22, padding: "30px 22px", textAlign: "center", boxShadow: `0 2px 12px ${T.shadow}` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 2, color: T.textMuted } }, todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 3, lineHeight: 1, marginTop: 6 } }, "JOUR DE REPOS"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, marginTop: 10, lineHeight: 1.6 } }, "Profite de cette journ\xE9e pour r\xE9cup\xE9rer.", /* @__PURE__ */ React.createElement("br", null), "La r\xE9cup\xE9ration fait partie du programme."))), /* @__PURE__ */ React.createElement("div", { style: { padding: "18px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 } }, [
     { icon: "calendar", value: stats.weeksTrained, label: "SEMAINES" },
     { icon: "workout", value: stats.totalSessions, label: "S\xC9ANCES" },
     { icon: "trending", value: stats.completedSets, label: "S\xC9RIES" }
-  ].map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "stat-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` } }, /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 18, color: T.accent }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 26, color: T.accent, letterSpacing: 1, marginTop: 4, lineHeight: 1 } }, s.value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700, marginTop: 4 } }, s.label)))), /* @__PURE__ */ React.createElement(BilanCard, { ctx }), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 18px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub } }, "CETTE SEMAINE"), /* @__PURE__ */ React.createElement("button", { onClick: () => navigate("workout"), style: { background: "transparent", border: "none", color: T.accent, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 } }, "Tout voir ", /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 14 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, margin: "0 -18px", padding: "0 18px 4px" } }, upcomingSessions.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: w.dayIdx, className: "upcoming-card", onClick: () => {
-    setActiveSessionId(w.sess.id);
-    openWorkout();
-  }, style: { flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1.5 } }, w.day.slice(0, 3)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 2, lineHeight: 1.1, marginTop: 6, minHeight: 36 } }, w.sess.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 9, color: T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 11, color: T.textMuted }), /* @__PURE__ */ React.createElement("span", null, w.sess.exercises.length, " exos")))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Progression", subtitle: "Suis ton \xE9volution semaine par semaine", onClick: () => navigate("progress") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Lis les conventions de ton programme", onClick: () => navigate("profile", "consignes") })));
+  ].map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "stat-card", style: { background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` } }, /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 18, color: T.accent }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 26, color: T.accent, letterSpacing: 1, marginTop: 4, lineHeight: 1 } }, s.value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700, marginTop: 4 } }, s.label)))), /* @__PURE__ */ React.createElement(BilanCard, { ctx }), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 18px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub } }, "CETTE SEMAINE"), /* @__PURE__ */ React.createElement("button", { onClick: () => navigate("workout"), style: { background: "transparent", border: "none", color: T.accent, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 } }, "Tout voir ", /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 14 }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, margin: "0 -18px", padding: "0 18px 4px" } }, upcomingSessions.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: w.dayIdx, className: "upcoming-card", onClick: () => openWorkout(w.sess.id), style: { flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1.5 } }, w.day.slice(0, 3)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 2, lineHeight: 1.1, marginTop: 6, minHeight: 36 } }, w.sess.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 9, color: T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 11, color: T.textMuted }), /* @__PURE__ */ React.createElement("span", null, w.sess.exercises.length, " exos")))))), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Progression", subtitle: "Suis ton \xE9volution semaine par semaine", onClick: () => navigate("progress") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Lis les conventions de ton programme", onClick: () => navigate("profile", "consignes") })));
 }
 function WorkoutPage({ ctx }) {
   var _a, _b;
@@ -1954,7 +2089,25 @@ function ProfilePage({ ctx }) {
   ), ctx.push.message && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textSub, marginTop: 8, lineHeight: 1.5 } }, ctx.push.message)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${T.border}`, gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Chronom\xE8tres de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, "D\xE9marrer un minuteur \xE0 la validation d'une s\xE9rie")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers, onChange: (v) => {
     ctx.updateSetting("restTimers", v);
     if (!v) ctx.updateSetting("restSound", false);
-  } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })), ctx.settings.restTimers && ctx.settings.restSound && /* @__PURE__ */ React.createElement(TestSonnerie, null))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), confirmUI, onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+  } })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", gap: 12, opacity: ctx.settings.restTimers ? 1 : 0.45 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.text } }, "Sonnerie de fin de repos"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 } }, ctx.settings.restTimers ? "Jouer un son quand le repos est termin\xE9" : "Active d'abord les chronom\xE8tres")), /* @__PURE__ */ React.createElement(ToggleSwitch, { on: ctx.settings.restTimers && ctx.settings.restSound, disabled: !ctx.settings.restTimers, onChange: (v) => ctx.updateSetting("restSound", v) })), ctx.settings.restTimers && ctx.settings.restSound && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: T.textMuted, padding: "4px 0 8px" } }, "QUELLE SONNERIE"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, paddingBottom: 12 } }, Object.entries(SONNERIES).map(([id, s]) => {
+    const choisi = (ctx.settings.restSoundStyle || SONNERIE_DEFAUT) === id;
+    return /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        key: id,
+        className: "pressable",
+        onClick: () => {
+          ctx.updateSetting("restSoundStyle", id);
+          armerSonnerie(id);
+          playRestChime(id);
+        },
+        style: { display: "flex", alignItems: "center", gap: 11, textAlign: "left", width: "100%", padding: "10px 12px", background: choisi ? T.accentLight : T.bg, border: `1.5px solid ${choisi ? T.accent : T.border}`, borderRadius: 11, cursor: "pointer", fontFamily: "inherit" }
+      },
+      /* @__PURE__ */ React.createElement("div", { style: { width: 18, height: 18, borderRadius: "50%", border: `2px solid ${choisi ? T.accent : T.borderStrong}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, choisi && /* @__PURE__ */ React.createElement("div", { style: { width: 9, height: 9, borderRadius: "50%", background: T.accent } })),
+      /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: choisi ? T.accentDark : T.text } }, s.nom), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, marginTop: 1, lineHeight: 1.4 } }, s.detail)),
+      /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 13, color: choisi ? T.accent : T.textMuted, filled: true })
+    );
+  })), /* @__PURE__ */ React.createElement(TestSonnerie, { style: ctx.settings.restSoundStyle })))), /* @__PURE__ */ React.createElement("div", { style: { padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 } }, "FORGE COACHING \xB7 v1.0", isDemo ? " \xB7 MODE D\xC9MO" : ""), confirmUI, onLogout && !isDemo && /* @__PURE__ */ React.createElement("div", { style: { padding: "16px 18px 0", textAlign: "center" } }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: async () => {
@@ -2051,19 +2204,28 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   useEffect(() => {
     soundEnabledRef.current = settings.restTimers && settings.restSound;
   }, [settings]);
+  const soundStyleRef = useRef(settings.restSoundStyle);
   useEffect(() => {
-    const armer = () => armerSonnerie();
+    soundStyleRef.current = settings.restSoundStyle;
+  }, [settings]);
+  const sonVoulu = settings.restTimers && settings.restSound;
+  useEffect(() => {
+    if (!sonVoulu) return;
+    const armer = () => armerSonnerie(soundStyleRef.current);
     const evts = ["pointerdown", "touchend", "keydown"];
     evts.forEach((e) => window.addEventListener(e, armer, { passive: true }));
     const reveil = () => {
-      if (document.visibilityState === "visible") armerSonnerie();
+      if (document.visibilityState === "visible") armerSonnerie(soundStyleRef.current);
     };
     document.addEventListener("visibilitychange", reveil);
     return () => {
       evts.forEach((e) => window.removeEventListener(e, armer));
       document.removeEventListener("visibilitychange", reveil);
     };
-  }, []);
+  }, [sonVoulu]);
+  useEffect(() => {
+    if (sonVoulu) chargerSonnerie(settings.restSoundStyle);
+  }, [sonVoulu, settings.restSoundStyle]);
   const updateSetting = useCallback((key, value) => {
     setSettings((prev) => {
       const next = __spreadProps(__spreadValues({}, prev), { [key]: value });
@@ -2071,7 +2233,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
       return next;
     });
   }, [userId]);
-  const { timers, start, cancel } = useTimers(soundEnabledRef);
+  const { timers, start, cancel } = useTimers(soundEnabledRef, soundStyleRef);
   const { theme, setTheme } = useTheme();
   const push = usePushNotifications(supabase, userId, isDemo);
   const [videosExercices, setVideosExercices] = useState({});
@@ -2169,8 +2331,10 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   }, [userId, isDemo]);
   useEffect(() => {
     if (appData && !activeSessionId) {
-      const firstActive = appData.sessions.find((s) => appData.week.some((w) => w.sessionId === s.id));
-      if (firstActive) setActiveSessionId(firstActive.id);
+      const jour = JOURS_SEMAINE[(/* @__PURE__ */ new Date()).getDay()];
+      const duJour = appData.week.find((w) => w.day === jour && w.sessionId != null);
+      const cible = duJour && appData.sessions.find((s) => s.id === duJour.sessionId) || appData.sessions.find((s) => appData.week.some((w) => w.sessionId === s.id));
+      if (cible) setActiveSessionId(cible.id);
     }
   }, [appData, activeSessionId]);
   useEffect(() => {
@@ -2276,8 +2440,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   if (loadError) return /* @__PURE__ */ React.createElement(ErrorScreen, { title: "Oups...", message: loadError, onLogout: !isDemo ? onLogout : null });
   if (!appData) return /* @__PURE__ */ React.createElement(LoadingScreen, { text: "Chargement de ton programme..." });
   const activeSessions = appData.sessions.filter((s) => appData.week.some((w) => w.sessionId === s.id));
-  const dayMap = { 0: "DIMANCHE", 1: "LUNDI", 2: "MARDI", 3: "MERCREDI", 4: "JEUDI", 5: "VENDREDI", 6: "SAMEDI" };
-  const todayDay = dayMap[(/* @__PURE__ */ new Date()).getDay()];
+  const todayDay = JOURS_SEMAINE[(/* @__PURE__ */ new Date()).getDay()];
   const todayWeekEntry = appData.week.find((w) => w.day === todayDay);
   const todaySession = todayWeekEntry ? appData.sessions.find((s) => s.id === todayWeekEntry.sessionId) : null;
   const ctx = {
@@ -2303,7 +2466,22 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     timers,
     cancel,
     navigate,
-    openWorkout: () => navigate("workout"),
+    // Ouvre la page Séances. Avec un identifiant, elle ouvre CETTE séance-là.
+    //
+    // Sans l'argument, la page affichait `activeSessionId`, initialisé une
+    // seule fois à la première séance programmée de la semaine — donc celle du
+    // lundi. « COMMENCER LA SÉANCE » depuis l'accueil un mercredi ouvrait la
+    // séance du lundi, quel que soit le jour.
+    //
+    // On ramène aussi la semaine affichée sur la semaine en cours : le coaché
+    // qui vient de consulter une semaine passée doit loguer dans la bonne.
+    // Ça ne touche pas à `currentWeek`, qui reste déterminé par la date seule
+    // (règle J.5).
+    openWorkout: (sessionId) => {
+      if (sessionId != null) setActiveSessionId(sessionId);
+      setViewedWeek(currentWeek);
+      navigate("workout");
+    },
     openExerciseSheet: (ex) => setSheetExercise(ex),
     weighedToday,
     refreshWeighedToday,
