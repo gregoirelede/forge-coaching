@@ -576,25 +576,64 @@ async function loadAllSetsFromSupabase(supabase, userId) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  COMPARAISON inter-semaines
+//
+//  CE À QUOI ON SE COMPARE, ET POURQUOI C'EST PLUS SUBTIL QU'IL N'Y PARAÎT.
+//
+//  La référence est TOUJOURS le même exercice au MÊME EMPLACEMENT : même séance,
+//  même position dans la séance, même numéro de série. Ce n'est pas un détail de
+//  mise en œuvre, c'est du coaching : un tirage vertical fait en 2e exercice le
+//  lundi et le même tirage fait en 6e le jeudi ne produisent pas la même
+//  performance. Les mélanger fabrique des rouges et des verts qui ne veulent
+//  rien dire. Ils sont donc suivis séparément, ici comme dans l'historique.
+//
+//  MAIS L'EMPLACEMENT SEUL N'IDENTIFIE PAS UN EXERCICE. Les ids de séance sont
+//  réutilisés d'un programme à l'autre — relevé en base le 9 septembre 2026 :
+//  11 ids partagés entre programmes, et 19 emplacements qui portent un exercice
+//  différent selon le programme. Le NOM est donc vérifié à chaque fois, et une
+//  semaine dont le nom ne correspond pas est ignorée, pas comparée.
+//
+//  ON REMONTE JUSQU'À 3 SEMAINES. La règle d'origine exigeait strictement la
+//  semaine N−1 : dès qu'une séance sautait, la couleur disparaissait sans rien
+//  dire. Mesuré sur les données réelles : 245 séries sur 1 338 (18 %) étaient
+//  sans couleur alors qu'une référence existait. Au-delà de 3 semaines on
+//  s'arrête — comparer à une charge d'il y a deux mois n'apprend plus rien.
 // ═══════════════════════════════════════════════════════════════════════════════
-function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompleted, allLogs, currentExerciseName) {
-  if (weekNum <= 1) return null;
-  const prevWeek = weekNum - 1;
-  const prevWeekHasData = Object.keys(allCompleted).some(k => parseInt(k.split("-")[0]) === prevWeek && allCompleted[k]);
-  if (!prevWeekHasData) return null;
-  const prevK = tKey(prevWeek, sid, ei, si);
-  if (!allCompleted[prevK]) return null;
-  const prevLog = allLogs[prevK];
-  if (!prevLog) return null;
-  if (prevLog.exerciseName && currentExerciseName && prevLog.exerciseName !== currentExerciseName) return null;
-  const prevRaw = field === "weight" ? prevLog.weight : prevLog.actualReps;
-  if (prevRaw === undefined || prevRaw === null || prevRaw === "") return null;
-  if (currentValue === undefined || currentValue === null || currentValue === "") return null;
+const RECUL_MAX_SEMAINES = 3;
+
+// La dernière fois que CET exercice a été fait à CET emplacement, ou null.
+function referencePrecedente(weekNum, sid, ei, si, allCompleted, allLogs, nomActuel) {
+  if (!weekNum || weekNum <= 1) return null;
+  for (let recul = 1; recul <= RECUL_MAX_SEMAINES; recul++) {
+    const semaine = weekNum - recul;
+    if (semaine < 1) break;
+    const k = tKey(semaine, sid, ei, si);
+    if (!allCompleted[k]) continue;
+    const log = allLogs[k];
+    if (!log) continue;
+    // Le nom fait foi, jamais l'emplacement seul (voir l'en-tête).
+    if (nomActuel && log.exerciseName && log.exerciseName !== nomActuel) continue;
+    const vide = (v) => v === undefined || v === null || v === "";
+    if (vide(log.weight) && vide(log.actualReps)) continue;
+    return { semaine, recul, weight: log.weight, reps: log.actualReps };
+  }
+  return null;
+}
+
+// Compare une valeur saisie à sa référence. "up" = progression, "down" = recul.
+function comparerValeur(currentValue, prevRaw) {
+  const vide = (v) => v === undefined || v === null || v === "";
+  if (vide(prevRaw) || vide(currentValue)) return null;
   const cur = parseFloat(currentValue), prev = parseFloat(prevRaw);
   if (isNaN(cur) || isNaN(prev)) return null;
   if (cur > prev) return "up";
   if (cur < prev) return "down";
   return "equal";
+}
+
+function compareWithPrevious(weekNum, sid, ei, si, field, currentValue, allCompleted, allLogs, currentExerciseName) {
+  const ref = referencePrecedente(weekNum, sid, ei, si, allCompleted, allLogs, currentExerciseName);
+  if (!ref) return null;
+  return comparerValeur(currentValue, field === "weight" ? ref.weight : ref.reps);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1452,9 +1491,17 @@ function WorkoutPage({ ctx }) {
   const isDone   = (ei, si) => !!allCompletedSets[tKey(viewedWeek, activeSession.id, ei, si)];
   const getTimer = (ei, si) => timers[tKey(viewedWeek, activeSession.id, ei, si)];
   const getLog   = (ei, si) => allSetLogs[tKey(viewedWeek, activeSession.id, ei, si)] || { weight: "", actualReps: "" };
-  const getCmp = (ei, si, field, currentValue) => {
+  // Un exercice présent à plusieurs endroits de la semaine doit dire DUQUEL il
+  // s'agit quand on ouvre son historique. Sinon le nom de la séance n'apporte
+  // rien et encombre.
+  const occurrences = {};
+  activeSessions.forEach(s => (s.exercises || []).forEach(e => {
+    occurrences[e.exercice] = (occurrences[e.exercice] || 0) + 1;
+  }));
+
+  const getRef = (ei, si) => {
     const ex = activeSession.exercises[ei];
-    return compareWithPrevious(viewedWeek, activeSession.id, ei, si, field, currentValue, allCompletedSets, allSetLogs, ex?.exercice);
+    return referencePrecedente(viewedWeek, activeSession.id, ei, si, allCompletedSets, allSetLogs, ex?.exercice);
   };
 
   const totalDone = activeSession.exercises.reduce((a, ex, ei) => a + ex.reps.filter((_, si) => isDone(ei, si)).length, 0);
@@ -1600,7 +1647,7 @@ function WorkoutPage({ ctx }) {
                       <Icon name="play" size={13} color={T.accentDark}/> Voir la démonstration
                     </button>
                   )}
-                  <button onClick={() => openExerciseSheet(ex)} className="pressable" style={{ width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <button onClick={() => openExerciseSheet({ ...ex, sid: activeSession.id, ei: exIdx, seance: occurrences[ex.exercice] > 1 ? activeSession.name : null })} className="pressable" style={{ width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="trending" size={13}/> Voir l'historique de cet exercice
                   </button>
                   {ex.technique && (() => {
@@ -1626,8 +1673,9 @@ function WorkoutPage({ ctx }) {
                       const timer = getTimer(exIdx, setIdx);
                       const log = getLog(exIdx, setIdx);
                       const key = tKey(viewedWeek, activeSession.id, exIdx, setIdx);
-                      const wCmp = getCmp(exIdx, setIdx, "weight", log.weight);
-                      const rCmp = getCmp(exIdx, setIdx, "actualReps", log.actualReps);
+                      const ref  = getRef(exIdx, setIdx);
+                      const wCmp = ref ? comparerValeur(log.weight, ref.weight) : null;
+                      const rCmp = ref ? comparerValeur(log.actualReps, ref.reps) : null;
                       return (
                         <div key={setIdx} style={{ background: done ? (timer?.done ? T.accentLight : T.setDoneBg) : T.bg, border: `1px solid ${done ? (timer?.done ? T.accentA38 : T.accentA20) : T.border}`, borderRadius: 10, overflow: "hidden", transition: "all .15s" }}>
                           <div className="pressable" onClick={() => toggleSet(activeSession.id, exIdx, setIdx, ex.repos, ex.exercice)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", cursor: "pointer" }}>
@@ -1648,6 +1696,21 @@ function WorkoutPage({ ctx }) {
                             <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px 10px", borderTop: `1px solid ${T.accent}20`, background: T.accentLightA53, animation: "popIn .2s ease", flexWrap: "wrap" }}>
                               <span style={{ fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: .8, whiteSpace: "nowrap" }}>LOG</span>
                               <SetLog weight={log.weight} actualReps={log.actualReps} weightCmp={wCmp} repsCmp={rCmp} onWeightChange={v => updateLog(key, "weight", v)} onRepsChange={v => updateLog(key, "actualReps", v)}/>
+                              {ref && (
+                                <div style={{ width: "100%", fontSize: 9.5, color: T.textMuted, letterSpacing: .3, display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                                  <span style={{ fontWeight: 800, letterSpacing: .8 }}>RÉF. S{ref.semaine}</span>
+                                  <span>
+                                    {ref.weight !== "" && ref.weight != null ? `${ref.weight} kg` : "— kg"}
+                                    {" × "}
+                                    {ref.reps !== "" && ref.reps != null ? `${ref.reps} reps` : "— reps"}
+                                  </span>
+                                  {ref.recul > 1 && (
+                                    <span style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 20, padding: "1px 7px", fontWeight: 700 }}>
+                                      il y a {ref.recul} semaines
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1997,25 +2060,38 @@ function ProgressPage({ ctx }) {
   const { sessions } = appData;
   const [openMuscle, setOpenMuscle] = useState(null);
 
+  // UNE ENTRÉE PAR EMPLACEMENT, pas par nom d'exercice. Un tirage vertical fait
+  // le lundi en 2e et le jeudi en 6e sont deux lignes distinctes, avec chacune
+  // son record : la performance n'est pas la même selon la place dans la séance,
+  // les fusionner donnait un record atteignable un seul jour sur deux.
+  // Le nom de la séance n'est ajouté que si l'exercice apparaît vraiment
+  // plusieurs fois — sinon on alourdirait la liste pour rien.
   const grouped = useMemo(() => {
     const map = new Map();
+    const compte = new Map();
     sessions.forEach(s => s.exercises.forEach(ex => {
+      compte.set(ex.exercice, (compte.get(ex.exercice) || 0) + 1);
+    }));
+    sessions.forEach(s => s.exercises.forEach((ex, ei) => {
       if (!map.has(ex.muscle)) map.set(ex.muscle, []);
-      const list = map.get(ex.muscle);
-      if (!list.find(e => e.name === ex.exercice)) list.push({ name: ex.exercice, muscle: ex.muscle });
+      map.get(ex.muscle).push({
+        name: ex.exercice, muscle: ex.muscle, sid: s.id, ei,
+        seance: (compte.get(ex.exercice) || 0) > 1 ? s.name : null,
+      });
     }));
     return Array.from(map.entries());
   }, [sessions]);
 
-  function getExerciseProgress(exerciseName) {
+  function getExerciseProgress(ex) {
     const weeks = new Set();
     let bestWeight = 0;
     Object.entries(allSetLogs).forEach(([k, log]) => {
-      if (log?.exerciseName === exerciseName && allCompletedSets[k] && log.weight) {
-        weeks.add(parseInt(k.split("-")[0]));
-        const w = parseFloat(log.weight);
-        if (!isNaN(w) && w > bestWeight) bestWeight = w;
-      }
+      if (log?.exerciseName !== ex.name || !allCompletedSets[k] || !log.weight) return;
+      const [w, sid, ei] = k.split("-").map(Number);
+      if (sid !== ex.sid || ei !== ex.ei) return;
+      weeks.add(w);
+      const v = parseFloat(log.weight);
+      if (!isNaN(v) && v > bestWeight) bestWeight = v;
     });
     return { weeksLogged: weeks.size, bestWeight };
   }
@@ -2032,7 +2108,7 @@ function ProgressPage({ ctx }) {
         {grouped.map(([muscle, exercises], groupIdx) => {
           const mStyle = muscleColors[muscle] || { bg: T.surface2, text: T.textSub };
           const isOpen = openMuscle === muscle;
-          const withData = exercises.filter(ex => getExerciseProgress(ex.name).bestWeight > 0).length;
+          const withData = exercises.filter(ex => getExerciseProgress(ex).bestWeight > 0).length;
           return (
             <div key={muscle} style={{ background: T.surface, border: `1.5px solid ${isOpen ? mStyle.text + "50" : T.border}`, borderRadius: 14, overflow: "hidden", transition: "border-color .2s, box-shadow .2s", boxShadow: isOpen ? `0 4px 16px ${mStyle.text}12` : `0 1px 4px ${T.shadow}`, animation: `fadeUp .35s ease ${groupIdx * 0.05}s both` }}>
               <div className="pressable" onClick={() => setOpenMuscle(isOpen ? null : muscle)} style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
@@ -2055,12 +2131,13 @@ function ProgressPage({ ctx }) {
               {isOpen && (
                 <div style={{ borderTop: `1px solid ${T.border}` }}>
                   {exercises.map((ex, i) => {
-                    const prog = getExerciseProgress(ex.name);
+                    const prog = getExerciseProgress(ex);
                     return (
-                      <div key={ex.name} onClick={() => openExerciseSheet({ exercice: ex.name, muscle: ex.muscle })} className="pressable" style={{ padding: "11px 14px 11px 18px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: T.surface, borderBottom: i < exercises.length - 1 ? `1px solid ${T.border}` : "none", animation: `fadeUp .2s ease ${i * 0.04}s both` }}>
+                      <div key={`${ex.sid}-${ex.ei}`} onClick={() => openExerciseSheet({ exercice: ex.name, muscle: ex.muscle, sid: ex.sid, ei: ex.ei, seance: ex.seance })} className="pressable" style={{ padding: "11px 14px 11px 18px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: T.surface, borderBottom: i < exercises.length - 1 ? `1px solid ${T.border}` : "none", animation: `fadeUp .2s ease ${i * 0.04}s both` }}>
                         <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: prog.bestWeight > 0 ? mStyle.text : T.borderStrong, opacity: prog.bestWeight > 0 ? 1 : 0.4 }}/>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{ex.name}</div>
+                          {ex.seance && (<div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2, fontWeight: 700, letterSpacing: .4 }}>{ex.seance}</div>)}
                           {prog.weeksLogged > 0 && (<div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{prog.weeksLogged} semaine{prog.weeksLogged > 1 ? "s" : ""} loguée{prog.weeksLogged > 1 ? "s" : ""}</div>)}
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -2305,6 +2382,11 @@ function ProfilePage({ ctx }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  SHEET : Détail exercice
 // ═══════════════════════════════════════════════════════════════════════════════
+// `exercise` peut porter un emplacement : { sid, ei, seance }. Quand il est là,
+// l'historique ne retient QUE cet emplacement — même séance, même position.
+// Un exercice fait deux fois dans la semaine a deux historiques distincts,
+// parce qu'il n'a pas la même place dans la fatigue de la séance : le comparer
+// à lui-même d'un jour sur l'autre ne mesure rien.
 function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
   const history = useMemo(() => {
     if (!exercise) return [];
@@ -2312,6 +2394,7 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
     Object.entries(allSetLogs).forEach(([key, log]) => {
       if (log?.exerciseName === exercise.exercice && allCompletedSets[key] && log.weight && log.actualReps) {
         const [w, sid, ei, si] = key.split("-").map(Number);
+        if (exercise.sid != null && (sid !== exercise.sid || ei !== exercise.ei)) return;
         items.push({ week: w, sid, ei, si, weight: parseFloat(log.weight), reps: parseInt(log.actualReps), date: log.loggedAt });
       }
     });
@@ -2340,7 +2423,15 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, lineHeight: 1.1 }}>{exercise.exercice}</div>
-            <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 700, marginTop: 6, display: "inline-block" }}>{exercise.muscle}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{exercise.muscle}</span>
+              {/* Le nom de la séance n'apparaît que si l'exercice revient
+                  ailleurs dans la semaine : sans lui, on ne saurait pas lequel
+                  des deux historiques on est en train de lire. */}
+              {exercise.seance && (
+                <span style={{ background: T.surface2, color: T.textSub, border: `1px solid ${T.border}`, fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{exercise.seance}</span>
+              )}
+            </div>
           </div>
           <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
