@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7x** | **La comparaison vert/rouge remonte jusqu'à 3 semaines** au lieu d'exiger la semaine N−1 (18 % des séries n'avaient aucune couleur), **affiche sa référence chiffrée** sous chaque série, et **sépare les emplacements** : un exercice fait 2 fois dans la semaine a deux historiques et deux records | 590 721 o | 7975 |
 | **v7w** | **Cinq sonneries au choix** · plus de bip à l'ouverture de l'app · plus de carte « Lecture en cours » sur l'écran verrouillé · **la semaine bascule le lundi à minuit pour tout le monde** · « commencer la séance » ouvre la séance du jour | 588 345 o | 7884 |
 | **v7v** | **Regénérer une diète demande confirmation** — le bouton écrasait 8 repas sans rien demander, et la diète composée à la main d'une coachée cœliaque y est passée | 579 906 o | 7628 |
 | **v7u** | **La sonnerie passe le mode silencieux de l'iPhone** : elle sort désormais d'un élément `<audio>`, seul canal qu'iOS laisse sonner interrupteur baissé. Bandeau haut et barre d'onglets suivent enfin le mode sombre | 579 292 o | 7602 |
@@ -1088,7 +1089,24 @@ Appliquer un modèle = générer les `periodization_phases` à partir d'une date
 Ne pas les remettre en cause sans validation explicite de ma part.
 
 1. **Charge et reps comparées indépendamment**, jamais par tonnage. Code couleur vert/rouge sur chaque bulle séparément.
-2. Comparaison **strictement avec la semaine immédiatement précédente**. Modifier la semaine N recalcule uniquement les couleurs de N+1, jamais au-delà.
+2. **La comparaison se fait au MÊME EMPLACEMENT** — même séance, même position dans la séance,
+   même numéro de série — et **jamais** entre deux occurrences du même exercice à des moments
+   différents de la semaine. Un tirage vertical fait en 2e exercice le lundi et le même tirage
+   fait en 6e le jeudi ne produisent pas la même performance : les fusionner fabrique des rouges
+   et des verts qui ne veulent rien dire. L'historique et les records suivent la même règle.
+   **L'emplacement seul n'identifie PAS un exercice** : les ids de séance sont réutilisés d'un
+   programme à l'autre (11 ids partagés et 19 emplacements ambigus relevés en base le
+   9 septembre 2026), donc le **nom** est vérifié à chaque fois.
+   **On remonte jusqu'à 3 semaines** (`RECUL_MAX_SEMAINES`) pour trouver la dernière fois que cet
+   exercice a été fait à cet emplacement. *Modifié le 9 septembre 2026, avec l'accord de Greg :*
+   la règle exigeait auparavant strictement la semaine N−1, et une séance sautée effaçait la
+   couleur sans rien dire — mesuré sur les données réelles, **245 séries sur 1 338 (18 %)**
+   n'avaient aucune couleur alors qu'une référence existait. Au-delà de 3 semaines on s'arrête :
+   comparer à une charge d'il y a deux mois n'apprend plus rien.
+   La **valeur de référence est affichée sous chaque série** (« RÉF. S13 · 80 kg × 8 reps »), avec
+   un repère « il y a N semaines » quand ce n'est pas la semaine précédente. Une couleur qui
+   surprend doit pouvoir se vérifier, sinon elle passe pour un bug — c'est exactement ce qui
+   s'est produit.
 3. **Échec musculaire supposé à chaque série** — c'est le fondement de la comparaison.
 4. **Numérotation des semaines continue** depuis le début du coaching, quel que soit le
    changement de programme. **Une semaine va du LUNDI au DIMANCHE**, pour tout le monde : la
@@ -1175,6 +1193,29 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Un `session_config_id` ne désigne pas le même exercice d'un programme à l'autre (trouvé le
+  9 septembre 2026, v7x).** Les ids de séance sont de petits entiers réattribués à chaque
+  nouveau programme : relevé en base, **11 ids partagés entre programmes et 19 emplacements
+  (séance, position) portant un exercice différent selon le programme**. Toute lecture d'un log
+  passé par `(séance, position)` doit donc **vérifier le nom de l'exercice**, sinon elle affiche
+  la charge d'un autre mouvement. `compareWithPrevious` le faisait déjà ; `getLog`, qui affiche
+  la valeur, ne le faisait pas.
+- **Une règle « strictement N−1 » se retourne dès que la vie réelle s'en mêle (même date, v7x).**
+  La comparaison exigeait la semaine précédente exactement. Sur les données réelles, les quatre
+  coachés ont tous une interruption d'entraînement : **245 séries sur 1 338 n'affichaient aucune
+  couleur alors qu'une référence existait à 2 ou 3 semaines**. Une règle écrite pour le cas
+  nominal doit être éprouvée sur les données réelles avant d'être tenue pour juste.
+- **Un signalement d'utilisateur peut être une impression (même date).** Greg décrivait des
+  couleurs « inversées ». La règle rejouée sur les 1 338 séries réelles ne s'est trompée de sens
+  **sur aucune** : ce qu'il voyait était l'absence de couleur, pas une inversion. Chercher le bug
+  décrit plutôt que le bug réel aurait fait perdre la journée. **Mesurer avant de corriger**, et
+  afficher la référence pour que le doute suivant se tranche tout seul.
+- **`npm install <paquet>` sur cette VM casse les tests (même date).** L'image fournit Playwright
+  **1.56.1** et ses navigateurs (build chromium 1194) dans `/opt/pw-browsers`. Un
+  `npm install playwright` tire la dernière version, qui réclame un build absent, et **ajoute une
+  dépendance au `package.json`** au passage. La bonne commande, quand `node_modules` manque :
+  `npm install` puis `npm install --no-save playwright@1.56.1`. Ne jamais lancer
+  `npx playwright install`.
 - **`HTMLMediaElement.volume` est en LECTURE SEULE sur iOS (trouvé le 3 septembre 2026, v7w).**
   Le déblocage de l'audio jouait la sonnerie avec `volume = 0` : sur iPhone l'affectation est
   ignorée **sans lever d'erreur**, et le bip partait à plein volume à chaque ouverture de l'app —
@@ -1457,9 +1498,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **3 septembre 2026** — v7w, 588 345 octets, 7884 lignes |
-| Contenu de ce build | Sonneries au choix, correction du son parasite à l'ouverture et de la carte « Lecture en cours » · semaine lundi→dimanche · « commencer la séance » ouvre la bonne séance |
-| Build précédent | 26 août 2026 — v7v, 579 906 octets. Confirmation avant de regénérer une diète |
+| Dernier build déployé | **9 septembre 2026** — v7x, 590 721 octets, 7975 lignes |
+| Contenu de ce build | Comparaison vert/rouge : recul jusqu'à 3 semaines, référence chiffrée affichée, emplacements séparés dans l'historique et les records |
+| Build précédent | 3 septembre 2026 — v7w, 588 345 octets. Sonneries au choix, semaine lundi→dimanche |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

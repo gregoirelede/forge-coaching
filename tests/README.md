@@ -20,6 +20,17 @@ machine. Sur la VM de travail, Chromium est déjà installé
 (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`) — **ne pas lancer
 `playwright install`**.
 
+> **Si `node_modules` est absent** (la VM repart de zéro à chaque session) :
+> ```bash
+> npm install                              # esbuild, pour le build
+> npm install --no-save playwright@1.56.1  # LA version des navigateurs de l'image
+> ```
+> **La version compte, et `--no-save` aussi.** L'image fournit le build chromium
+> 1194, celui de Playwright 1.56.1. Un `npm install playwright` tout court tire la
+> dernière version, réclame un build absent, échoue — et ajoute au passage une
+> dépendance au `package.json`, qui n'en déclare volontairement aucune pour les
+> tests.
+
 ## Ce que couvre chaque série
 
 | Fichier | Ce qu'il vérifie |
@@ -39,6 +50,7 @@ machine. Sur la VM de travail, Chromium est déjà installé
 | `test-programme-anais.mjs` | Le programme réellement inséré en base pour Anaïs : l'app le rend sans erreur, les 4 séances sont accessibles, la durée tient sous 1h30, les volumes et la contrainte épaule sont respectés |
 | `test-programme-meyssa.mjs` | Le programme de Meyssa : que le SQL produit bien un full body mercredi/dimanche, que les 4 exercices imposés y sont, que le fessier est le muscle le plus travaillé sans qu'aucun grand groupe ne tombe à zéro, et que les numéros de séance ne recyclent pas ceux de ses programmes précédents |
 | `test-semaine-et-seance.mjs` | Qu'une semaine va bien du lundi au dimanche pour tout le monde, quel que soit le jour d'inscription et malgré les changements d'heure, et que « COMMENCER LA SÉANCE » ouvre la séance du JOUR et pas celle du lundi |
+| `test-comparaison.mjs` | Le vert/rouge des séries : le sens de la couleur (charge et reps séparément), le recul jusqu'à 3 semaines quand une séance a été sautée, le refus de comparer deux exercices différents au même emplacement, et la séparation stricte de deux occurrences du même exercice dans la semaine |
 | `test-chrono-sonnerie.mjs` | La sonnerie et le décompte : qu'aucun contexte audio ne soit créé hors geste, qu'il n'y en ait **qu'un seul**, que le déblocage soit **réellement silencieux**, que la session ne monte en « playback » que le temps du bip et redescende ensuite, que les 5 sonneries sonnent différemment, que **rien ne s'arme si le coaché a coupé le son**, et que le chrono suive l'horloge murale écran verrouillé |
 | `test-diete.mjs` | La diète personnalisée : le générateur en pur calcul (allergènes, cibles atteintes à 6 % près, protéines réparties), le consentement du coaché, sa lecture seule, l'édition aliment par aliment côté coach, et le comportement **avant** la migration |
 | `test-videos.mjs` | Reconnaissance des liens vidéo (dont `javascript:` et `data:`, refusés), lecteur côté coaché, et le fonctionnement **avant** que la migration SQL soit jouée |
