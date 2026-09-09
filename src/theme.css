@@ -12,11 +12,16 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg: #F5F1EB;
-  --surface: #FFFCF7;
-  --surface2: #EDE8DF;
-  --border: #DDD5C8;
-  --border-strong: #C8BFB0;
+  --bg: #F1EDE6;
+  --surface: #FFFDFA;
+  --surface2: #EAE5DC;
+  /* Un contour de carte n'existe pas dans iOS : la séparation vient de la
+     PROFONDEUR. --border redevient donc ce qu'il est chez Apple — un filet de
+     séparation entre deux lignes d'une même liste, pas le tour d'un objet.
+     Passer de #DDD5C8 opaque à un filet à 10 % efface d'un coup les 200 cadres
+     qui donnaient à l'app son air de gabarit, sans toucher une ligne de JSX. */
+  --border: rgba(56, 48, 36, 0.10);
+  --border-strong: rgba(56, 48, 36, 0.20);
   --text: #1E2820;
   --text-sub: #7A7060;
   --text-muted: #A89880;
@@ -26,18 +31,41 @@
   --accent-text: #FFFFFF;
   --danger: #C0392B;
   --input-bg: #EDE8DF;
-  --shadow: rgba(30, 40, 32, 0.08);
+  --shadow: rgba(38, 30, 18, 0.10);
+
+  /* ── ÉCHELLE DE PROFONDEUR ──────────────────────────────────────────────
+     Trois niveaux, pas un de plus. Chacun superpose une ombre courte et nette
+     (le contact) et une ombre longue et diffuse (la lumière ambiante) : c'est
+     ce qui distingue un objet posé d'un rectangle avec une ombre portée. */
+  --e1: 0 1px 2px rgba(38, 30, 18, .045), 0 4px 12px rgba(38, 30, 18, .05);
+  --e2: 0 2px 5px rgba(38, 30, 18, .055), 0 10px 26px rgba(38, 30, 18, .07);
+  --e3: 0 6px 18px rgba(38, 30, 18, .09), 0 24px 56px rgba(38, 30, 18, .12);
+
+  /* Le reflet spéculaire en haut d'un matériau translucide. Un filet clair
+     d'un pixel : c'est ce qui fait lire « verre » plutôt que « flou ». */
+  --verre-reflet: rgba(255, 255, 255, 0.55);
 
   /* Barres translucides — en-tête collant et barre d'onglets. Elles sont
      floutées (backdrop-filter), donc leur fond doit être semi-transparent :
      ce sont les deux seules couleurs de l'app qui ne peuvent pas se contenter
      de --surface. Elles étaient écrites en dur, et restaient donc blanches en
      mode sombre — le défaut signalé le 25 août 2026. */
-  --bar-bg: rgba(255, 252, 247, 0.92);
-  --bar-bg-opaque: rgba(255, 252, 247, 0.95);
+  --scrim: rgba(30, 40, 32, 0.42);
+  --bar-bg: rgba(252, 249, 244, 0.72);
+  --bar-bg-opaque: rgba(252, 249, 244, 0.88);
 
   /* Accent avec transparence — remplace les concaténations T.accent + "55" */
   --accent-a10: rgba(45, 106, 79, 0.09);
+  /* Le bouton d'action principale. Il était un dégradé teal (#064E3B → #0D9488)
+     écrit à la main 25 fois, avec trois couples de bornes différents : deux
+     boutons principaux ne se ressemblaient pas d'un écran à l'autre. Et le teal
+     ne donnait que 3,74:1 en blanc dessus, sous le seuil de 4,5:1 pour du 13 px
+     gras — la couleur d'accent monte à 6,39:1.
+     Le dégradé de marque reste, mais à sa place : le bouclier et les avatars. */
+  --btn-primaire: #2D6A4F;
+  --btn-primaire-tx: #FFFFFF;
+  --degrade-marque: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --degrade-marque-clair: linear-gradient(135deg, #064E3B, #2DD4BF);
   --accent-a20: rgba(45, 106, 79, 0.21);
   --accent-a33: rgba(45, 106, 79, 0.33);
   --accent-a38: rgba(45, 106, 79, 0.38);
@@ -76,11 +104,11 @@
 }
 
 :root[data-theme="sombre"] {
-  --bg: #141815;
-  --surface: #1B211D;
-  --surface2: #232A25;
-  --border: #2F372F;
-  --border-strong: #454E47;
+  --bg: #101512;
+  --surface: #1C231E;
+  --surface2: #242C26;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
   --text: #ECE8E0;
   --text-sub: #A7A093;
   --text-muted: #7C766A;
@@ -89,12 +117,19 @@
   --accent-light: #1D2B24;
   --accent-text: #0A0E0B;
   --danger: #E4695A;
-  --input-bg: #232A25;
-  --shadow: rgba(0, 0, 0, 0.45);
+  --input-bg: #242C26;
+  --shadow: rgba(0, 0, 0, 0.5);
 
-  /* Même teinte que --surface (#1B211D), en semi-transparent pour le flou. */
-  --bar-bg: rgba(27, 33, 29, 0.92);
-  --bar-bg-opaque: rgba(27, 33, 29, 0.95);
+  --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
+  --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
+  --e3: 0 6px 18px rgba(0, 0, 0, .44), 0 24px 56px rgba(0, 0, 0, .52);
+  --verre-reflet: rgba(255, 255, 255, 0.10);
+
+  /* Même teinte que --surface, en translucide pour le flou. */
+  --scrim: rgba(0, 0, 0, 0.58);
+  --btn-primaire: #35855D;
+  --bar-bg: rgba(24, 30, 26, 0.72);
+  --bar-bg-opaque: rgba(24, 30, 26, 0.90);
 
   --accent-a10: rgba(79, 169, 127, 0.10);
   --accent-a20: rgba(79, 169, 127, 0.22);
@@ -133,11 +168,11 @@
    choisi explicitement. data-theme="clair" ou "sombre" prend le dessus. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="clair"]):not([data-theme="sombre"]) {
-    --bg: #141815;
-    --surface: #1B211D;
-    --surface2: #232A25;
-    --border: #2F372F;
-    --border-strong: #454E47;
+    --bg: #101512;
+    --surface: #1C231E;
+    --surface2: #242C26;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
     --text: #ECE8E0;
     --text-sub: #A7A093;
     --text-muted: #7C766A;
@@ -146,11 +181,18 @@
     --accent-light: #1D2B24;
     --accent-text: #0A0E0B;
     --danger: #E4695A;
-    --input-bg: #232A25;
-    --shadow: rgba(0, 0, 0, 0.45);
+    --input-bg: #242C26;
+    --shadow: rgba(0, 0, 0, 0.5);
 
-    --bar-bg: rgba(27, 33, 29, 0.92);
-    --bar-bg-opaque: rgba(27, 33, 29, 0.95);
+    --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
+    --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
+    --e3: 0 6px 18px rgba(0, 0, 0, .44), 0 24px 56px rgba(0, 0, 0, .52);
+    --verre-reflet: rgba(255, 255, 255, 0.10);
+
+    --scrim: rgba(0, 0, 0, 0.58);
+  --btn-primaire: #35855D;
+  --bar-bg: rgba(24, 30, 26, 0.72);
+    --bar-bg-opaque: rgba(24, 30, 26, 0.90);
 
     --accent-a10: rgba(79, 169, 127, 0.10);
     --accent-a20: rgba(79, 169, 127, 0.22);
@@ -190,6 +232,79 @@
 html, body { background: var(--bg); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ÉCHELLES — RAYONS, MOUVEMENT, TYPOGRAPHIE
+
+   Ce qui faisait « gabarit » n'était pas l'absence d'effets, c'était l'absence
+   d'ÉCHELLE : 19 rayons différents, des ombres identiques partout, et un
+   interlettrage large sur presque tous les petits textes. Une interface se lit
+   comme premium quand les valeurs se répètent, pas quand elles sont nombreuses.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --r-xs: 10px;   /* pastilles, petits champs */
+  --r-sm: 14px;   /* boutons, lignes de liste */
+  --r-md: 18px;   /* cartes */
+  --r-lg: 24px;   /* grandes cartes, barres flottantes */
+  --r-xl: 30px;   /* feuilles */
+  --r-pill: 999px;
+  --r-sheet: 28px;
+
+  /* La courbe d'iOS. Départ franc, arrivée longue et sans rebond : c'est elle
+     qui fait qu'un mouvement paraît « posé » plutôt que mécanique. */
+  --ressort: cubic-bezier(0.32, 0.72, 0, 1);
+  --sortie:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── LE MATÉRIAU DES BARRES ─────────────────────────────────────────────────
+   Ce qu'une page web peut réellement rendre du Liquid Glass : la translucidité,
+   la saturation du fond qui transparaît, et le filet spéculaire du haut. La
+   réfraction en temps réel d'iOS 26 passe par un filtre SVG dans
+   `backdrop-filter`, que SEUL Chromium accepte — Safari, donc tous les iPhone,
+   l'ignore et retombe sur un flou plat. On ne la simule donc pas : un flou
+   qu'on force sans réfraction rend l'interface plus terne, pas plus riche. */
+.verre {
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  backdrop-filter: blur(28px) saturate(190%);
+  position: relative;
+}
+.verre::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding-top: 1px; pointer-events: none;
+  background: linear-gradient(var(--verre-reflet), transparent 1px);
+  -webkit-mask: linear-gradient(#000, transparent 55%);
+  mask: linear-gradient(#000, transparent 55%);
+}
+/* Une barre d'action posée SUR du contenu doit rester lisible : même matériau,
+   voile plus dense. */
+.verre.dense { background: var(--bar-bg-opaque); }
+/* « Réduire la transparence » d'iOS : on rend les barres opaques plutôt que
+   d'imposer un flou à quelqu'un qui a demandé de ne pas en avoir. */
+@media (prefers-reduced-transparency: reduce) {
+  .verre, .verre.dense { background: var(--bar-bg-opaque); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .sheet-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ── LA RÉPONSE AU TOUCHER ──────────────────────────────────────────────────
+   Sur iOS, un élément pressé s'enfonce légèrement et s'éclaircit, et il revient
+   plus lentement qu'il n'est parti. C'est ce décalage qui donne la sensation de
+   matière. */
+.pressable { transition: transform .42s var(--ressort), opacity .42s var(--ressort); }
+.pressable:active { transform: scale(.972); opacity: .82; transition-duration: .09s; }
+.quick-card { transition: transform .42s var(--ressort), box-shadow .42s var(--ressort); }
+.quick-card:active { transform: scale(.985); }
+.hero-card { transition: transform .5s var(--ressort), box-shadow .5s var(--ressort); }
+.hero-card:active { transform: scale(.988); }
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active, .quick-card:active, .hero-card:active { transform: none; }
+}
+
+/* Les champs de saisie : anneau de focus à la place du surlignage par défaut. */
+input, select, textarea, button { font-family: inherit; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; box-shadow: 0 0 0 3.5px var(--accent-a20);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ANIMATIONS PARTAGÉES — ICI ET PAS DANS UN COMPOSANT
 
    Elles vivaient dans les blocs <style> de AuthenticatedApp et de CoachApp.
@@ -207,6 +322,79 @@ html, body { background: var(--bg); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); }  to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes popIn  { from { opacity: 0; transform: scale(.8); }        to { opacity: 1; transform: scale(1); } }
+
+/* ── LES FEUILLES ──────────────────────────────────────────────────────────
+   Une feuille est le geste de navigation le plus utilisé de l'app : 18 d'entre
+   elles répétaient inline le même fond, le même rayon, la même ombre et le même
+   voile. Le chrome vit ici ; le composant ne pose plus que son `zIndex` et sa
+   hauteur.
+
+   La poignée de préhension suit la même logique : 12 feuilles sur 14 en avaient
+   une, dessinée à la main, avec trois marges différentes ; les deux autres n'en
+   avaient pas. Une seule règle, appliquée partout. */
+@keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+.sheet-backdrop {
+  position: fixed; inset: 0; background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: sheetFadeIn .28s ease both;
+}
+/* La poignée : 36 × 5 aux bouts entièrement arrondis, comme celle d'iOS. */
+.poignee {
+  width: 36px; height: 5px; border-radius: var(--r-pill);
+  background: var(--border-strong); margin: 10px auto 14px; flex-shrink: 0;
+}
+
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow: var(--e3);
+  animation: sheetSlideUp .46s var(--ressort) both;
+}
+
+/* ── LES RANGÉES QUI DÉFILENT ──────────────────────────────────────────────
+   Une rangée horizontale se coupait net au bord de l'écran, au milieu d'un mot
+   (« Sem… »), ce qui se lit comme un défaut d'affichage et non comme « ça
+   continue ». iOS estompe le bord ; on fait pareil, au masque, ce qui marche
+   quel que soit le fond derrière.
+
+   `scroll-snap` en prime : le doigt lâche la rangée sur une carte entière,
+   jamais entre deux. */
+.rail {
+  scrollbar-width: none;
+  -webkit-mask: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+  mask: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+}
+.rail::-webkit-scrollbar { display: none; }
+
+/* L'accrochage ne va QUE sur les rangées de cartes, et il vient toujours avec
+   son `scroll-padding`. Sans lui, le navigateur aligne la première carte sur le
+   bord du conteneur et mange les 18 px de marge de page : la rangée s'ouvrait
+   déjà décalée, collée au bord de l'écran. Mesuré, pas supposé — `scrollLeft`
+   valait 18 à l'ouverture. */
+.rail.cartes { scroll-snap-type: x proximity; scroll-padding-left: 18px; }
+.rail.cartes > * { scroll-snap-align: start; }
+
+/* ── LES TRANSITIONS DE PAGE ───────────────────────────────────────────────
+   Même raison d'être : elles étaient déclarées dans AuthenticatedApp, donc
+   absentes tant qu'il n'était pas monté. */
+@keyframes pageInForward  { from { opacity: 0; transform: translateX(20px); }  to { opacity: 1; transform: translateX(0); } }
+@keyframes pageInBackward { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(18px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes growUp  { from { height: 0; opacity: 0; } to { opacity: 1; } }
+.page-forward  { animation: pageInForward  .38s var(--ressort) both; }
+.page-backward { animation: pageInBackward .38s var(--ressort) both; }
+.fade-in { animation: fadeIn .3s ease forwards; }
+.tab-bar-btn:active > div:first-child { transform: scale(0.9) !important; }
+.upcoming-card { transition: transform .42s var(--ressort); }
+.upcoming-card:active { transform: scale(.978); }
+.stat-card { transition: transform .42s var(--ressort); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .sheet-backdrop, .page-forward, .page-backward, .fade-in { animation-duration: .01ms; }
+  .upcoming-card:active { transform: none; }
+}
 
 /* Le miroitement des squelettes de chargement. Le reflet passe de gauche à
    droite sur un fond neutre ; les deux teintes viennent du thème, donc il

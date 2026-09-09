@@ -158,7 +158,7 @@ console.log("\n─── Le coach consulte les plantages ───");
 
   const vue = await p.locator("body").innerText();
   ok(/2 PLANTAGES/.test(vue), "le nombre de plantages est affiché");
-  ok(/MARIE DUPONT/.test(vue), "on sait chez qui ça a planté");
+  ok(/Marie Dupont/i.test(vue), "on sait chez qui ça a planté");
   ok(/Cannot read properties of undefined/.test(vue), "le message est lisible");
   ok(/version 185c52c35afc/.test(vue), "la version du build est indiquée");
   await p.screenshot({ path: `${CAPTURES}erreurs-coach.png`, fullPage: true });

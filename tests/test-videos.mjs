@@ -175,8 +175,12 @@ window.supabase = { createClient: () => ({
   ok(!/youtube\.com\/watch/.test(src || ""), "le lien de la page YouTube n'est jamais encastré tel quel");
 
   const feuille = await p.evaluate(() => {
-    const t = [...document.querySelectorAll("div")].find(d => d.textContent.trim() === "Développé couché" && !d.children.length && /Bebas/.test(getComputedStyle(d).fontFamily));
-    return t ? t.parentElement.parentElement.innerText : null;
+    // On part du lecteur et on remonte jusqu'au premier ancêtre qui rappelle
+    // aussi le nom de l'exercice : la feuille se repère à ce qu'elle contient,
+    // pas à la police de son titre.
+    let n = document.querySelector("iframe");
+    while (n && !/Développé couché/.test(n.innerText || "")) n = n.parentElement;
+    return n ? n.innerText : null;
   });
   ok(feuille && /Développé couché/.test(feuille), "la feuille rappelle le nom de l'exercice");
   ok(feuille && /Fermer/.test(feuille), "elle a un bouton Fermer");
