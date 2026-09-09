@@ -189,12 +189,12 @@ console.log("\n─── Le coach lit les retours ───");
   await p.waitForTimeout(900);
 
   const vue = await p.locator("body").innerText();
-  ok(/SEMAINE 4/.test(vue), "la semaine 4 est affichée");
+  ok(/Semaine 4/i.test(vue), "la semaine 4 est affichée");
   ok(/Bonne semaine\./.test(vue), "le bilan de la semaine y est");
   ok(/PUSH A/.test(vue), "la séance concernée est nommée");
   ok(/Épaule sensible au 3e set\./.test(vue), "la note de séance est lisible à côté du bilan");
 
-  ok(/SEMAINE 3/.test(vue), "la semaine 3 apparaît alors qu'elle n'a pas de bilan");
+  ok(/Semaine 3/i.test(vue), "la semaine 3 apparaît alors qu'elle n'a pas de bilan");
   ok(/Pas de bilan, mais des notes de séance/.test(vue),
      "l'app dit pourquoi cette semaine n'a pas de curseurs");
   ok(/Salle bondée, squat remplacé\./.test(vue), "sa note de séance est bien là");

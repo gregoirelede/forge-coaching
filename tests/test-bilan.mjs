@@ -126,7 +126,7 @@ console.log("\n─── Le coaché remplit son bilan ───");
   await p.locator("text=Bilan de la semaine").first().click();
   await p.waitForTimeout(600);
   const feuille = await p.locator("body").innerText();
-  ok(/BILAN · SEMAINE 4/.test(feuille), "la feuille s'ouvre sur la bonne semaine");
+  ok(/Bilan · semaine 4/i.test(feuille), "la feuille s'ouvre sur la bonne semaine");
   for (const l of ["ÉNERGIE", "SOMMEIL", "MOTIVATION", "RÉCUPÉRATION"])
     ok(feuille.includes(l), `le critère ${l} est proposé`);
   ok(/Tout est facultatif/.test(feuille), "l'app dit clairement que rien n'est obligatoire");
@@ -176,7 +176,7 @@ console.log("\n─── Le coach répond ───");
   await p.waitForTimeout(800);
 
   const vue = await p.locator("body").innerText();
-  ok(/SEMAINE 4/.test(vue), "le bilan de la semaine 4 est affiché");
+  ok(/Semaine 4/i.test(vue), "le bilan de la semaine 4 est affiché");
   ok(/SANS RÉPONSE/.test(vue), "un bilan sans réponse est signalé comme tel");
   ok(/soulevé de terre/.test(vue), "le coach lit le mot du coaché");
   ok(/ÉNERGIE/.test(vue) && /RÉCUPÉRATION/.test(vue), "les quatre curseurs sont résumés");

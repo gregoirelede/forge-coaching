@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7z** | **Refonte des interfaces** : le système de style ne vit plus qu'à un endroit (`theme.css`), contrôle segmenté, listes groupées en encart, chrome des 14 feuilles mutualisé, bouton principal unique et enfin lisible (3,74:1 → 6,39:1). Trois défauts silencieux corrigés au passage | 601 253 o | 8160 |
 | **v7y** | **Les écrans de chargement** : les animations existaient dans des composants pas encore montés, donc le logo du démarrage ne bougeait pas. Le texte suit maintenant les vraies étapes, une connexion lente est annoncée, et les 11 pages internes affichent leur structure au lieu d'un spinner seul | 597 131 o | 8106 |
 | **v7x** | **La comparaison vert/rouge remonte jusqu'à 3 semaines** au lieu d'exiger la semaine N−1 (18 % des séries n'avaient aucune couleur), **affiche sa référence chiffrée** sous chaque série, et **sépare les emplacements** : un exercice fait 2 fois dans la semaine a deux historiques et deux records | 590 721 o | 7975 |
 | **v7w** | **Cinq sonneries au choix** · plus de bip à l'ouverture de l'app · plus de carte « Lecture en cours » sur l'écran verrouillé · **la semaine bascule le lundi à minuit pour tout le monde** · « commencer la séance » ouvre la séance du jour | 588 345 o | 7884 |
@@ -867,6 +868,50 @@ const T = {
 - **Logo** : bouclier, monogramme "FC".
 - Cartes : `borderRadius` ~13 px, `border: 1px solid T.border`, ombre légère `0 1px 8px`.
 
+### Le système de style (v7z) — où vivent les décisions
+
+Depuis la refonte du 9 septembre 2026, **rien de ce qui relève du style ne s'écrit dans un
+composant.** Tout est dans `src/theme.css`, inliné dans le `<head>` au build — donc présent avant
+que React démarre, et jamais écrasé par un `<style>` de composant (voir Partie L).
+
+| Ce qu'on pose | Où ça vit | Ce qu'on n'écrit plus jamais |
+|---|---|---|
+| Profondeur | `--e1` `--e2` `--e3` | une ombre à la main, une bordure de carte |
+| Rayons | `--r-xs` … `--r-xl`, `--r-pill`, `--r-sheet` | un `borderRadius` hors échelle |
+| Mouvement | `--ressort` `--sortie` | une courbe de Bézier recopiée |
+| Bouton principal | `--btn-primaire` | un dégradé écrit dans un `style={{}}` |
+| Barres | classe `.verre` (`.verre.dense`) | un `backdropFilter` + un fond à la main |
+| Feuilles | classes `.sheet` `.sheet-backdrop` `.poignee` | le chrome d'une feuille inline |
+| Rangées qui défilent | `.rail` (`.rail.cartes` pour l'accrochage) | un `overflowX` nu |
+| Chargement | `.squelette` et ses `@keyframes` | une animation déclarée dans un composant |
+
+Trois composants portent les idiomes d'iOS et doivent être réutilisés plutôt que refaits :
+**`Segmente`** (choix exclusif entre 2 et 4 options, curseur qui glisse), **`Groupe`** (liste en
+encart, filets décalés sous le texte) et **`QuickCard`** (une ligne de cette liste).
+
+**La casse suit une règle, et une seule** : les capitales sont réservées aux **en-têtes de section**
+posés au-dessus d'une liste. Les **boutons, les titres de feuille et les libellés de champ** sont en
+casse normale. C'est ce mélange — 38 libellés de champ en capitales, dont la moitié à moitié
+seulement — qui donnait à l'app son air de formulaire web plutôt que d'app native.
+
+### Ce que le « Liquid Glass » d'iOS 26 permet vraiment sur une page web
+
+Demandé par Greg le 9 septembre 2026. La réponse honnête tient en une ligne : **la réfraction
+d'iOS 26 n'est pas reproductible sur iPhone**, et il ne faut pas essayer.
+
+Elle passe par un filtre SVG appelé depuis `backdrop-filter`, que **seul Chromium accepte**. Safari
+— donc tous les téléphones des coachés — l'ignore et retombe sur un flou plat. Forcer le dispositif
+ne donnerait pas un rendu dégradé mais un rendu **plus terne** que ce qu'on a : un flou sans
+réfraction mange le contraste sans rien rendre en échange.
+
+Ce qui est réellement rendu, et qui vient bien d'iOS 26 : le matériau translucide **sur la seule
+couche de navigation** (bandeau haut, barre d'onglets flottante, barres d'action — jamais sur le
+contenu, jamais empilé sur lui-même), le filet spéculaire en haut de chaque barre, la saturation du
+fond qui transparaît, la hiérarchie par la profondeur plutôt que par le contraste, la courbe de
+ressort `cubic-bezier(0.32, 0.72, 0, 1)`, et le respect de « réduire la transparence » et « réduire
+les animations ». **Le chronomètre en Dynamic Island reste hors de portée** pour la même famille de
+raisons (Partie I.3).
+
 ### Couleurs des phases de périodisation
 | Type | Libellé | Texte | Fond |
 |---|---|---|---|
@@ -1221,6 +1266,31 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Un `<style>` de composant ÉCRASE le thème, en silence (trouvé le 9 septembre 2026, v7z).**
+  Deuxième face du piège des `@keyframes`, et plus retorse : les blocs `<style>` de
+  `AuthenticatedApp` et de `CoachApp` redéfinissaient `.pressable`, `.quick-card`, `.hero-card`,
+  `.sheet` et `.fade-in`, que `theme.css` possédait déjà. À spécificité égale, **c'est la dernière
+  règle lue qui gagne** — et un `<style>` de composant est parsé après le `<head>`. Les nouvelles
+  règles de toucher étaient donc appliquées nulle part, sans la moindre erreur. Une règle du thème
+  ne se redéfinit jamais dans un composant : `tests/test-interface.mjs` compte les récidives.
+- **La même clé de style écrite deux fois dans un objet : la seconde gagne (même date, v7z).**
+  Onze lignes portaient `boxShadow` deux fois, séquelle d'un passage mécanique. Rien ne plante, la
+  valeur qu'on croit poser n'est simplement jamais appliquée. Le contrôle est dans la même série.
+- **`scroll-snap-align: start` sans `scroll-padding` mange la marge de page (même date, v7z).**
+  Ajouté aux rangées horizontales pour qu'elles s'arrêtent sur une carte entière, il a fait démarrer
+  la barre d'onglets de la fiche coaché **collée au bord de l'écran** : le navigateur aligne le
+  premier enfant sur le bord du conteneur, `scrollLeft` valait 18 à l'ouverture. L'accrochage ne va
+  donc que sur les rangées de cartes (`.rail.cartes`), et toujours avec son `scroll-padding-left`.
+  Trouvé en **mesurant** `getBoundingClientRect`, pas en regardant une capture — à l'œil, un
+  décalage de 18 px passe pour un choix de design.
+- **Un dégradé recopié 25 fois n'est plus une identité, c'est un défaut (même date, v7z).**
+  Le bouton principal portait `linear-gradient(135deg, #064E3B, #0D9488)` écrit à la main partout,
+  avec **trois couples de bornes différents** : deux boutons principaux ne se ressemblaient pas d'un
+  écran à l'autre. Et le teal ne donnait que **3,74:1** en blanc dessus, sous le seuil de 4,5:1 —
+  sur le bouton le plus cliqué de l'app. Il est devenu un aplat de la couleur d'accent (6,39:1 en
+  clair, 4,5:1 en sombre), lu dans `--btn-primaire`. Le dégradé de marque reste, mais à sa place :
+  le bouclier, les avatars, le bandeau de mise à jour. **Une couleur utilisée partout ne signale
+  plus rien.**
 - **Une `@keyframes` définie dans un composant n'existe pas avant qu'il soit monté (trouvé le
   9 septembre 2026, v7y).** `spin`, `pulse`, `fadeIn`, `fadeUp` et `popIn` vivaient dans les
   blocs `<style>` de `AuthenticatedApp` et de `CoachApp`. Or l'écran de démarrage s'affiche
@@ -1536,9 +1606,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **9 septembre 2026** — v7y, 597 131 octets, 8106 lignes |
-| Contenu de ce build | Écrans de chargement : animations réparées, étapes réelles, alerte réseau lent, squelettes sur les 11 pages internes |
-| Build précédent | 9 septembre 2026 — v7x, 590 721 octets. Comparaison vert/rouge sur 3 semaines et par emplacement |
+| Dernier build déployé | **9 septembre 2026** — v7z, 601 253 octets, 8160 lignes |
+| Contenu de ce build | Refonte des interfaces : système de style unifié, contrôle segmenté, listes groupées, chrome des feuilles mutualisé, bouton principal unique et lisible |
+| Build précédent | 9 septembre 2026 — v7y, 597 131 octets. Écrans de chargement |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

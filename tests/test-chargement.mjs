@@ -94,12 +94,12 @@ console.log("\n─── Au-delà de quelques secondes ───");
   await p.waitForTimeout(1400);
   ok(/connexion est lente/i.test(await p.locator("body").innerText()),
      "passé 6 s, le coaché est prévenu au lieu de croire à un plantage");
-  ok(!/RÉESSAYER/.test(await p.locator("body").innerText()),
+  ok(!/Réessayer/i.test(await p.locator("body").innerText()),
      "mais pas encore de bouton : on lui laisse le temps");
 
   await p.evaluate(() => window.__avancer(7000));
   await p.waitForTimeout(1400);
-  ok(/RÉESSAYER/.test(await p.locator("body").innerText()),
+  ok(/Réessayer/i.test(await p.locator("body").innerText()),
      "passé 12 s, un bouton pour relancer");
   await p.screenshot({ path: `${CAPTURES}chargement-lent.png` });
   await ctx.close();
@@ -157,7 +157,7 @@ console.log("\n─── En mode sombre ───");
   await p.goto(URL, { waitUntil: "domcontentloaded" });
   await p.waitForTimeout(1800);
   const fond = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  ok(fond === "rgb(20, 24, 21)", `l'écran de démarrage suit le thème sombre (${fond})`);
+  ok(fond === "rgb(16, 21, 18)", `l'écran de démarrage suit le thème sombre (${fond})`);
   await ctx.close();
 }
 

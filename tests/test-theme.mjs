@@ -48,10 +48,10 @@ console.log("\n─── Thème clair ───");
   const { ctx, p } = await ouvrir({ mode: "clair", systemeSombre: true });
   const t = await lire(p);
   ok(t.attr === "clair", `data-theme = ${t.attr}`);
-  ok(t.bg === "#F5F1EB", `--bg = ${t.bg} (charte Forest & Sand d'origine)`);
+  ok(t.bg === "#F1EDE6", `--bg = ${t.bg} (Forest & Sand, fond calmé en v7z)`);
   ok(t.accent === "#2D6A4F", `--accent = ${t.accent}`);
-  ok(t.metaColor === "#F5F1EB", `barre d'état alignée : ${t.metaColor}`);
-  ok(/255,\s*252,\s*247/.test(t.barre), `barres translucides claires : ${t.barre}`);
+  ok(t.metaColor === "#F1EDE6", `barre d'état alignée : ${t.metaColor}`);
+  ok(/252,\s*249,\s*244/.test(t.barre), `barres translucides claires : ${t.barre}`);
   await p.screenshot({ path: `${OUT}/theme-clair.png` });
   await ctx.close();
 }
@@ -62,13 +62,13 @@ console.log("\n─── Thème sombre ───");
   const { ctx, p } = await ouvrir({ mode: "sombre", systemeSombre: false });
   const t = await lire(p);
   ok(t.attr === "sombre", `data-theme = ${t.attr}`);
-  ok(t.bg === "#141815", `--bg = ${t.bg}`);
+  ok(t.bg === "#101512", `--bg = ${t.bg}`);
   ok(t.accent === "#4FA97F", `--accent = ${t.accent} (éclairci pour rester lisible)`);
-  ok(t.corpsBg === "rgb(20, 24, 21)", `fond de page réellement sombre : ${t.corpsBg}`);
-  ok(t.metaColor === "#141815", `barre d'état alignée : ${t.metaColor}`);
+  ok(t.corpsBg === "rgb(16, 21, 18)", `fond de page réellement sombre : ${t.corpsBg}`);
+  ok(t.metaColor === "#101512", `barre d'état alignée : ${t.metaColor}`);
   // Le défaut signalé le 25 août 2026 : les deux barres restaient blanches.
-  ok(/27,\s*33,\s*29/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
-  ok(/27,\s*33,\s*29/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
+  ok(/24,\s*30,\s*26/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
+  ok(/24,\s*30,\s*26/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
   await p.screenshot({ path: `${OUT}/theme-sombre.png` });
   await ctx.close();
 }
@@ -83,13 +83,25 @@ console.log("\n─── Aucune couleur de barre écrite en dur ───");
   // Les deux seules occurrences légitimes sont les définitions de la variable
   // elle-même, dans le bloc de thème clair. Toute autre est un composant qui
   // écrit la couleur à côté du thème.
-  const toutes = (html.match(/rgba\(255,\s*252,\s*247/g) || []).length;
-  const definitions = (html.match(/--bar-bg(-opaque)?:\s*rgba\(255,\s*252,\s*247/g) || []).length;
+  const toutes = (html.match(/rgba\(252,\s*249,\s*244/g) || []).length;
+  const definitions = (html.match(/--bar-bg(-opaque)?:\s*rgba\(252,\s*249,\s*244/g) || []).length;
   const enDur = toutes - definitions;
   ok(definitions === 2, `la palette claire définit bien les deux variables (${definitions})`);
   ok(enDur === 0, `aucun composant n'écrit un fond de barre en dur (${enDur})`);
-  const viaVariable = (html.match(/var\(--bar-bg/g) || []).length;
-  ok(viaVariable >= 5, `les ${viaVariable} barres passent par la variable de thème`);
+  // Depuis v7z, la couleur n'est plus répétée à chaque barre : elle est portée
+  // une fois par le matériau `.verre`, que les barres portent en classe. Ce
+  // qu'on vérifie est donc devenu : toute barre translucide passe par ce
+  // matériau, et le matériau lit bien le thème.
+  ok(/\.verre\s*\{[^}]*background:\s*var\(--bar-bg\)/.test(html),
+     "le matériau des barres lit sa couleur dans le thème");
+  ok(/\.verre\.dense\s*\{[^}]*var\(--bar-bg-opaque\)/.test(html),
+     "sa variante dense aussi");
+  const barres = (html.match(/className: "verre/g) || []).length;
+  ok(barres >= 5, `les ${barres} barres portent le matériau plutôt qu'un fond à elles`);
+  // Un flou imposé à quelqu'un qui a demandé de ne pas en avoir est un défaut
+  // d'accessibilité, pas un choix esthétique.
+  ok(/prefers-reduced-transparency/.test(html),
+     "« réduire la transparence » rend les barres opaques");
 }
 
 // ── Automatique : suit le téléphone ──────────────────────────────────────────
@@ -98,13 +110,13 @@ console.log("\n─── Thème automatique ───");
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: true });
   const t = await lire(p);
   ok(!t.attr, "aucun data-theme posé (mode auto)");
-  ok(t.bg === "#141815", `téléphone en sombre → --bg = ${t.bg}`);
+  ok(t.bg === "#101512", `téléphone en sombre → --bg = ${t.bg}`);
   await ctx.close();
 }
 {
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: false });
   const t = await lire(p);
-  ok(t.bg === "#F5F1EB", `téléphone en clair → --bg = ${t.bg}`);
+  ok(t.bg === "#F1EDE6", `téléphone en clair → --bg = ${t.bg}`);
   await ctx.close();
 }
 
@@ -127,6 +139,50 @@ console.log("\n─── Lisibilité ───");
   });
   ok(c >= 4.5, `contraste titre/fond en sombre : ${c}:1 (seuil accessibilité 4.5:1)`);
   await ctx.close();
+}
+
+// ── Le bouton d'action principale, dans les deux thèmes ─────────────────────
+// Il portait un dégradé teal qui ne donnait que 3,74:1 en blanc dessus — sous
+// le seuil, sur le bouton le plus cliqué de l'app. Ce contrôle empêche qu'une
+// prochaine retouche de palette le refasse passer dessous sans qu'on le voie.
+console.log("\n─── Lisibilité du bouton principal ───");
+for (const mode of ["clair", "sombre"]) {
+  const { ctx, p } = await ouvrir({ mode, systemeSombre: mode === "sombre" });
+  const c = await p.evaluate(() => {
+    const lum = (rgb) => {
+      const [r, g, bl] = rgb.match(/\d+/g).map(Number).map(v => {
+        v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+    };
+    const cs = getComputedStyle(document.documentElement);
+    const fond = cs.getPropertyValue("--btn-primaire").trim();
+    const texte = cs.getPropertyValue("--btn-primaire-tx").trim();
+    const d = document.createElement("div");
+    d.style.cssText = `background:${fond};color:${texte}`;
+    document.body.appendChild(d);
+    const s = getComputedStyle(d);
+    const l1 = lum(s.backgroundColor), l2 = lum(s.color);
+    d.remove();
+    return Math.round(((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)) * 100) / 100;
+  });
+  ok(c >= 4.5, `libellé sur bouton principal en ${mode} : ${c}:1`);
+  await ctx.close();
+}
+
+// Et il ne se redessine plus à la main à chaque écran : deux boutons
+// principaux doivent être la MÊME couleur d'un écran à l'autre.
+console.log("\n─── Un seul bouton principal, pas vingt-cinq ───");
+{
+  const html = readFileSync(import.meta.dirname + "/../index.html", "utf8");
+  // La seule écriture légitime est la définition de la variable de marque, qui
+  // sert au bandeau de mise à jour et aux avatars — pas aux boutons.
+  const toutes = (html.match(/linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
+  const definition = (html.match(/--degrade-marque:\s*linear-gradient/g) || []).length;
+  ok(definition === 1, `le dégradé de marque est défini une fois (${definition})`);
+  ok(toutes - definition === 0, `plus aucun bouton ne le redessine à la main (${toutes - definition})`);
+  const via = (html.match(/var\(--btn-primaire\)/g) || []).length;
+  ok(via >= 20, `les ${via} boutons principaux lisent la même variable`);
 }
 
 await b.close();

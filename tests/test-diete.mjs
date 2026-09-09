@@ -428,7 +428,7 @@ console.log("\n─── Le coaché consulte sa diète ───");
      `les cibles annoncent le bon type de journée pour aujourd'hui (${jourAujourdhui})`);
 
   console.log("\n─── Le contenu d'un repas ───");
-  ok(/PETIT-DÉJEUNER/.test(vue), "les repas sont nommés");
+  ok(/Petit-déjeuner/i.test(vue), "les repas sont nommés");
   ok(/Flocons d'avoine/.test(vue), "les aliments sont listés");
   ok(/80 g/.test(vue), "avec leur grammage");
   ok(/kcal/.test(vue), "et les calories du repas");
@@ -486,7 +486,7 @@ console.log("\n─── Le coaché consulte sa diète ───");
   await p.waitForTimeout(500);
 
   console.log("\n─── Le coaché ne modifie rien ───");
-  ok(!/AJOUTER UN ALIMENT|AJUSTER AUX CIBLES|REGÉNÉRER/.test(vue),
+  ok(!/Ajouter un aliment|Ajuster aux cibles|Regénérer/i.test(vue),
      "aucune commande d'édition ne lui est proposée");
 
   // ── Table d'équivalences ────────────────────────────────────────────────
@@ -611,13 +611,13 @@ console.log("\n─── Le coach ouvre la diète d'un coaché ───");
   ok(!/Plan repas/.test(vue), "la section « Plan repas » a disparu");
   ok(/TOTAL DE LA JOURNÉE/.test(vue), "le total de la journée est affiché face à sa cible");
   ok(/Blanc de poulet cuit/.test(vue), "les aliments sont listés");
-  ok(/AJOUTER UN ALIMENT/.test(vue), "le coach peut ajouter un aliment");
-  ok(/AJUSTER AUX CIBLES/.test(vue), "et réajuster les grammages");
+  ok(/Ajouter un aliment/i.test(vue), "le coach peut ajouter un aliment");
+  ok(/Ajuster aux cibles/i.test(vue), "et réajuster les grammages");
 
   console.log("\n─── Les retours du coaché remontent ───");
   ok(/1 ALIMENT SIGNALÉ/.test(vue), "le signalement est visible");
   ok(/Brocolis cuits/.test(vue), "avec le nom de l'aliment");
-  ok(/NE PLUS PROPOSER/.test(vue), "et de quoi l'écarter définitivement");
+  ok(/Ne plus proposer/i.test(vue), "et de quoi l'écarter définitivement");
 
   console.log("\n─── Modifier un grammage ───");
   const champ = p.locator('input[type="number"]').first();
@@ -631,13 +631,13 @@ console.log("\n─── Le coach ouvre la diète d'un coaché ───");
   await p.locator("text=Blanc de poulet cuit").first().click();
   await p.waitForTimeout(700);
   const feuille = await p.locator("body").innerText();
-  ok(/REMPLACER/.test(feuille), "la feuille de remplacement s'ouvre");
+  ok(/Remplacer/i.test(feuille), "la feuille de remplacement s'ouvre");
   ok(/Filet de cabillaud/.test(feuille), "elle propose d'autres aliments");
 
   console.log("\n─── AUCUN ALLERGÈNE DANS LA LISTE DE REMPLACEMENT ───");
   ok(!/Beurre de cacahuète/.test(feuille), "le beurre de cacahuète n'est pas proposé");
   ok(!/Crevettes/.test(feuille), "les crevettes non plus");
-  ok(/CRÉER UN ALIMENT/.test(feuille), "et le coach peut créer le sien si la base ne suffit pas");
+  ok(/Créer un aliment/i.test(feuille), "et le coach peut créer le sien si la base ne suffit pas");
   ok(/ÉQUIVALENT/.test(feuille),
      "chaque candidat annonce sa quantité équivalente AVANT le clic");
   await p.screenshot({ path: `${CAPTURES}diete-coach-picker.png`, fullPage: true });

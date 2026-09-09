@@ -1006,8 +1006,8 @@ function TestSonnerie({ style }) {
               + ` · vibration ${d.vibration ? "oui" : "non"}`,
           });
         }}
-        style={{ width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit" }}>
-        TESTER LA SONNERIE
+        style={{ width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit" }}>
+        Tester la sonnerie
       </button>
       {retour && (
         <div style={{ marginTop: 8 }}>
@@ -1149,7 +1149,7 @@ function Sq({ h = 12, w = "100%", r = 8, mb = 0, style }) {
 // Une carte : un titre, deux lignes, éventuellement une pastille à droite.
 function SqCarte({ lignes = 2, hauteurTitre = 15, pastille = false }) {
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <Sq h={hauteurTitre} w="58%" mb={9}/>
         {Array.from({ length: lignes }).map((_, i) => (
@@ -1204,7 +1204,7 @@ function SqPage({ titre = true, onglets = 0, variante = "liste", n = 4 }) {
       {variante === "chiffres" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
           {[0, 1, 2].map(i => (
-            <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
+            <div key={i} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "14px 10px", textAlign: "center" }}>
               <Sq h={20} w="60%" r={6} mb={8} style={{ margin: "0 auto 8px" }}/>
               <Sq h={8} w="80%" style={{ margin: "0 auto" }}/>
             </div>
@@ -1212,7 +1212,7 @@ function SqPage({ titre = true, onglets = 0, variante = "liste", n = 4 }) {
         </div>
       )}
       {variante === "graphe" && (
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16, marginBottom: 14, display: "flex", alignItems: "flex-end", gap: 7, height: 132 }}>
+        <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: 16, marginBottom: 14, display: "flex", alignItems: "flex-end", gap: 7, height: 132 }}>
           {[52, 74, 61, 88, 70, 96, 82, 100].map((h, i) => (
             <Sq key={i} h={`${h}%`} w="100%" r={5} style={{ animationDelay: `${i * 0.06}s` }}/>
           ))}
@@ -1279,7 +1279,7 @@ function FloatingBanner({ timers }) {
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontSize: t.remaining >= 60 ? 10 : 13, fontWeight: 900, color: urgent ? T.danger : T.accent, animation: urgent ? "pulse .65s infinite" : "none" }}>{fmt(t.remaining)}</div>
       </div>
       <div>
-        <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: 1.5, fontWeight: 700, marginBottom: 2 }}>REPOS EN COURS</div>
+        <div style={{ fontSize: 9, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginBottom: 2 }}>REPOS EN COURS</div>
         <div style={{ fontSize: 13, color: urgent ? T.danger : T.text, fontWeight: 700 }}>{urgent ? "Prépare-toi !" : `Encore ${fmt(t.remaining)}...`}</div>
         <div style={{ marginTop: 5, height: 3, background: T.surface2, borderRadius: 2, width: 120 }}>
           <div style={{ height: "100%", width: `${pct}%`, background: urgent ? T.danger : T.accent, borderRadius: 2, transition: "width .85s linear" }}/>
@@ -1318,7 +1318,7 @@ function SetLog({ weight, actualReps, onWeightChange, onRepsChange, weightCmp, r
 function ToggleSwitch({ on, onChange, disabled }) {
   return (
     <button onClick={() => { if (!disabled) onChange(!on); }} disabled={disabled} style={{
-      width: 46, height: 28, borderRadius: 14, border: "none", flexShrink: 0, position: "relative",
+      width: 46, height: 28, borderRadius: 18, border: "none", flexShrink: 0, position: "relative",
       background: on ? T.accent : T.borderStrong, cursor: disabled ? "default" : "pointer",
       transition: "background .25s ease", padding: 0,
     }}>
@@ -1341,14 +1341,14 @@ function ConfirmSheet({ title, message, confirmLabel = "Confirmer", danger = fal
   // partage leur contexte. Le portail rend ça vrai par construction.
   return (
     <Portail>
-      <div className="sheet-backdrop" onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 900 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 901, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", padding: "0 18px calc(18px + env(safe-area-inset-bottom))" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 16px" }}/>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, textAlign: "center" }}>{title}</div>
+      <div className="sheet-backdrop" onClick={onCancel} style={{ zIndex: 900 }}/>
+      <div className="sheet" style={{ zIndex: 901, padding: "0 18px calc(18px + env(safe-area-inset-bottom))" }}>
+        <div className="poignee"/>
+        <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, textAlign: "center" }}>{title}</div>
         {message ? <div style={{ fontSize: 13, color: T.textSub, textAlign: "center", lineHeight: 1.6, margin: "10px 4px 0" }}>{message}</div> : null}
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-          <button onClick={onConfirm} style={{ flex: 1, padding: "14px", background: danger ? T.danger : "linear-gradient(135deg, #064E3B, #0D9488)", color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>{confirmLabel}</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: "14px", background: danger ? T.danger : "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>{confirmLabel}</button>
         </div>
       </div>
     </Portail>
@@ -1369,17 +1369,47 @@ function useConfirm() {
   return { confirm, confirmUI };
 }
 
+// ── La liste groupée en encart ──────────────────────────────────────────────
+//
+//  L'idiome de contenu d'iOS, celui de l'app Réglages : des lignes réunies dans
+//  UN bloc arrondi, séparées par un filet qui commence après l'icône. L'app
+//  posait à la place trois cartes flottantes espacées, ce qui dit « trois
+//  choses sans rapport » alors que ce sont trois entrées du même menu — et
+//  multiplie les ombres, ce qui alourdit la page sans rien hiérarchiser.
+//
+//  Le filet part du texte, pas du bord : c'est ce décalage qui fait lire le
+//  groupe comme une liste et non comme un tableau.
+function Groupe({ children, titre, style }) {
+  const lignes = React.Children.toArray(children).filter(Boolean);
+  return (
+    <div style={style}>
+      {titre && (
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: T.textMuted, letterSpacing: 0.5,
+                      textTransform: "uppercase", margin: "0 0 7px 16px" }}>{titre}</div>
+      )}
+      <div style={{ background: T.surface, borderRadius: 18, boxShadow: "var(--e1)", overflow: "hidden" }}>
+        {lignes.map((l, i) => (
+          <div key={i} style={{ borderTop: i === 0 ? "none" : `1px solid ${T.border}`,
+                                marginLeft: i === 0 ? 0 : 54, paddingLeft: i === 0 ? 0 : 0 }}>
+            <div style={{ marginLeft: i === 0 ? 0 : -54 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function QuickCard({ icon, title, subtitle, onClick }) {
   return (
-    <div onClick={onClick} className="quick-card" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Icon name={icon} size={20} color={T.accent}/>
+    <div onClick={onClick} className="quick-card" style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
+      <div style={{ width: 30, height: 30, borderRadius: 9, background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Icon name={icon} size={17} color={T.accent}/>
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{title}</div>
-        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{subtitle}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>{title}</div>
+        <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>{subtitle}</div>
       </div>
-      <Icon name="chevronRight" size={20} color={T.borderStrong}/>
+      <Icon name="chevronRight" size={18} color={T.borderStrong}/>
     </div>
   );
 }
@@ -1414,27 +1444,27 @@ function LoginScreen({ onAuthSuccess, onCoachClick }) {
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse at top, ${T.surface2} 0%, ${T.bg} 60%)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ marginBottom: 22, animation: "fadeUp .5s ease both" }}><ForgeLogo size={84}/></div>
       <div style={{ textAlign: "center", marginBottom: 36, animation: "fadeUp .5s ease .1s both" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 32, letterSpacing: 5, color: T.text, lineHeight: 1 }}>FORGE COACHING</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 32, letterSpacing: 1, color: T.text, lineHeight: 1 }}>FORGE COACHING</div>
         <div style={{ fontSize: 12, color: T.textSub, marginTop: 8, letterSpacing: .5 }}>Entre dans ton espace personnel</div>
       </div>
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "26px 22px", width: "100%", maxWidth: 380, boxShadow: `0 14px 50px ${T.shadow}, 0 2px 6px ${T.shadow}`, animation: "fadeUp .5s ease .2s both" }}>
-        <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: T.textMuted, letterSpacing: 1.8, marginBottom: 10 }}>CODE D'ACCÈS</label>
+      <div style={{ background: T.surface, borderRadius: 20, padding: "26px 22px", width: "100%", maxWidth: 380, boxShadow: `0 14px 50px ${T.shadow}, 0 2px 6px ${T.shadow}`, animation: "fadeUp .5s ease .2s both" }}>
+        <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: T.textMuted, letterSpacing: 0.5, marginBottom: 10 }}>CODE D'ACCÈS</label>
         <input ref={inputRef} type="text" value={code}
           onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }}
           onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
           placeholder="EX : MDUPONT27"
           autoCapitalize="characters" autoComplete="off" spellCheck={false}
-          style={{ width: "100%", padding: "15px 16px", background: T.bg, border: `1.5px solid ${error ? T.danger : T.borderStrong}`, borderRadius: 12, fontSize: 16, fontWeight: 700, letterSpacing: 2, textAlign: "center", color: T.text, outline: "none", textTransform: "uppercase", fontFamily: "inherit", transition: "border-color .2s" }}/>
+          style={{ width: "100%", padding: "15px 16px", background: T.bg, border: `1.5px solid ${error ? T.danger : T.borderStrong}`, borderRadius: 16, fontSize: 16, fontWeight: 700, letterSpacing: 1, textAlign: "center", color: T.text, outline: "none", textTransform: "uppercase", fontFamily: "inherit", transition: "border-color .2s" }}/>
         <div style={{ minHeight: 22, marginTop: 8, textAlign: "center" }}>
           {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, animation: "fadeIn .2s" }}>{error}</div>}
         </div>
         <button onClick={handleSubmit} disabled={loading || !code.trim()}
           style={{ width: "100%", marginTop: 6, padding: "15px 20px",
-            background: loading || !code.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B 0%, #0D9488 100%)`,
+            background: loading || !code.trim() ? T.surface2 : "var(--btn-primaire)",
             color: loading || !code.trim() ? T.textMuted : "white",
-            border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1.4,
+            border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5,
             cursor: loading || !code.trim() ? "default" : "pointer",
-            boxShadow: !loading && code.trim() ? `0 6px 18px rgba(13,148,136,0.32)` : "none",
+            boxShadow: !loading && code.trim() ? "var(--e2)" : "none",
             transition: "all .2s",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           {loading ? (<><Spinner size={15} color={T.textMuted}/> CONNEXION...</>) : "ACCÉDER À MON ESPACE"}
@@ -1475,17 +1505,17 @@ function LoadingScreen({ text = "Chargement..." }) {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", gap: 18, padding: 24 }}>
       <div style={{ animation: "pulse 1.4s ease-in-out infinite" }}><ForgeLogo size={62}/></div>
-      <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, fontWeight: 700, textAlign: "center", minHeight: 15 }}>{text}</div>
+      <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, textAlign: "center", minHeight: 15 }}>{text}</div>
       {lent && (
-        <div style={{ fontSize: 11.5, color: T.warnText, background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 11, padding: "9px 14px", textAlign: "center", lineHeight: 1.5, maxWidth: 300, animation: "fadeIn .4s ease" }}>
+        <div style={{ fontSize: 11.5, color: T.warnText, background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 14, padding: "9px 14px", textAlign: "center", lineHeight: 1.5, maxWidth: 300, animation: "fadeIn .4s ease" }}>
           La connexion est lente.<br/>
           {tresLent ? "Tes données sont peut-être hors de portée d'ici." : "On continue d'essayer."}
         </div>
       )}
       {tresLent && (
         <button onClick={() => window.location.reload()} className="pressable"
-          style={{ padding: "11px 24px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit", animation: "fadeIn .4s ease" }}>
-          RÉESSAYER
+          style={{ padding: "11px 24px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit", animation: "fadeIn .4s ease" }}>
+          Réessayer
         </button>
       )}
     </div>
@@ -1496,10 +1526,10 @@ function ErrorScreen({ title, message, onLogout, actionLabel = "Se déconnecter"
   return (
     <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: 22, gap: 14 }}>
       <Icon name="alert" size={42} color={T.danger}/>
-      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2 }}>{title}</div>
+      <div style={{ fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1 }}>{title}</div>
       <div style={{ fontSize: 13, color: T.textSub, textAlign: "center", maxWidth: 340, lineHeight: 1.6 }}>{message}</div>
       {onLogout && (
-        <button onClick={onLogout} style={{ marginTop: 14, padding: "10px 22px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, letterSpacing: .8, cursor: "pointer" }}>
+        <button onClick={onLogout} style={{ marginTop: 14, padding: "10px 22px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 700, letterSpacing: .8, cursor: "pointer" }}>
           {actionLabel}
         </button>
       )}
@@ -1531,35 +1561,38 @@ function HomePage({ ctx }) {
     .filter(w => w.sess);
 
   return (
-    <div style={{ paddingBottom: 100 }}>
+    <div style={{ paddingBottom: 112 }}>
       <div style={{ padding: "22px 18px 16px" }}>
-        <div style={{ fontSize: 13, color: T.textMuted, letterSpacing: 1, fontWeight: 600 }}>BONJOUR</div>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 2, lineHeight: 1, marginTop: 4 }}>{client.name.toUpperCase()}</div>
+        <div style={{ fontSize: 13, color: T.textMuted, letterSpacing: 0.5, fontWeight: 600 }}>BONJOUR</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 1, lineHeight: 1, marginTop: 4 }}>{client.name.toUpperCase()}</div>
       </div>
       <div style={{ padding: "0 18px" }}>
         {todaySession ? (
-          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: `linear-gradient(135deg, #064E3B 0%, #065F46 35%, #0D9488 70%, #2DD4BF 100%)`, borderRadius: 22, padding: "22px 22px 24px", color: "white", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "0 10px 30px rgba(13,148,136,0.25)" }}>
-            <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }}/>
-            <div style={{ position: "absolute", bottom: -40, left: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }}/>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, position: "relative" }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, opacity: 0.75 }}>SÉANCE DU JOUR · {todayDay}</div>
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 3, lineHeight: 1, marginTop: 4 }}>{todaySession.name}</div>
+          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: T.surface, borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
+            {/* LA COULEUR SIGNALE L'ACTION, ELLE NE REMPLIT PAS LA SURFACE.
+                Le bloc vert saturé remplissait 40 % de l'écran d'accueil pour
+                ne rien dire de plus qu'un nom de séance : c'est ce qui donnait
+                à la page son air de gabarit. La carte redevient une surface
+                calme, et le vert se concentre là où il compte — le bouton. */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textMuted, letterSpacing: 0 }}>Séance du jour · {todayDay.charAt(0) + todayDay.slice(1).toLowerCase()}</div>
+                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: T.text }}>{todaySession.name}</div>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.18)", padding: "6px 10px", borderRadius: 8, fontSize: 9, fontWeight: 800, letterSpacing: 1, backdropFilter: "blur(10px)" }}>S{currentWeek}</div>
+              <div style={{ background: T.accentLight, color: T.accentDark, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 }}>S{currentWeek}</div>
             </div>
-            <div style={{ display: "flex", gap: 14, marginBottom: 18, fontSize: 11, opacity: 0.9, position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="workout" size={14} color="white"/><span>{todaySession.exercises.length} exercices</span></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="clock" size={14} color="white"/><span>~{estimateSessionMinutes(todaySession)} min</span></div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: T.textSub }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="workout" size={15} color={T.textMuted}/><span>{todaySession.exercises.length} exercices</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="clock" size={15} color={T.textMuted}/><span>~{estimateSessionMinutes(todaySession)} min</span></div>
             </div>
-            <button style={{ background: "white", color: "#064E3B", border: "none", borderRadius: 14, padding: "13px 20px", fontSize: 13, fontWeight: 800, letterSpacing: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", boxShadow: "0 4px 16px rgba(0,0,0,0.15)", position: "relative" }}>
-              <Icon name="play" size={14} color="#064E3B" filled/> COMMENCER LA SÉANCE
+            <button className="pressable" style={{ background: T.accent, color: T.accentText, border: "none", borderRadius: 16, padding: "15px 20px", fontSize: 14, fontWeight: 700, letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
+              <Icon name="play" size={15} color={T.accentText} filled/> Commencer la séance
             </button>
           </div>
         ) : (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 22, padding: "30px 22px", textAlign: "center", boxShadow: `0 2px 12px ${T.shadow}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: T.textMuted }}>{todayDay}</div>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 3, lineHeight: 1, marginTop: 6 }}>JOUR DE REPOS</div>
+          <div style={{ background: T.surface, borderRadius: 26, padding: "30px 22px", textAlign: "center", boxShadow: "var(--e1)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.textMuted }}>{todayDay}</div>
+            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 1.4, lineHeight: 1, marginTop: 6 }}>JOUR DE REPOS</div>
             <div style={{ fontSize: 13, color: T.textSub, marginTop: 10, lineHeight: 1.6 }}>Profite de cette journée pour récupérer.<br/>La récupération fait partie du programme.</div>
           </div>
         )}
@@ -1570,37 +1603,43 @@ function HomePage({ ctx }) {
           { icon: "workout",  value: stats.totalSessions, label: "SÉANCES" },
           { icon: "trending", value: stats.completedSets, label: "SÉRIES" },
         ].map((s, i) => (
-          <div key={i} className="stat-card" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` }}>
+          <div key={i} className="stat-card" style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` }}>
             <Icon name={s.icon} size={18} color={T.accent}/>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: T.accent, letterSpacing: 1, marginTop: 4, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700, marginTop: 4 }}>{s.label}</div>
+            <div style={{ fontWeight: 800, fontSize: 26, color: T.accent, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
       </div>
       <BilanCard ctx={ctx}/>
       <div style={{ padding: "8px 18px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub }}>CETTE SEMAINE</div>
+          <div style={{ fontWeight: 700, fontSize: 19, letterSpacing: -0.3, color: T.text }}>Cette semaine</div>
           <button onClick={() => navigate("workout")} style={{ background: "transparent", border: "none", color: T.accent, fontSize: 11, fontWeight: 700, letterSpacing: .5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             Tout voir <Icon name="chevronRight" size={14}/>
           </button>
         </div>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, margin: "0 -18px", padding: "0 18px 4px" }}>
+        {/* Le rail déborde volontairement des marges de la page : sur iOS, une
+            rangée qui défile se coupe au bord de l'écran, pas 18 px avant —
+            c'est ce qui dit qu'elle continue. */}
+        <div className="rail cartes" style={{ display: "flex", gap: 10, overflowX: "auto", margin: "0 -18px", padding: "2px 18px 6px" }}>
           {upcomingSessions.map((w, i) => (
-            <div key={w.dayIdx} className="upcoming-card" onClick={() => openWorkout(w.sess.id)} style={{ flexShrink: 0, width: 130, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 12px 14px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` }}>
-              <div style={{ fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1.5 }}>{w.day.slice(0,3)}</div>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 2, lineHeight: 1.1, marginTop: 6, minHeight: 36 }}>{w.sess.name}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 9, color: T.textMuted }}>
+            <div key={w.dayIdx} className="upcoming-card" onClick={() => openWorkout(w.sess.id)} style={{ flexShrink: 0, width: 156, background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "13px 14px 15px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` }}>
+              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>{w.day.slice(0,3)}</div>
+              {/* 17 px avec un interlettrage positif ne tenait pas dans 130 px :
+                  « FULL BODY A » passait à la ligne et se cognait au bas de la
+                  carte. La carte s'élargit, le titre se resserre. */}
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: T.accent, letterSpacing: -0.2, lineHeight: 1.15, marginTop: 7, minHeight: 36 }}>{w.sess.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 9, fontSize: 10, color: T.textMuted }}>
                 <Icon name="workout" size={11} color={T.textMuted}/><span>{w.sess.exercises.length} exos</span>
               </div>
             </div>
           ))}
         </div>
       </div>
-      <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <Groupe style={{ padding: "0 18px" }}>
         <QuickCard icon="trophy" title="Progression" subtitle="Suis ton évolution semaine par semaine" onClick={() => navigate("progress")}/>
         <QuickCard icon="info"   title="Consignes coach" subtitle="Lis les conventions de ton programme" onClick={() => navigate("profile", "consignes")}/>
-      </div>
+      </Groupe>
     </div>
   );
 }
@@ -1637,9 +1676,9 @@ function WorkoutPage({ ctx }) {
 
   if (workoutSubView === "organisation") {
     return (
-      <div style={{ paddingBottom: 100 }} className="fade-in">
+      <div style={{ paddingBottom: 112 }} className="fade-in">
         <div style={{ padding: "18px 18px 14px" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, letterSpacing: 3, color: T.text }}>ORGANISATION HEBDOMADAIRE</div>
+          <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: 1.4, color: T.text }}>ORGANISATION HEBDOMADAIRE</div>
           <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>Ton planning de la semaine</div>
         </div>
         <div style={{ padding: "0 18px" }}>
@@ -1648,7 +1687,7 @@ function WorkoutPage({ ctx }) {
               const sess = sessions.find(s => s.id === w.sessionId);
               const isActive = !!sess;
               return (
-                <div key={i} style={{ background: isActive ? T.accentLight : T.surface2, border: `1px solid ${isActive ? T.accentA33 : T.border}`, borderRadius: 10, padding: "12px 4px", textAlign: "center", animation: `fadeUp .35s ease ${i * 0.04}s both` }}>
+                <div key={i} style={{ background: isActive ? T.accentLight : T.surface2, border: `1px solid ${isActive ? T.accentA33 : T.border}`, borderRadius: 12, padding: "12px 4px", textAlign: "center", animation: `fadeUp .35s ease ${i * 0.04}s both` }}>
                   <div style={{ fontSize: 9, fontWeight: 800, color: isActive ? T.accent : T.textMuted, marginBottom: 6 }}>{w.day.slice(0,3)}</div>
                   <div style={{ fontSize: 7.5, color: isActive ? T.accentDark : T.textMuted, lineHeight: 1.4, fontWeight: 500 }}>{sess ? sess.name : "REPOS"}</div>
                 </div>
@@ -1661,18 +1700,18 @@ function WorkoutPage({ ctx }) {
   }
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "18px 18px 6px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, letterSpacing: 3, color: T.text }}>SEMAINE {viewedWeek}</div>
+          <div style={{ fontWeight: 700, fontSize: 26, letterSpacing: -0.6, color: T.text }}>Semaine {viewedWeek}</div>
           <button onClick={() => setWorkoutSubView("organisation")} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, color: T.textSub, padding: "6px 10px", borderRadius: 20, fontSize: 9, fontWeight: 700, letterSpacing: .6, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <Icon name="calendar" size={11}/> ORGANISATION
+            <Icon name="calendar" size={11}/> Organisation
           </button>
         </div>
         <div style={{ fontSize: 11, color: T.textMuted }}>Sélectionne une séance pour t'entraîner</div>
       </div>
       <div style={{ padding: "8px 0 12px", position: "relative" }}>
-        <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "0 18px" }}>
+        <div className="rail" style={{ display: "flex", gap: 5, overflowX: "auto", padding: "0 18px" }}>
           {(() => {
             let max = 1;
             Object.keys(allCompletedSets).forEach(k => { const w = parseInt(k.split("-")[0]); if (w > max) max = w; });
@@ -1681,9 +1720,9 @@ function WorkoutPage({ ctx }) {
               const isActive = viewedWeek === w;
               const isCurrent = w === currentWeek;
               return (
-                <button key={w} className="pressable" onClick={() => { setViewedWeek(w); setExpandedEx(null); }} style={{ background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "5px 11px", borderRadius: 16, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: .6, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, boxShadow: isActive ? `0 1px 6px ${T.accent}25` : "none", cursor: "pointer" }}>
-                  <span>SEMAINE {w}</span>
-                  {isCurrent && (<span style={{ background: isActive ? "rgba(255,255,255,0.22)" : T.accentA10, color: isActive ? "#FFF" : T.accent, fontSize: 7, fontWeight: 900, letterSpacing: .8, padding: "1.5px 5px", borderRadius: 8 }}>EN COURS</span>)}
+                <button key={w} className="pressable" onClick={() => { setViewedWeek(w); setExpandedEx(null); }} style={{ background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "5px 11px", borderRadius: 20, fontSize: 9, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: .6, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, boxShadow: isActive ? `0 1px 6px ${T.accent}25` : "none", cursor: "pointer" }}>
+                  <span>Semaine {w}</span>
+                  {isCurrent && (<span style={{ background: isActive ? "rgba(255,255,255,0.22)" : T.accentA10, color: isActive ? "#FFF" : T.accent, fontSize: 7, fontWeight: 900, letterSpacing: .8, padding: "1.5px 5px", borderRadius: 10 }}>EN COURS</span>)}
                 </button>
               );
             });
@@ -1691,12 +1730,12 @@ function WorkoutPage({ ctx }) {
         </div>
       </div>
       <div style={{ padding: "0 18px 14px" }}>
-        <div style={{ display: "flex", gap: 5, overflowX: "auto" }}>
+        <div className="rail" style={{ display: "flex", gap: 5, overflowX: "auto" }}>
           {activeSessions.map(s => {
             const weekDay = week.find(w => w.sessionId === s.id);
             const isActive = activeSessionId === s.id;
             return (
-              <button key={s.id} className="pressable" onClick={() => { setActiveSessionId(s.id); setExpandedEx(null); }} style={{ background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "8px 14px", borderRadius: 12, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: .8, flexShrink: 0, cursor: "pointer", boxShadow: isActive ? `0 2px 8px ${T.accent}30` : `0 1px 4px ${T.shadow}` }}>
+              <button key={s.id} className="pressable" onClick={() => { setActiveSessionId(s.id); setExpandedEx(null); }} style={{ background: isActive ? T.accent : T.surface, border: `1px solid ${isActive ? T.accent : T.border}`, color: isActive ? T.accentText : T.textSub, padding: "8px 14px", borderRadius: 16, fontSize: 10, fontWeight: 800, whiteSpace: "nowrap", letterSpacing: .8, flexShrink: 0, cursor: "pointer", boxShadow: isActive ? `0 2px 8px ${T.accent}30` : `0 1px 4px ${T.shadow}` }}>
                 {weekDay?.day || s.name}
               </button>
             );
@@ -1705,30 +1744,30 @@ function WorkoutPage({ ctx }) {
       </div>
 
       <div style={{ padding: "0 18px 14px" }}>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 18, boxShadow: `0 2px 16px ${T.shadow}` }}>
+        <div style={{ background: T.surface, borderRadius: 20, padding: 18, boxShadow: "var(--e1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 25, color: T.accent, letterSpacing: 3, lineHeight: 1 }}>{activeSession.name}</div>
+                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 25, color: T.accent, letterSpacing: 1.4, lineHeight: 1 }}>{activeSession.name}</div>
                 {viewedWeek !== currentWeek && (
-                  <span style={{ background: viewedWeek < currentWeek ? T.warnBg : T.surface2, color: viewedWeek < currentWeek ? T.warnText : T.textSub, fontSize: 8, fontWeight: 900, letterSpacing: 1, padding: "2px 7px", borderRadius: 6, border: `1px solid ${viewedWeek < currentWeek ? T.warnBorder : T.border}` }}>
+                  <span style={{ background: viewedWeek < currentWeek ? T.warnBg : T.surface2, color: viewedWeek < currentWeek ? T.warnText : T.textSub, fontSize: 8, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 6, border: `1px solid ${viewedWeek < currentWeek ? T.warnBorder : T.border}` }}>
                     {viewedWeek < currentWeek ? "ARCHIVE · ÉDITABLE" : "FUTURE"}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 10, color: T.textSub, letterSpacing: 1 }}>
+              <div style={{ fontSize: 10, color: T.textSub, letterSpacing: 0.5 }}>
                 {week.find(w => w.sessionId === activeSession.id)?.day}&nbsp;·&nbsp;{activeSession.exercises.length} EXERCICES&nbsp;·&nbsp;{totalSets} SÉRIES
               </div>
             </div>
-            <div style={{ background: T.accentLight, color: T.accent, fontFamily: "'Bebas Neue'", fontSize: 26, letterSpacing: 2, padding: "4px 14px", borderRadius: 10, lineHeight: 1.2 }}>{pct}%</div>
+            <div style={{ background: T.accentLight, color: T.accent, fontWeight: 800, fontSize: 26, letterSpacing: -0.5, padding: "4px 14px", borderRadius: 12, lineHeight: 1.2 }}>{pct}%</div>
           </div>
           <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.textMuted, marginBottom: 6, letterSpacing: 1 }}>
-              <span>PROGRESSION</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.textMuted, marginBottom: 6, letterSpacing: 0.5 }}>
+              <span>Progression</span>
               <span style={{ color: T.accent, fontWeight: 800 }}>{totalDone} / {totalSets} séries</span>
             </div>
             <div style={{ height: 6, background: T.surface2, borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, #064E3B, #0D9488)`, borderRadius: 3, transition: "width .4s ease" }}/>
+              <div style={{ height: "100%", width: `${pct}%`, background: "var(--accent)", borderRadius: 3, transition: "width .4s ease" }}/>
             </div>
           </div>
         </div>
@@ -1741,9 +1780,9 @@ function WorkoutPage({ ctx }) {
           const doneSets = ex.reps.filter((_, si) => isDone(exIdx, si)).length;
           const allDone = doneSets === ex.series;
           return (
-            <div key={exIdx} style={{ background: allDone ? T.accentLight : T.surface, border: `1px solid ${allDone ? T.accentA38 : T.border}`, borderRadius: 13, overflow: "hidden", boxShadow: `0 1px 8px ${T.shadow}`, transition: "border-color .2s, background .2s", animation: `fadeUp .35s ease ${exIdx * 0.04}s both` }}>
+            <div key={exIdx} style={{ background: allDone ? T.accentLight : T.surface, border: `1px solid ${allDone ? T.accentA38 : T.border}`, borderRadius: 16, overflow: "hidden", boxShadow: "var(--e1)", transition: "border-color .2s, background .2s", animation: `fadeUp .35s ease ${exIdx * 0.04}s both` }}>
               <div className="pressable" onClick={() => setExpandedEx(isOpen ? null : exIdx)} style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: allDone ? T.accent : T.surface2, border: `1.5px solid ${allDone ? T.accent : T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: allDone ? T.accentText : T.textSub, transition: "all .2s" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 10, flexShrink: 0, background: allDone ? T.accent : T.surface2, border: `1.5px solid ${allDone ? T.accent : T.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: allDone ? T.accentText : T.textSub, transition: "all .2s" }}>
                   {allDone ? <Icon name="check" size={14} stroke={3} color={T.accentText}/> : ex.ordre}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1755,7 +1794,7 @@ function WorkoutPage({ ctx }) {
                       const tStyle = {
                         "RP":       { bg: "var(--cmp-up-bg)", text: "var(--cmp-up-text)", label: "RP" },
                         "DS":       { bg: "var(--p-seche-bg)", text: "var(--p-seche-tx)", label: "DS" },
-                        "Superset": { bg: "var(--p-decharge-bg)", text: "var(--p-decharge-tx)", label: "SUPERSET" },
+                        "Superset": { bg: "var(--p-decharge-bg)", text: "var(--p-decharge-tx)", label: "Superset" },
                       }[ex.technique];
                       return tStyle ? <span style={{ background: tStyle.bg, color: tStyle.text, fontSize: 9, padding: "2px 8px", borderRadius: 20, fontWeight: 800, letterSpacing: .5 }}>{tStyle.label}</span> : null;
                     })()}
@@ -1770,29 +1809,29 @@ function WorkoutPage({ ctx }) {
               {isOpen && (
                 <div style={{ padding: "0 12px 12px", borderTop: `1px solid ${T.border}` }}>
                   {ctx.videosExercices?.[ex.library_exercise_id] && (
-                    <button onClick={() => setVideoOuverte({ titre: ex.exercice, url: ctx.videosExercices[ex.library_exercise_id] })} className="pressable" style={{ width: "100%", marginTop: 10, background: T.accentLight, border: `1px solid ${T.accentA38}`, color: T.accentDark, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <button onClick={() => setVideoOuverte({ titre: ex.exercice, url: ctx.videosExercices[ex.library_exercise_id] })} className="pressable" style={{ width: "100%", marginTop: 10, background: T.accentLight, border: `1px solid ${T.accentA38}`, color: T.accentDark, padding: "8px 12px", borderRadius: 12, fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                       <Icon name="play" size={13} color={T.accentDark}/> Voir la démonstration
                     </button>
                   )}
-                  <button onClick={() => openExerciseSheet({ ...ex, sid: activeSession.id, ei: exIdx, seance: occurrences[ex.exercice] > 1 ? activeSession.name : null })} className="pressable" style={{ width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, padding: "8px 12px", borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <button onClick={() => openExerciseSheet({ ...ex, sid: activeSession.id, ei: exIdx, seance: occurrences[ex.exercice] > 1 ? activeSession.name : null })} className="pressable" style={{ width: "100%", marginTop: 8, marginBottom: 8, background: T.surface2, border: "none", color: T.accentDark, padding: "10px 12px", borderRadius: 14, fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="trending" size={13}/> Voir l'historique de cet exercice
                   </button>
                   {ex.technique && (() => {
                     const tInfo = {
-                      "RP":       { bg: "var(--cmp-up-bg)", border: "var(--cmp-up-text)", text: "var(--cmp-up-text)", label: "REST-PAUSE (RP)", desc: "À l'échec, repose la charge 30 s, puis enchaîne une série supplémentaire." },
-                      "DS":       { bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", text: "var(--p-seche-tx)", label: "DROP SET (DS)", desc: "À l'échec, 30 s de repos, baisse la charge de 30-40% puis repars jusqu'à l'échec." },
-                      "Superset": { bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", text: "var(--p-decharge-tx)", label: "SUPERSET", desc: "Enchaîne cet exercice avec le suivant sans repos entre les deux." },
+                      "RP":       { bg: "var(--cmp-up-bg)", border: "var(--cmp-up-text)", text: "var(--cmp-up-text)", label: "Rest-pause (RP)", desc: "À l'échec, repose la charge 30 s, puis enchaîne une série supplémentaire." },
+                      "DS":       { bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", text: "var(--p-seche-tx)", label: "Drop set (DS)", desc: "À l'échec, 30 s de repos, baisse la charge de 30-40% puis repars jusqu'à l'échec." },
+                      "Superset": { bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", text: "var(--p-decharge-tx)", label: "Superset", desc: "Enchaîne cet exercice avec le suivant sans repos entre les deux." },
                     }[ex.technique];
                     return tInfo ? (
-                      <div style={{ background: tInfo.bg, border: `1px solid ${tInfo.border}40`, borderRadius: 9, padding: "9px 11px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <div style={{ background: tInfo.bg, border: `1px solid ${tInfo.border}40`, borderRadius: 12, padding: "9px 11px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start" }}>
                         <span style={{ background: tInfo.text, color: "#FFF", fontSize: 9, fontWeight: 900, padding: "2px 7px", borderRadius: 6, letterSpacing: .5, flexShrink: 0, marginTop: 1 }}>{tInfo.label}</span>
                         <span style={{ fontSize: 11, color: tInfo.text, lineHeight: 1.4 }}>{tInfo.desc}</span>
                       </div>
                     ) : null;
                   })()}
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 2px 6px" }}>
-                    <span style={{ fontSize: 9, color: T.textMuted, letterSpacing: 1, fontWeight: 700 }}>SÉRIE · OBJECTIF</span>
-                    <span style={{ fontSize: 9, color: T.textMuted, letterSpacing: 1, fontWeight: 700 }}>CHARGE · REPS RÉELLES</span>
+                    <span style={{ fontSize: 9, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700 }}>Série · objectif</span>
+                    <span style={{ fontSize: 9, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700 }}>Charge · reps réelles</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {ex.reps.map((rep, setIdx) => {
@@ -1804,9 +1843,9 @@ function WorkoutPage({ ctx }) {
                       const wCmp = ref ? comparerValeur(log.weight, ref.weight) : null;
                       const rCmp = ref ? comparerValeur(log.actualReps, ref.reps) : null;
                       return (
-                        <div key={setIdx} style={{ background: done ? (timer?.done ? T.accentLight : T.setDoneBg) : T.bg, border: `1px solid ${done ? (timer?.done ? T.accentA38 : T.accentA20) : T.border}`, borderRadius: 10, overflow: "hidden", transition: "all .15s" }}>
+                        <div key={setIdx} style={{ background: done ? (timer?.done ? T.accentLight : T.setDoneBg) : "transparent", borderTop: setIdx === 0 ? "none" : `1px solid ${T.border}`, transition: "background .42s var(--ressort)" }}>
                           <div className="pressable" onClick={() => toggleSet(activeSession.id, exIdx, setIdx, ex.repos, ex.exercice)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", cursor: "pointer" }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: done ? T.accent : T.surface, border: `1.5px solid ${done ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? T.accentText : T.textSub, fontWeight: 900, transition: "all .2s" }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 10, flexShrink: 0, background: done ? T.accent : T.surface, border: `1.5px solid ${done ? T.accent : T.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: done ? T.accentText : T.textSub, fontWeight: 900, transition: "all .2s" }}>
                               {done ? <Icon name="check" size={14} stroke={3} color={T.accentText}/> : setIdx + 1}
                             </div>
                             <div style={{ flex: 1 }}>
@@ -1853,8 +1892,8 @@ function WorkoutPage({ ctx }) {
 
       {activeSession.abdosCardio?.length > 0 && (
         <div style={{ padding: "14px 18px 0" }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2, color: T.textSub, marginBottom: 10 }}>ABDOS / CARDIO</div>
+          <div style={{ background: T.surface, borderRadius: 16, padding: "14px 16px", boxShadow: "var(--e1)" }}>
+            <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>Abdos / cardio</div>
             {activeSession.abdosCardio.map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < activeSession.abdosCardio.length - 1 ? `1px solid ${T.border}` : "none" }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: T.accent, flexShrink: 0 }}/>
@@ -1934,8 +1973,8 @@ function NoteSeance({ ctx, session, semaine }) {
     <div style={{ padding: "14px 18px 0" }}>
       {!ouvert ? (
         <div onClick={() => setOuvert(true)} className="quick-card"
-          style={{ background: aUneNote ? T.surface : "transparent", border: `1px ${aUneNote ? "solid" : "dashed"} ${aUneNote ? T.border : T.borderStrong}`, borderRadius: 13, padding: aUneNote ? "13px 15px" : "11px 15px", cursor: "pointer" }}>
-          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: aUneNote ? 6 : 0 }}>
+          style={{ background: aUneNote ? T.surface : "transparent", border: `1px ${aUneNote ? "solid" : "dashed"} ${aUneNote ? T.border : T.borderStrong}`, borderRadius: 16, padding: aUneNote ? "13px 15px" : "11px 15px", cursor: "pointer" }}>
+          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 0.5, fontWeight: 800, marginBottom: aUneNote ? 6 : 0 }}>
             {aUneNote ? "TA NOTE SUR CETTE SÉANCE" : "+ AJOUTER UNE NOTE SUR CETTE SÉANCE"}
           </div>
           {aUneNote && (
@@ -1943,8 +1982,8 @@ function NoteSeance({ ctx, session, semaine }) {
           )}
         </div>
       ) : (
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "13px 15px" }}>
-          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 1.2, fontWeight: 800, marginBottom: 8 }}>
+        <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "13px 15px" }}>
+          <div style={{ fontSize: 9.5, color: T.textMuted, letterSpacing: 0.5, fontWeight: 800, marginBottom: 8 }}>
             NOTE SUR CETTE SÉANCE
           </div>
           <textarea rows={3} value={texte} maxLength={400} autoFocus
@@ -1953,11 +1992,11 @@ function NoteSeance({ ctx, session, semaine }) {
             style={{ ...inputStyle, fontSize: 12.5, resize: "vertical", lineHeight: 1.5 }}/>
           <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
             <button onClick={() => { setTexte(note?.note || ""); setOuvert(false); }}
-              style={{ flex: 1, padding: "10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ flex: 1, padding: "10px", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               Annuler
             </button>
             <button onClick={enregistrer} disabled={occupe} className="pressable"
-              style={{ flex: 2, padding: "10px", background: occupe ? T.surface2 : T.accent, color: occupe ? T.textMuted : T.accentText, border: "none", borderRadius: 10, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+              style={{ flex: 2, padding: "10px", background: occupe ? T.surface2 : T.accent, color: occupe ? T.textMuted : T.accentText, border: "none", borderRadius: 12, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: occupe ? "default" : "pointer", fontFamily: "inherit" }}>
               {occupe ? "..." : !texte.trim() && aUneNote ? "SUPPRIMER LA NOTE" : "ENREGISTRER"}
             </button>
           </div>
@@ -1983,6 +2022,52 @@ function NoteSeance({ ctx, session, semaine }) {
 //  On rend donc les feuilles directement dans <body>, hors de toute page.
 function Portail({ children }) {
   return ReactDOM.createPortal(children, document.body);
+}
+
+// ── Le contrôle segmenté ────────────────────────────────────────────────────
+//
+//  Un choix entre deux et quatre options exclusives. C'est l'un des composants
+//  les plus reconnaissables d'iOS, et l'app le rendait jusqu'ici en boutons
+//  séparés avec des espaces entre eux — ce qui ne dit plus « choisis-en un »
+//  mais « voici trois actions ».
+//
+//  Ce qui fait la différence tient à trois choses : une piste unique en creux,
+//  un curseur qui GLISSE d'un segment à l'autre au lieu d'apparaître, et des
+//  libellés en casse normale. Le glissement passe par un `transform` sur un
+//  seul élément — jamais par une animation de `left`, qui n'est pas composée
+//  par le GPU et saccade sur un vieil iPhone.
+function Segmente({ options, valeur, onChange, taille = 13 }) {
+  const i = Math.max(0, options.findIndex(o => o.valeur === valeur));
+  const largeur = 100 / options.length;
+  return (
+    <div style={{
+      position: "relative", display: "flex", background: T.surface2,
+      borderRadius: 12, padding: 2, isolation: "isolate",
+    }}>
+      {/* Le curseur, sous les libellés. */}
+      <div aria-hidden="true" style={{
+        position: "absolute", top: 2, bottom: 2, left: 2,
+        width: `calc(${largeur}% - 4px + ${4 / options.length}px)`,
+        background: T.surface, borderRadius: 10, boxShadow: "var(--e1)",
+        transform: `translateX(calc(${i * 100}% + ${i * 4 / options.length}px))`,
+        transition: "transform .38s var(--ressort)", zIndex: 0,
+      }}/>
+      {options.map((o) => (
+        <button key={o.valeur} type="button" onClick={() => onChange(o.valeur)}
+          aria-pressed={o.valeur === valeur}
+          style={{
+            position: "relative", zIndex: 1, flex: 1, padding: "7px 4px",
+            background: "none", border: "none", cursor: "pointer",
+            fontFamily: "inherit", fontSize: taille,
+            fontWeight: o.valeur === valeur ? 700 : 600,
+            color: o.valeur === valeur ? T.text : T.textSub,
+            letterSpacing: -0.1, transition: "color .25s ease",
+          }}>
+          {o.libelle}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ── Carte « Bilan de la semaine » sur l'accueil du coaché ───────────────────
@@ -2012,8 +2097,8 @@ function BilanCard({ ctx }) {
     <>
       <div style={{ padding: "0 18px 4px" }}>
         <div onClick={() => setOuvert(true)} className="quick-card"
-          style={{ background: reponse ? T.accentLight : T.surface, border: `1px solid ${reponse ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 13 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: reponse ? T.accent : T.accentLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ background: reponse ? T.accentLight : T.surface, border: `1px solid ${reponse ? T.accentA38 : T.border}`, borderRadius: 18, padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 13 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 14, flexShrink: 0, background: reponse ? T.accent : T.accentLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon name={reponse ? "check" : "calendar"} size={18} color={reponse ? T.accentText : T.accent}/>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2073,18 +2158,18 @@ function BilanSheet({ ctx, bilan, semaine, onClose, onSaved }) {
   return (
     <Portail>
       <div className="sheet-backdrop" onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+        style={{ zIndex: 300 }}/>
+      <div className="sheet" style={{ zIndex: 301, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
         <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 21, color: T.text, letterSpacing: 2, marginBottom: 4 }}>BILAN · SEMAINE {semaine}</div>
+          <div style={{ fontWeight: 800, fontSize: 21, color: T.text, letterSpacing: -0.4, marginBottom: 4 }}>Bilan · semaine {semaine}</div>
           <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 18, lineHeight: 1.5 }}>
             Tout est facultatif. Même incomplet, ça aide ton coach à ajuster.
           </div>
 
           {bilan?.coach_reply && (
-            <div style={{ background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
-              <div style={{ fontSize: 9.5, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 5 }}>RÉPONSE DE TON COACH</div>
+            <div style={{ background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 16, padding: "12px 14px", marginBottom: 18 }}>
+              <div style={{ fontSize: 9.5, color: T.accent, fontWeight: 800, letterSpacing: 0.5, marginBottom: 5 }}>RÉPONSE DE TON COACH</div>
               <div style={{ fontSize: 12.5, color: T.accentDark, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{bilan.coach_reply}</div>
             </div>
           )}
@@ -2092,7 +2177,7 @@ function BilanSheet({ ctx, bilan, semaine, onClose, onSaved }) {
           {BILAN_CRITERES.map(c => (
             <div key={c.cle} style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
-                <span style={{ fontSize: 10, color: T.textSub, letterSpacing: 1.2, fontWeight: 800 }}>{c.label.toUpperCase()}</span>
+                <span style={{ fontSize: 10, color: T.textSub, letterSpacing: 0.5, fontWeight: 800 }}>{c.label.toUpperCase()}</span>
                 <span style={{ fontSize: 10, color: T.textMuted }}>
                   {valeurs[c.cle] == null ? "—" : valeurs[c.cle] <= 2 ? c.bas : valeurs[c.cle] >= 4 ? c.haut : "Correct"}
                 </span>
@@ -2104,7 +2189,7 @@ function BilanSheet({ ctx, bilan, semaine, onClose, onSaved }) {
                     <button key={n} className="pressable"
                       onClick={() => setValeurs(v => ({ ...v, [c.cle]: v[c.cle] === n ? null : n }))}
                       aria-label={`${c.label} : ${n} sur 5`}
-                      style={{ flex: 1, padding: "11px 0", background: actif ? T.accent : T.surface, color: actif ? T.accentText : T.textSub, border: `1.5px solid ${actif ? T.accent : T.border}`, borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", transition: "background .15s, border-color .15s" }}>
+                      style={{ flex: 1, padding: "11px 0", background: actif ? T.accent : T.surface, color: actif ? T.accentText : T.textSub, border: `1.5px solid ${actif ? T.accent : T.border}`, borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", transition: "background .15s, border-color .15s" }}>
                       {n}
                     </button>
                   );
@@ -2125,9 +2210,9 @@ function BilanSheet({ ctx, bilan, semaine, onClose, onSaved }) {
           </div>
         </div>
         <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Fermer</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Fermer</button>
           <button onClick={envoyer} disabled={!quelqueChose || occupe}
-            style={{ flex: 2, padding: "14px", background: !quelqueChose || occupe ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !quelqueChose || occupe ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: !quelqueChose || occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+            style={{ flex: 2, padding: "14px", background: !quelqueChose || occupe ? T.surface2 : "var(--btn-primaire)", color: !quelqueChose || occupe ? T.textMuted : "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: !quelqueChose || occupe ? "default" : "pointer", fontFamily: "inherit" }}>
             {occupe ? "..." : bilan ? "METTRE À JOUR" : "ENVOYER"}
           </button>
         </div>
@@ -2145,11 +2230,11 @@ function VideoSheet({ titre, url, onClose }) {
   return (
     <Portail>
       <div className="sheet-backdrop" onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+        style={{ zIndex: 300 }}/>
+      <div className="sheet" style={{ zIndex: 301, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
         <div style={{ padding: "0 18px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 19, color: T.text, letterSpacing: 1.5, lineHeight: 1.1, minWidth: 0 }}>{titre}</div>
+          <div style={{ fontWeight: 800, fontSize: 19, color: T.text, letterSpacing: 0.5, lineHeight: 1.1, minWidth: 0 }}>{titre}</div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0, flexShrink: 0 }}>Fermer</button>
         </div>
         <div style={{ padding: "0 18px calc(18px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
@@ -2158,7 +2243,7 @@ function VideoSheet({ titre, url, onClose }) {
               Cette vidéo n'est pas lisible. Signale-le à ton coach.
             </div>
           ) : v.type === "embed" ? (
-            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 12, overflow: "hidden", background: "#000" }}>
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", background: "#000" }}>
               <iframe src={v.src} title={titre} allowFullScreen
                 allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 referrerPolicy="strict-origin-when-cross-origin"
@@ -2166,10 +2251,10 @@ function VideoSheet({ titre, url, onClose }) {
             </div>
           ) : v.type === "fichier" ? (
             <video src={v.src} controls playsInline preload="metadata"
-              style={{ width: "100%", borderRadius: 12, background: "#000", display: "block" }}/>
+              style={{ width: "100%", borderRadius: 16, background: "#000", display: "block" }}/>
           ) : (
             <a href={v.src} target="_blank" rel="noopener noreferrer" className="pressable"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", background: T.accent, color: T.accentText, borderRadius: 12, fontSize: 12.5, fontWeight: 800, letterSpacing: .5, textDecoration: "none" }}>
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", background: T.accent, color: T.accentText, borderRadius: 16, fontSize: 12.5, fontWeight: 800, letterSpacing: .5, textDecoration: "none" }}>
               <Icon name="play" size={15} color={T.accentText}/> Ouvrir sur {v.source}
             </a>
           )}
@@ -2224,9 +2309,9 @@ function ProgressPage({ ctx }) {
   }
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "22px 18px 16px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>PROGRESSION</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>Progression</div>
         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>
           {grouped.length} groupes musculaires · {grouped.reduce((a, [, exs]) => a + exs.length, 0)} exercices
         </div>
@@ -2237,9 +2322,9 @@ function ProgressPage({ ctx }) {
           const isOpen = openMuscle === muscle;
           const withData = exercises.filter(ex => getExerciseProgress(ex).bestWeight > 0).length;
           return (
-            <div key={muscle} style={{ background: T.surface, border: `1.5px solid ${isOpen ? mStyle.text + "50" : T.border}`, borderRadius: 14, overflow: "hidden", transition: "border-color .2s, box-shadow .2s", boxShadow: isOpen ? `0 4px 16px ${mStyle.text}12` : `0 1px 4px ${T.shadow}`, animation: `fadeUp .35s ease ${groupIdx * 0.05}s both` }}>
+            <div key={muscle} style={{ background: T.surface, border: `1.5px solid ${isOpen ? mStyle.text + "50" : T.border}`, borderRadius: 18, overflow: "hidden", transition: "border-color .2s, box-shadow .2s", boxShadow: isOpen ? `0 4px 16px ${mStyle.text}12` : `0 1px 4px ${T.shadow}`, animation: `fadeUp .35s ease ${groupIdx * 0.05}s both` }}>
               <div className="pressable" onClick={() => setOpenMuscle(isOpen ? null : muscle)} style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: mStyle.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 14, flexShrink: 0, background: mStyle.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon name="trending" size={20} color={mStyle.text}/>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -2270,8 +2355,8 @@ function ProgressPage({ ctx }) {
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
                           {prog.bestWeight > 0 ? (
                             <>
-                              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.accent, letterSpacing: 1, lineHeight: 1 }}>{prog.bestWeight} <span style={{ fontSize: 10 }}>KG</span></div>
-                              <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, marginTop: 1 }}>RECORD</div>
+                              <div style={{ fontWeight: 800, fontSize: 17, color: T.accent, letterSpacing: 0.5, lineHeight: 1 }}>{prog.bestWeight} <span style={{ fontSize: 10 }}>KG</span></div>
+                              <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, marginTop: 1 }}>RECORD</div>
                             </>
                           ) : (
                             <div style={{ fontSize: 10, color: T.textMuted, fontStyle: "italic" }}>—</div>
@@ -2301,13 +2386,13 @@ function ProfilePage({ ctx }) {
 
   if (profileSubView === "consignes") {
     return (
-      <div style={{ paddingBottom: 100 }} className="fade-in">
+      <div style={{ paddingBottom: 112 }} className="fade-in">
         <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setProfileSubView(null)} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <button onClick={() => setProfileSubView(null)} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <Icon name="chevronLeft" size={20} color={T.text}/>
           </button>
           <div>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 3, lineHeight: 1 }}>CONSIGNES COACH</div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>CONSIGNES COACH</div>
             <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>Les conventions de ton programme</div>
           </div>
         </div>
@@ -2316,12 +2401,12 @@ function ProfilePage({ ctx }) {
             { label: "ÉCHAUFFEMENT", color: T.warnText, bg: T.warnBg, border: "var(--warn-border)", title: "Avant chaque exercice", text: "Réalise 2 à 3 séries légères à 50/60% de la charge de travail prévue avant d'attaquer tes séries de travail. Ne zappe jamais cette étape." },
             { label: "RP",           color: "var(--cmp-up-text)", bg: "var(--cmp-up-bg)", border: "var(--cmp-up-border)", title: "Rest-Pause",            text: "Après être allé à l'échec sur une série, repose la charge pendant 30 secondes, puis enchaîne une série supplémentaire. Note-la dans le logbook." },
             { label: "DS",           color: "var(--p-seche-tx)", bg: "var(--p-seche-bg)", border: "var(--p-seche-tx)", title: "Drop Set",              text: "Après avoir atteint l'échec, prends 30 secondes de repos. Baisse ensuite la charge de 30 à 40% et réalise une série supplémentaire jusqu'à l'échec." },
-            { label: "SUPERSET",     color: "var(--p-decharge-tx)", bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", title: "Deux exercices en enchaînement", text: "Lorsque deux exercices sont surlignés de cette couleur, enchaîne-les sans temps de repos entre les deux (ou juste le temps de t'installer sur la machine suivante). Prends ensuite le temps de repos indiqué sur l'exercice 2 avant de repartir sur l'exercice 1." },
+            { label: "Superset",     color: "var(--p-decharge-tx)", bg: "var(--p-decharge-bg)", border: "var(--p-decharge-tx)", title: "Deux exercices en enchaînement", text: "Lorsque deux exercices sont surlignés de cette couleur, enchaîne-les sans temps de repos entre les deux (ou juste le temps de t'installer sur la machine suivante). Prends ensuite le temps de repos indiqué sur l'exercice 2 avant de repartir sur l'exercice 1." },
             { label: "ALERTE",       color: "var(--cmp-down-text)", bg: "var(--cmp-down-bg)", border: "var(--cmp-down-border)", title: "Si tu vois 2 semaines de rouge consécutives sur un exercice", text: "Contacte-moi directement. Une régression sur 2 semaines de suite signifie qu'on doit ajuster quelque chose : intensité, récupération, technique, ou programmation. Pas de panique, c'est exactement à ça que sert le suivi — on adapte ensemble." },
           ].map((c, i) => (
-            <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, padding: "16px", marginBottom: 10, animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
+            <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 18, padding: "16px", marginBottom: 10, animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ background: c.color, color: "#FFF", fontWeight: 900, padding: "4px 10px", borderRadius: 6, letterSpacing: 1, fontFamily: "'Bebas Neue'", fontSize: 11 }}>{c.label}</span>
+                <span style={{ background: c.color, color: "#FFF", fontWeight: 900, padding: "4px 10px", borderRadius: 6, letterSpacing: 0.5, fontWeight: 800, fontSize: 11 }}>{c.label}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: c.color }}>{c.title}</span>
               </div>
               <p style={{ fontSize: 12, color: T.text, lineHeight: 1.7, margin: 0 }}>{c.text}</p>
@@ -2333,16 +2418,16 @@ function ProfilePage({ ctx }) {
   }
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "22px 18px 18px", textAlign: "center" }}>
-        <div style={{ width: 80, height: 80, borderRadius: "50%", margin: "0 auto 14px", background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 36, color: "white", letterSpacing: 2, boxShadow: "0 6px 20px rgba(13,148,136,0.3)" }}>
+        <div style={{ width: 80, height: 80, borderRadius: "50%", margin: "0 auto 14px", background: "var(--degrade-marque-clair)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 36, color: "white", letterSpacing: 1, boxShadow: "var(--e2)" }}>
           {client.name[0].toUpperCase()}
         </div>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: T.text, letterSpacing: 3, lineHeight: 1 }}>{client.name.toUpperCase()}</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>{client.name.toUpperCase()}</div>
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>Coaché depuis {client.startDate || "—"}</div>
       </div>
       <div style={{ padding: "0 18px 14px" }}>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", boxShadow: `0 1px 8px ${T.shadow}` }}>
+        <div style={{ background: T.surface, borderRadius: 18, padding: "14px 16px", boxShadow: "var(--e1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${T.border}` }}>
             <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>Objectif</span>
             <span style={{ fontSize: 12, color: T.text, fontWeight: 700 }}>{client.goal || "—"}</span>
@@ -2357,40 +2442,27 @@ function ProfilePage({ ctx }) {
           </div>
         </div>
       </div>
-      <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <Groupe style={{ padding: "0 18px" }}>
         <QuickCard icon="info"     title="Consignes coach" subtitle="Conventions et codes du programme" onClick={() => setProfileSubView("consignes")}/>
         <QuickCard icon="calendar" title="Mon programme"   subtitle="Voir l'organisation hebdomadaire"  onClick={() => ctx.navigate("workout", "organisation")}/>
         <QuickCard icon="trophy"   title="Mes records"     subtitle="Records personnels par exercice"   onClick={() => ctx.navigate("progress")}/>
-      </div>
+      </Groupe>
 
       {!isDemo && (
         <div style={{ padding: "18px 18px 0" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10, paddingLeft: 2 }}>RÉGLAGES</div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", boxShadow: `0 1px 8px ${T.shadow}` }}>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10, paddingLeft: 2 }}>Réglages</div>
+          <div style={{ background: T.surface, borderRadius: 18, padding: "4px 16px", boxShadow: "var(--e1)" }}>
             {/* Apparence — stockée localement, par appareil, comme les autres réglages */}
             <div style={{ padding: "13px 0", borderBottom: `1px solid ${T.border}` }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Apparence</div>
               <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, marginBottom: 10, lineHeight: 1.4 }}>
                 « Automatique » suit le réglage de ton téléphone
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {[["auto", "AUTO"], ["clair", "CLAIR"], ["sombre", "SOMBRE"]].map(([val, lib]) => {
-                  const actif = ctx.theme === val;
-                  return (
-                    <button key={val} onClick={() => ctx.setTheme(val)} className="pressable"
-                      style={{
-                        flex: 1, padding: "9px 4px", borderRadius: 10, cursor: "pointer",
-                        background: actif ? T.accent : T.bg,
-                        color: actif ? T.accentText : T.textSub,
-                        border: `1.5px solid ${actif ? T.accent : T.border}`,
-                        fontSize: 10, fontWeight: 800, letterSpacing: 1, fontFamily: "inherit",
-                        transition: "all .2s ease",
-                      }}>
-                      {lib}
-                    </button>
-                  );
-                })}
-              </div>
+              <Segmente valeur={ctx.theme} onChange={ctx.setTheme} options={[
+                { valeur: "auto", libelle: "Auto" },
+                { valeur: "clair", libelle: "Clair" },
+                { valeur: "sombre", libelle: "Sombre" },
+              ]}/>
             </div>
             {/* Notifications push — abonnement de cet appareil */}
             <div style={{ padding: "13px 0", borderBottom: `1px solid ${T.border}` }}>
@@ -2414,7 +2486,7 @@ function ProfilePage({ ctx }) {
               </div>
 
               {ctx.push.etat === "ios-non-installee" && (
-                <div style={{ background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 10, padding: "9px 11px", marginTop: 9, fontSize: 10.5, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
+                <div style={{ background: T.warnBg, border: `1px solid ${T.warnBorder}`, borderRadius: 12, padding: "9px 11px", marginTop: 9, fontSize: 10.5, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
                   Sur iPhone, Apple n'autorise les notifications que depuis une app installée.
                   Appuie sur Partager, puis « Sur l'écran d'accueil », et reviens ici.
                 </div>
@@ -2422,7 +2494,7 @@ function ProfilePage({ ctx }) {
 
               {ctx.push.etat === "actif" && (
                 <button onClick={ctx.push.tester} disabled={ctx.push.occupe} className="pressable"
-                  style={{ marginTop: 9, width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 10, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: ctx.push.occupe ? "default" : "pointer", fontFamily: "inherit" }}>
+                  style={{ marginTop: 9, width: "100%", padding: "9px", background: T.bg, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 10.5, fontWeight: 800, letterSpacing: .8, cursor: ctx.push.occupe ? "default" : "pointer", fontFamily: "inherit" }}>
                   {ctx.push.occupe ? "ENVOI..." : "ENVOYER UN TEST"}
                 </button>
               )}
@@ -2456,9 +2528,13 @@ function ProfilePage({ ctx }) {
                 du navigateur, et c'est le seul moyen de vérifier AVANT la salle
                 que le téléphone n'est pas en silencieux. */}
             {ctx.settings.restTimers && ctx.settings.restSound && (<>
-              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: T.textMuted, padding: "4px 0 8px" }}>QUELLE SONNERIE</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 12 }}>
-                {Object.entries(SONNERIES).map(([id, s]) => {
+              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: T.textMuted, padding: "6px 0 7px 2px" }}>Quelle sonnerie</div>
+              {/* Cinq choix exclusifs : une liste, pas cinq cartes posées côte
+                  à côte. Le choix se marque par une coche à droite, comme dans
+                  toutes les listes de choix d'iOS — pas par un cadre coloré
+                  autour de la ligne, qui la fait lire comme un bouton. */}
+              <div style={{ background: T.bg, borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+                {Object.entries(SONNERIES).map(([id, s], i) => {
                   const choisi = (ctx.settings.restSoundStyle || SONNERIE_DEFAUT) === id;
                   return (
                     <button key={id} className="pressable"
@@ -2470,15 +2546,19 @@ function ProfilePage({ ctx }) {
                         armerSonnerie(id);
                         playRestChime(id);
                       }}
-                      style={{ display: "flex", alignItems: "center", gap: 11, textAlign: "left", width: "100%", padding: "10px 12px", background: choisi ? T.accentLight : T.bg, border: `1.5px solid ${choisi ? T.accent : T.border}`, borderRadius: 11, cursor: "pointer", fontFamily: "inherit" }}>
-                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${choisi ? T.accent : T.borderStrong}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {choisi && <div style={{ width: 9, height: 9, borderRadius: "50%", background: T.accent }}/>}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: choisi ? T.accentDark : T.text }}>{s.nom}</div>
-                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1, lineHeight: 1.4 }}>{s.detail}</div>
-                      </div>
+                      aria-pressed={choisi}
+                      style={{ display: "flex", alignItems: "center", gap: 11, textAlign: "left", width: "100%", padding: "11px 13px", background: choisi ? T.accentLight : "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", transition: "background .3s var(--ressort)", position: "relative" }}>
+                      {/* Le filet part du texte, pas du bord : c'est ce décalage
+                          qui fait lire les cinq lignes comme UNE liste. */}
+                      {i > 0 && <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 37, right: 0, height: 1, background: T.border }}/>}
                       <Icon name="play" size={13} color={choisi ? T.accent : T.textMuted} filled/>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, color: choisi ? T.accentDark : T.text }}>{s.nom}</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1, lineHeight: 1.35 }}>{s.detail}</div>
+                      </div>
+                      <div style={{ width: 16, flexShrink: 0 }}>
+                        {choisi && <Icon name="check" size={16} stroke={3} color={T.accent}/>}
+                      </div>
                     </button>
                   );
                 })}
@@ -2489,7 +2569,7 @@ function ProfilePage({ ctx }) {
         </div>
       )}
 
-      <div style={{ padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 1 }}>
+      <div style={{ padding: "30px 18px 0", textAlign: "center", color: T.textMuted, fontSize: 10, letterSpacing: 0.5 }}>
         FORGE COACHING · v1.0{isDemo ? " · MODE DÉMO" : ""}
       </div>
       {confirmUI}
@@ -2541,15 +2621,15 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 200 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 201, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", overflowY: "auto", padding: "10px 18px 28px" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 200 }}/>
+      <div className="sheet" style={{ zIndex: 201, maxHeight: "85vh", overflowY: "auto", padding: "0 18px 28px" }}>
+        <div className="poignee"/>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 18 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: mStyle.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 16, background: mStyle.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icon name="trending" size={22} color={mStyle.text}/>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, lineHeight: 1.1 }}>{exercise.exercice}</div>
+            <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, lineHeight: 1.1 }}>{exercise.exercice}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{exercise.muscle}</span>
               {/* Le nom de la séance n'apparaît que si l'exercice revient
@@ -2560,32 +2640,32 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
               )}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+          <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 12, fontSize: 16, color: T.textSub, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 18 }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent, letterSpacing: 1, lineHeight: 1 }}>{bestRecord ? bestRecord.weight : "—"}</div>
-            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, marginTop: 4, fontWeight: 700 }}>RECORD (KG)</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: 22, color: T.accent, letterSpacing: 0.5, lineHeight: 1 }}>{bestRecord ? bestRecord.weight : "—"}</div>
+            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, marginTop: 4, fontWeight: 700 }}>RECORD (KG)</div>
           </div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent, letterSpacing: 1, lineHeight: 1 }}>{history.length}</div>
-            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, marginTop: 4, fontWeight: 700 }}>SÉRIES LOG</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: 22, color: T.accent, letterSpacing: 0.5, lineHeight: 1 }}>{history.length}</div>
+            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, marginTop: 4, fontWeight: 700 }}>SÉRIES LOG</div>
           </div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent, letterSpacing: 1, lineHeight: 1 }}>{new Set(history.map(h => h.week)).size}</div>
-            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, marginTop: 4, fontWeight: 700 }}>SEMAINES</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 8px", textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: 22, color: T.accent, letterSpacing: 0.5, lineHeight: 1 }}>{new Set(history.map(h => h.week)).size}</div>
+            <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, marginTop: 4, fontWeight: 700 }}>SEMAINES</div>
           </div>
         </div>
         {weeklyMax.length > 0 && (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 1, marginBottom: 12 }}>RECORD PAR SEMAINE</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5, marginBottom: 12 }}>RECORD PAR SEMAINE</div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100, paddingBottom: 16, borderBottom: `1px solid ${T.border}`, position: "relative" }}>
               {weeklyMax.map(([w, v], i) => {
                 const h = (v / maxBar) * 100;
                 return (
                   <div key={w} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", position: "relative" }}>
                     <div style={{ fontSize: 8, color: T.text, fontWeight: 700, marginBottom: 3 }}>{v}</div>
-                    <div style={{ width: "70%", height: `${h}%`, minHeight: 4, background: `linear-gradient(180deg, #2DD4BF, #064E3B)`, borderRadius: "4px 4px 0 0", animation: `growUp .6s ease ${i * 0.06}s both`, transformOrigin: "bottom" }}/>
+                    <div style={{ width: "70%", height: `${h}%`, minHeight: 4, background: "var(--accent)", borderRadius: "4px 4px 0 0", animation: `growUp .6s ease ${i * 0.06}s both`, transformOrigin: "bottom" }}/>
                     <div style={{ position: "absolute", bottom: -14, fontSize: 8, color: T.textMuted, fontWeight: 700 }}>S{w}</div>
                   </div>
                 );
@@ -2593,18 +2673,18 @@ function ExerciseSheet({ exercise, allSetLogs, allCompletedSets, onClose }) {
             </div>
           </div>
         )}
-        <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>HISTORIQUE DÉTAILLÉ</div>
+        <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>HISTORIQUE DÉTAILLÉ</div>
         {history.length === 0 ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12 }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12 }}>
             Aucune série loguée pour cet exercice.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {history.slice(0, 30).map((h, i) => (
-              <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={i} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 12, padding: "9px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ background: T.accentLight, color: T.accent, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 6, letterSpacing: .5 }}>S{h.week}</div>
                 <div style={{ fontSize: 11, color: T.textSub, flex: 1 }}>Série {h.si + 1}</div>
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: T.text, letterSpacing: 0.5 }}>
                   {h.weight}<span style={{ fontSize: 10, color: T.textMuted, marginLeft: 2 }}>KG</span>
                   <span style={{ color: T.textMuted, margin: "0 4px" }}>×</span>
                   {h.reps}<span style={{ fontSize: 10, color: T.textMuted, marginLeft: 2 }}>R</span>
@@ -2631,7 +2711,7 @@ function BottomTabBar({ activePage, onNavigate, showNutrition, weighReminder }) 
     { id: "profile",  label: "Profil",   icon: "profile" },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
+    <div className="verre" style={{ position: "fixed", bottom: "calc(10px + env(safe-area-inset-bottom))", left: 12, right: 12, border: `1px solid ${T.border}`, borderRadius: 28, padding: "9px 6px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: "var(--e3)" }}>
       {tabs.map(tab => {
         const isActive = activePage === tab.id;
         const showDot = tab.id === "nutrition" && weighReminder;
@@ -3048,37 +3128,19 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:${T.surface2}}
         ::-webkit-scrollbar-thumb{background:${T.borderStrong};border-radius:2px}
-        /* spin, pulse, fadeIn, fadeUp et popIn sont dans theme.css : elles
-           doivent exister AVANT que ce composant soit monté, sinon l'écran de
-           démarrage s'affiche figé. */
-        @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-        @keyframes pageInForward{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes pageInBackward{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-        @keyframes sheetFadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes growUp{from{height:0;opacity:0}to{opacity:1}}
-        .fade-in{animation:fadeIn .3s ease forwards}
-        .pressable{transition:transform .12s cubic-bezier(0.34,1.56,0.64,1)}
-        .pressable:active{transform:scale(.96)}
-        .tab-bar-btn:active > div:first-child{transform:scale(0.9)!important}
-        .quick-card{transition:transform .15s cubic-bezier(0.34,1.56,0.64,1), background .15s}
-        .quick-card:active{transform:scale(0.985)}
-        .hero-card{transition:transform .15s cubic-bezier(0.34,1.56,0.64,1)}
-        .hero-card:active{transform:scale(0.99)}
-        .upcoming-card{transition:transform .15s cubic-bezier(0.34,1.56,0.64,1)}
-        .upcoming-card:active{transform:scale(0.97)}
-        .stat-card{transition:transform .15s}
-        .page-forward{animation:pageInForward .35s cubic-bezier(0.32,0.72,0.34,1) both}
-        .page-backward{animation:pageInBackward .35s cubic-bezier(0.32,0.72,0.34,1) both}
-        .sheet-backdrop{animation:sheetFadeIn .25s ease both}
-        .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
+        /* Animations, feuilles, transitions de page et réponse au toucher : tout
+           est dans theme.css, inliné dans le <head> au build. Deux raisons, et
+           la seconde a coûté une version : elles doivent exister AVANT que ce
+           composant soit monté (l'écran de démarrage restait figé, v7y), et un
+           <style> de composant est parsé APRÈS le <head> — à spécificité égale
+           il gagne, donc redéfinir ici une règle du thème l'écrase en silence. */
       `}</style>
 
       {/* Top mini-status bar */}
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="verre" style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2.5 }}>FORGE COACHING</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: T.accent, letterSpacing: 1 }}>FORGE COACHING</div>
         </div>
         <SyncDot status={syncStatus}/>
       </div>
@@ -3280,14 +3342,14 @@ async function saveProgramDraft(supabase, coacheeId, weekStructure, sessionsStru
 function Field({ label, children }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: T.textMuted, letterSpacing: 1.2, marginBottom: 6 }}>{label}</label>
+      <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: T.textSub, letterSpacing: -0.1, marginBottom: 6 }}>{label}</label>
       {children}
     </div>
   );
 }
 const inputStyle = {
-  width: "100%", padding: "12px 14px", background: T.bg,
-  border: `1.5px solid ${T.borderStrong}`, borderRadius: 10,
+  width: "100%", padding: "12px 14px", background: T.inputBg,
+  border: `1px solid ${T.border}`, borderRadius: 12,
   fontSize: 15, color: T.text, outline: "none", fontFamily: "inherit",
 };
 
@@ -3329,16 +3391,16 @@ function CoachLoginScreen({ onBack, onAuthSuccess }) {
     <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse at top, ${T.surface2} 0%, ${T.bg} 60%)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ marginBottom: 20, animation: "fadeUp .5s ease both" }}><ForgeLogo size={72}/></div>
       <div style={{ textAlign: "center", marginBottom: 30, animation: "fadeUp .5s ease .1s both" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, letterSpacing: 4, color: T.text, lineHeight: 1 }}>ESPACE COACH</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, letterSpacing: 1, color: T.text, lineHeight: 1 }}>ESPACE COACH</div>
         <div style={{ fontSize: 12, color: T.textSub, marginTop: 8 }}>Connexion à ton poste de pilotage</div>
       </div>
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "26px 22px", width: "100%", maxWidth: 380, boxShadow: `0 14px 50px ${T.shadow}`, animation: "fadeUp .5s ease .2s both" }}>
-        <Field label="EMAIL">
+      <div style={{ background: T.surface, borderRadius: 20, padding: "26px 22px", width: "100%", maxWidth: 380, boxShadow: "var(--e3)", animation: "fadeUp .5s ease .2s both" }}>
+        <Field label="Email">
           <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(""); }}
             placeholder="coach@forge.app" autoCapitalize="none" autoComplete="email" spellCheck={false}
             style={{ ...inputStyle, borderColor: error ? T.danger : T.borderStrong }}/>
         </Field>
-        <Field label="MOT DE PASSE">
+        <Field label="Mot de passe">
           <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(""); }}
             onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
             placeholder="••••••••" autoComplete="current-password"
@@ -3349,9 +3411,9 @@ function CoachLoginScreen({ onBack, onAuthSuccess }) {
         </div>
         <button onClick={handleSubmit} disabled={loading || !email.trim() || !password}
           style={{ width: "100%", marginTop: 6, padding: "14px 20px",
-            background: loading || !email.trim() || !password ? T.surface2 : `linear-gradient(135deg, #064E3B 0%, #0D9488 100%)`,
+            background: loading || !email.trim() || !password ? T.surface2 : "var(--btn-primaire)",
             color: loading || !email.trim() || !password ? T.textMuted : "white",
-            border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1.2,
+            border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5,
             cursor: loading || !email.trim() || !password ? "default" : "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           {loading ? (<><Spinner size={15} color={T.textMuted}/> CONNEXION...</>) : "SE CONNECTER"}
@@ -3399,9 +3461,9 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 300 }}/>
+      <div className="sheet" style={{ zIndex: 301, maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
 
         {result ? (
           // Écran de succès : affiche le code à communiquer
@@ -3409,43 +3471,43 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
             <div style={{ width: 56, height: 56, borderRadius: "50%", background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <Icon name="check" size={28} color={T.accent} stroke={3}/>
             </div>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2 }}>COACHÉ CRÉÉ</div>
+            <div style={{ fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1 }}>COACHÉ CRÉÉ</div>
             <div style={{ fontSize: 13, color: T.textSub, marginTop: 6, marginBottom: 20 }}>Communique ce code d'accès à {result.name} :</div>
-            <div style={{ background: T.surface, border: `2px dashed ${T.accent}`, borderRadius: 14, padding: "18px", marginBottom: 20 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 32, color: T.accent, letterSpacing: 4 }}>{result.accessCode}</div>
+            <div style={{ background: T.surface, border: `2px dashed ${T.accent}`, borderRadius: 18, padding: "18px", marginBottom: 20 }}>
+              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 32, color: T.accent, letterSpacing: 1.4 }}>{result.accessCode}</div>
             </div>
-            <button onClick={onClose} style={{ width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>
-              TERMINÉ
+            <button onClick={onClose} style={{ width: "100%", padding: "14px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>
+              Terminé
             </button>
           </div>
         ) : (
           <>
             <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, marginBottom: 18 }}>NOUVEAU COACHÉ</div>
-              <Field label="NOM">
+              <div style={{ fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1, marginBottom: 18 }}>NOUVEAU COACHÉ</div>
+              <Field label="Nom">
                 <input type="text" value={name} onChange={e => { setName(e.target.value); setError(""); }} placeholder="Ex : Marie Dupont" style={inputStyle}/>
               </Field>
-              <Field label="OBJECTIF">
+              <Field label="Objectif">
                 <select value={goal} onChange={e => setGoal(e.target.value)} style={inputStyle}>
                   {GOAL_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </Field>
-              <Field label="DATE DE DÉBUT">
+              <Field label="Date de début">
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", minWidth: 0, maxWidth: "100%", display: "block" }}/>
               </Field>
-              <Field label="OFFRE">
+              <Field label="Offre">
                 <div style={{ display: "flex", gap: 8 }}>
                   {OFFER_OPTIONS.map(o => (
-                    <button key={o} onClick={() => setOffer(o)} style={{ flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "uppercase" }}>
+                    <button key={o} onClick={() => setOffer(o)} style={{ flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "uppercase" }}>
                       {o}
                     </button>
                   ))}
                 </div>
               </Field>
-              <Field label="CODE D'ACCÈS (généré automatiquement)">
+              <Field label="Code d'accès (généré automatiquement)">
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setCodeEdited(true); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 1 }}/>
-                  <button onClick={() => { setCodeEdited(false); setCode(generateAccessCode(name)); }} title="Régénérer" style={{ flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 10, cursor: "pointer", fontSize: 16 }}>↻</button>
+                  <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setCodeEdited(true); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 0.5 }}/>
+                  <button onClick={() => { setCodeEdited(false); setCode(generateAccessCode(name)); }} title="Régénérer" style={{ flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 12, cursor: "pointer", fontSize: 16 }}>↻</button>
                 </div>
               </Field>
               <div style={{ minHeight: 20, textAlign: "center" }}>
@@ -3453,9 +3515,9 @@ function NewCoacheeModal({ supabase, onClose, onCreated }) {
               </div>
             </div>
             <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-              <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+              <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
               <button onClick={handleCreate} disabled={loading || !name.trim() || !code.trim()}
-                style={{ flex: 2, padding: "14px", background: loading || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: loading || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: loading || !name.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                style={{ flex: 2, padding: "14px", background: loading || !name.trim() ? T.surface2 : "var(--btn-primaire)", color: loading || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: loading || !name.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {loading ? (<><Spinner size={14} color={T.textMuted}/> CRÉATION...</>) : "CRÉER LE COACHÉ"}
               </button>
             </div>
@@ -3679,9 +3741,9 @@ function CoachBackupCard({ ctx }) {
 
   return (
     <div style={{ padding: "22px 18px 0" }}>
-      <div style={{ background: T.surface, border: `1px solid ${ancienne ? T.warnBorder : T.border}`, borderRadius: 14, padding: "15px 16px" }}>
+      <div style={{ background: T.surface, border: `1px solid ${ancienne ? T.warnBorder : T.border}`, borderRadius: 18, padding: "15px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>SAUVEGARDE</div>
+          <div style={{ fontWeight: 800, fontSize: 16, color: T.text, letterSpacing: 0.5 }}>SAUVEGARDE</div>
           {derniere && (
             <span style={{ fontSize: 9.5, color: ancienne ? T.warnText : T.textMuted, fontWeight: 700 }}>
               {jours === 0 ? "Aujourd'hui" : jours === 1 ? "Hier" : `Il y a ${jours} jours`}
@@ -3695,7 +3757,7 @@ function CoachBackupCard({ ctx }) {
         </div>
 
         <button onClick={exporter} disabled={occupe} className="pressable"
-          style={{ width: "100%", padding: "12px", background: occupe ? T.surface2 : T.bg, border: `1.5px solid ${occupe ? T.border : T.borderStrong}`, borderRadius: 11, color: occupe ? T.textMuted : T.textSub, fontSize: 11, fontWeight: 800, letterSpacing: .8, cursor: occupe ? "default" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          style={{ width: "100%", padding: "12px", background: occupe ? T.surface2 : T.bg, border: `1.5px solid ${occupe ? T.border : T.borderStrong}`, borderRadius: 14, color: occupe ? T.textMuted : T.textSub, fontSize: 11, fontWeight: 800, letterSpacing: .8, cursor: occupe ? "default" : "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           {occupe ? (<><Spinner size={13} color={T.textMuted}/> EXPORT EN COURS...</>) : "TÉLÉCHARGER MES DONNÉES"}
         </button>
 
@@ -3848,9 +3910,9 @@ function CoachErreursCard({ ctx }) {
   return (
     <div style={{ padding: "22px 18px 0" }}>
       {confirmUI}
-      <div style={{ background: T.surface, border: `1px solid ${T.warnBorder}`, borderRadius: 14, padding: "15px 16px" }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.warnBorder}`, borderRadius: 18, padding: "15px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, color: T.text, letterSpacing: 0.5 }}>
             {erreurs.length} PLANTAGE{erreurs.length > 1 ? "S" : ""}
           </div>
           <button onClick={effacer} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 10.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
@@ -3862,10 +3924,10 @@ function CoachErreursCard({ ctx }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           {erreurs.map(e => (
-            <div key={e.id} style={{ background: T.bg, borderRadius: 9, padding: "9px 11px" }}>
+            <div key={e.id} style={{ background: T.bg, borderRadius: 12, padding: "9px 11px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 9.5, color: T.textSub, fontWeight: 800, letterSpacing: .5 }}>
-                  {nomDe(e.user_id).toUpperCase()}
+                  {nomDe(e.user_id)}
                 </span>
                 <span style={{ fontSize: 9, color: T.textMuted, flexShrink: 0 }}>
                   {new Date(e.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
@@ -3922,9 +3984,9 @@ function CoachFollowUpPage({ ctx }) {
   const aRelancer = compte("a_relancer") + compte("decrochage");
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "22px 18px 14px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>SUIVI</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>SUIVI</div>
         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>
           {aRelancer === 0
             ? "Tout le monde est à jour."
@@ -3937,8 +3999,8 @@ function CoachFollowUpPage({ ctx }) {
           const s = STATUTS[id];
           const n = compte(id);
           return (
-            <div key={id} style={{ flex: 1, background: n > 0 ? s.bg : T.surface, border: `1px solid ${n > 0 ? "transparent" : T.border}`, borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 24, color: n > 0 ? s.tx : T.textMuted, lineHeight: 1 }}>{n}</div>
+            <div key={id} style={{ flex: 1, background: n > 0 ? s.bg : T.surface, border: `1px solid ${n > 0 ? "transparent" : T.border}`, borderRadius: 16, padding: "12px 8px", textAlign: "center" }}>
+              <div style={{ fontWeight: 800, fontSize: 24, color: n > 0 ? s.tx : T.textMuted, lineHeight: 1, letterSpacing: -0.5 }}>{n}</div>
               <div style={{ fontSize: 8, color: n > 0 ? s.tx : T.textMuted, letterSpacing: .8, fontWeight: 800, marginTop: 4 }}>{label}</div>
             </div>
           );
@@ -3947,7 +4009,7 @@ function CoachFollowUpPage({ ctx }) {
 
       <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
         {triés.length === 0 && (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
             Aucun coaché actif à suivre.
           </div>
         )}
@@ -3958,7 +4020,7 @@ function CoachFollowUpPage({ ctx }) {
             ? Math.min(100, Math.round((a.faitesCetteSemaine / a.prevuesParSemaine) * 100)) : 0;
           return (
             <div key={c.id} onClick={() => openCoachee(c)} className="quick-card"
-              style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "13px 15px", cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }}>
+              style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "13px 15px", cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{c.name}</div>
@@ -3978,11 +4040,11 @@ function CoachFollowUpPage({ ctx }) {
                 <div style={{ marginTop: 11 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span style={{ fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: .5 }}>
-                      SEMAINE {a.semaineEnCours} · {a.faitesCetteSemaine}/{a.prevuesParSemaine} SÉANCES
+                      Semaine {a.semaineEnCours} · {a.faitesCetteSemaine}/{a.prevuesParSemaine} séances
                     </span>
                     {a.taux !== null && (
-                      <span style={{ fontSize: 9.5, color: T.textMuted, fontWeight: 700, letterSpacing: .5 }}>
-                        {a.taux}% SUR {SUIVI_FENETRE} SEM.
+                      <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600, letterSpacing: -0.1 }}>
+                        {a.taux} % sur {SUIVI_FENETRE} sem.
                       </span>
                     )}
                   </div>
@@ -4009,20 +4071,20 @@ function CoachListPage({ ctx }) {
   const filtered = coachees.filter(c => filter === "actifs" ? c.is_active !== false : c.is_active === false);
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>MES COACHÉS</div>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>MES COACHÉS</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{filtered.length} {filter === "actifs" ? "actif" : "inactif"}{filtered.length > 1 ? "s" : ""}</div>
         </div>
-        <button onClick={() => setShowNewModal(true)} className="pressable" style={{ background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: `0 4px 14px rgba(13,148,136,0.3)` }}>
+        <button onClick={() => setShowNewModal(true)} className="pressable" style={{ background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "var(--e2)" }}>
           + NOUVEAU
         </button>
       </div>
 
       <div style={{ padding: "0 18px 14px", display: "flex", gap: 8 }}>
         {["actifs", "inactifs"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", background: filter === f ? T.accent : T.surface, color: filter === f ? "white" : T.textSub, border: `1px solid ${filter === f ? T.accent : T.border}`, borderRadius: 16, fontSize: 11, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "capitalize" }}>
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 14px", background: filter === f ? T.accent : T.surface, color: filter === f ? "white" : T.textSub, border: `1px solid ${filter === f ? T.accent : T.border}`, borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "capitalize" }}>
             {f}
           </button>
         ))}
@@ -4030,12 +4092,12 @@ function CoachListPage({ ctx }) {
 
       <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.length === 0 ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
             {filter === "actifs" ? "Aucun coaché actif. Crée ton premier coaché avec le bouton + Nouveau." : "Aucun coaché inactif."}
           </div>
         ) : filtered.map((c, i) => (
-          <div key={c.id} onClick={() => openCoachee(c)} className="quick-card" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }}>
-            <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 20, color: "white" }}>
+          <div key={c.id} onClick={() => openCoachee(c)} className="quick-card" style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", animation: `fadeUp .35s ease ${i * 0.05}s both` }}>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", flexShrink: 0, background: "var(--degrade-marque-clair)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 20, color: "white" }}>
               {(c.name || "?")[0].toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -4111,14 +4173,14 @@ function CoachLibraryPage({ ctx }) {
 
   return (
     <>
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       <div style={{ padding: "22px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           {confirmUI}
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>BIBLIOTHÈQUE</div>
+          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>BIBLIOTHÈQUE</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{library.length} exercices</div>
         </div>
-        <button onClick={() => openEditor(null)} className="pressable" style={{ background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: "pointer", boxShadow: `0 4px 14px rgba(13,148,136,0.3)` }}>
+        <button onClick={() => openEditor(null)} className="pressable" style={{ background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, padding: "10px 14px", fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: "pointer", boxShadow: "var(--e2)" }}>
           + AJOUTER
         </button>
       </div>
@@ -4129,7 +4191,7 @@ function CoachLibraryPage({ ctx }) {
 
       <div style={{ padding: "0 18px", display: "flex", flexDirection: "column", gap: 14 }}>
         {Object.keys(grouped).length === 0 ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
             Aucun exercice trouvé.
           </div>
         ) : Object.entries(grouped).map(([m, exs]) => {
@@ -4141,7 +4203,7 @@ function CoachLibraryPage({ ctx }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {exs.map(ex => (
-                  <div key={ex.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div key={ex.id} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ex.name}</div>
@@ -4149,7 +4211,7 @@ function CoachLibraryPage({ ctx }) {
                       </div>
                       {ex.notes && <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{ex.notes}</div>}
                     </div>
-                    <button onClick={() => openEditor(ex)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 }}>Modifier</button>
+                    <button onClick={() => openEditor(ex)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "6px 10px", fontSize: 11, color: T.textSub, cursor: "pointer", fontWeight: 600 }}>Modifier</button>
                     <button onClick={() => handleDelete(ex)} style={{ background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 }}>×</button>
                   </div>
                 ))}
@@ -4162,23 +4224,23 @@ function CoachLibraryPage({ ctx }) {
 
       {editing && (
         <>
-          <div className="sheet-backdrop" onClick={() => setEditing(null)} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 300 }}/>
-          <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 301, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+          <div className="sheet-backdrop" onClick={() => setEditing(null)} style={{ zIndex: 300 }}/>
+          <div className="sheet" style={{ zIndex: 301, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div className="poignee"/>
             <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 18 }}>{editing.id ? "MODIFIER L'EXERCICE" : "NOUVEL EXERCICE"}</div>
-              <Field label="NOM DE L'EXERCICE">
+              <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, marginBottom: 18 }}>{editing.id ? "MODIFIER L'EXERCICE" : "NOUVEL EXERCICE"}</div>
+              <Field label="Nom de l'exercice">
                 <input type="text" value={name} onChange={e => { setName(e.target.value); setError(""); }} placeholder="Ex : Développé couché" style={inputStyle}/>
               </Field>
-              <Field label="MUSCLE">
+              <Field label="Muscle">
                 <select value={muscle} onChange={e => setMuscle(e.target.value)} style={inputStyle}>
                   {MUSCLE_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </Field>
-              <Field label="NOTES (optionnel)">
+              <Field label="Notes (optionnel)">
                 <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ex : CUFF, sangle de tirage..." style={inputStyle}/>
               </Field>
-              <Field label="VIDÉO DE DÉMONSTRATION (optionnel)">
+              <Field label="Vidéo de démonstration (optionnel)">
                 <input type="url" inputMode="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
                   placeholder="Colle un lien YouTube ou Vimeo" style={inputStyle}/>
                 {(() => {
@@ -4207,8 +4269,8 @@ function CoachLibraryPage({ ctx }) {
               </div>
             </div>
             <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-              <button onClick={() => setEditing(null)} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-              <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: saving || !name.trim() ? "default" : "pointer" }}>
+              <button onClick={() => setEditing(null)} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+              <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : "var(--btn-primaire)", color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: saving || !name.trim() ? "default" : "pointer" }}>
                 {saving ? "..." : "ENREGISTRER"}
               </button>
             </div>
@@ -4443,21 +4505,21 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     <div style={{ paddingBottom: 120 }} className="fade-in">
       {confirmUI}
       <div style={{ padding: "8px 18px 14px" }}>
-        <Field label="NOM DU PROGRAMME">
+        <Field label="Nom du programme">
           <input type="text" value={programName} onChange={e => setProgramName(e.target.value)} placeholder="Ex : Prise de masse - Bloc 1" style={inputStyle}/>
         </Field>
-        <button onClick={() => { setImportError(""); setImportOpen(true); }} className="pressable" style={{ width: "100%", marginTop: 2, padding: "11px", background: T.accentLight, border: `1px solid ${T.accent}40`, borderRadius: 10, color: T.accent, fontSize: 12, fontWeight: 700, letterSpacing: .3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button onClick={() => { setImportError(""); setImportOpen(true); }} className="pressable" style={{ width: "100%", marginTop: 2, padding: "11px", background: T.accentLight, border: `1px solid ${T.accent}40`, borderRadius: 12, color: T.accent, fontSize: 12, fontWeight: 700, letterSpacing: .3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <Icon name="profile" size={15} color={T.accent}/> Importer depuis un coaché existant
         </button>
       </div>
 
       {/* Planning hebdomadaire */}
       <div style={{ padding: "0 18px 16px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub, marginBottom: 10 }}>PLANNING HEBDOMADAIRE</div>
+        <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>PLANNING HEBDOMADAIRE</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {week.map((w, i) => (
-            <div key={w.day} style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px" }}>
-              <div style={{ width: 70, fontSize: 11, fontWeight: 800, color: T.textSub }}>{w.day}</div>
+            <div key={w.day.charAt(0) + w.day.slice(1).toLowerCase()} style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface, boxShadow: "var(--e1)", borderRadius: 12, padding: "8px 12px" }}>
+              <div style={{ width: 70, fontSize: 11, fontWeight: 800, color: T.textSub }}>{w.day.charAt(0) + w.day.slice(1).toLowerCase()}</div>
               <select value={w.sessionId || ""} onChange={e => { const v = e.target.value ? parseInt(e.target.value) : null; setWeek(week.map((x, j) => j === i ? { ...x, sessionId: v } : x)); }} style={{ ...inputStyle, padding: "8px 10px", flex: 1 }}>
                 <option value="">— Repos —</option>
                 {activeSessionsForWeek.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -4470,15 +4532,15 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
       {/* Séances */}
       <div style={{ padding: "0 18px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub }}>SÉANCES</div>
-          <button onClick={addSession} style={{ background: T.accentLight, color: T.accent, border: `1px solid ${T.accent}40`, borderRadius: 10, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>+ Séance</button>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub }}>SÉANCES</div>
+          <button onClick={addSession} style={{ background: T.accentLight, color: T.accent, border: `1px solid ${T.accent}40`, borderRadius: 12, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>+ Séance</button>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sessions.map((s, sIdx) => (
-            <div key={s.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px", boxShadow: `0 1px 8px ${T.shadow}` }}>
+            <div key={s.id} style={{ background: T.surface, borderRadius: 18, padding: "14px", boxShadow: "var(--e1)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <input type="text" value={s.name} onChange={e => updateSessionName(s.id, e.target.value)} style={{ ...inputStyle, fontWeight: 700, fontFamily: "'Bebas Neue'", letterSpacing: 1, fontSize: 18, padding: "8px 10px" }}/>
+                <input type="text" value={s.name} onChange={e => updateSessionName(s.id, e.target.value)} style={{ ...inputStyle, fontWeight: 700, fontWeight: 800, letterSpacing: 0.5, fontSize: 18, padding: "8px 10px" }}/>
                 <button onClick={() => removeSession(s.id)} style={{ flexShrink: 0, background: "transparent", border: "none", color: T.danger, fontSize: 20, cursor: "pointer" }}>×</button>
               </div>
 
@@ -4487,7 +4549,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
                 {s.exercises.map((ex, exIdx) => {
                   const mStyle = muscleColors[ex.muscle] || { bg: T.surface2, text: T.textSub };
                   return (
-                    <div key={exIdx} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>
+                    <div key={exIdx} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                           <button onClick={() => moveExercise(sIdx, exIdx, -1)} style={{ background: T.surface2, border: "none", borderRadius: 4, width: 22, height: 16, fontSize: 9, cursor: "pointer", lineHeight: 1 }}>▲</button>
@@ -4495,7 +4557,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{ex.exercice}</div>
-                          <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 8, padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>{ex.muscle}</span>
+                          <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 8, padding: "1px 6px", borderRadius: 12, fontWeight: 700 }}>{ex.muscle}</span>
                         </div>
                         <button onClick={() => removeExercise(sIdx, exIdx)} style={{ background: "transparent", border: "none", color: T.danger, fontSize: 16, cursor: "pointer" }}>×</button>
                       </div>
@@ -4535,13 +4597,13 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
                 })}
               </div>
 
-              <button onClick={() => { setPicker({ sessionIdx: sIdx }); setPickerSearch(""); }} style={{ width: "100%", marginTop: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, color: T.textSub, borderRadius: 9, padding: "10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={() => { setPicker({ sessionIdx: sIdx }); setPickerSearch(""); }} style={{ width: "100%", marginTop: 10, background: T.surface2, border: `1px solid ${T.border}`, color: T.textSub, borderRadius: 12, padding: "10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                 + Ajouter un exercice depuis la bibliothèque
               </button>
 
               {/* Abdos / Cardio */}
               <div style={{ marginTop: 10 }}>
-                <label style={{ fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 1 }}>ABDOS / CARDIO (une ligne par item)</label>
+                <label style={{ fontSize: 9, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5 }}>ABDOS / CARDIO (une ligne par item)</label>
                 <textarea value={(s.abdosCardio || []).join("\n")} onChange={e => updateAbdos(sIdx, e.target.value)} placeholder="3x1 min gainage&#10;3x échec relevé de jambes" rows={2} style={{ ...inputStyle, padding: "8px 10px", fontSize: 12, resize: "vertical", marginTop: 4 }}/>
               </div>
             </div>
@@ -4550,11 +4612,11 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
       </div>
 
       {/* Barre d'actions fixe */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg-opaque)", backdropFilter: "blur(12px)", borderTop: `1px solid ${T.border}`, padding: "12px 18px 20px", zIndex: 50 }}>
+      <div className="verre dense" style={{ position: "fixed", bottom: 0, left: 0, right: 0, borderTop: `1px solid ${T.border}`, padding: "12px 18px calc(20px + env(safe-area-inset-bottom))", zIndex: 50 }}>
         {msg && <div style={{ textAlign: "center", fontSize: 11, color: msg.includes("Erreur") ? T.danger : T.accent, fontWeight: 700, marginBottom: 8 }}>{msg}</div>}
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={doSaveDraft} disabled={saving} style={{ flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Brouillon</button>
-          <button onClick={doActivate} disabled={saving} style={{ flex: 2, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={doSaveDraft} disabled={saving} style={{ flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Brouillon</button>
+          <button onClick={doActivate} disabled={saving} style={{ flex: 2, padding: "13px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {saving ? (<><Spinner size={14} color="white"/> ACTIVATION...</>) : "ACTIVER LE PROGRAMME"}
           </button>
         </div>
@@ -4563,16 +4625,16 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
       {/* Sélecteur d'exercice */}
       {picker && (
         <>
-          <div className="sheet-backdrop" onClick={() => setPicker(null)} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }}/>
-          <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" }}>
-            <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" }}/>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 18, color: T.text, letterSpacing: 2, marginBottom: 12 }}>CHOISIR UN EXERCICE</div>
+          <div className="sheet-backdrop" onClick={() => setPicker(null)} style={{ zIndex: 400 }}/>
+          <div className="sheet" style={{ zIndex: 401, maxHeight: "80vh", overflowY: "auto", padding: "0 18px 28px" }}>
+            <div className="poignee"/>
+            <div style={{ fontWeight: 800, fontSize: 18, color: T.text, letterSpacing: 1, marginBottom: 12 }}>CHOISIR UN EXERCICE</div>
             <input type="text" value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} placeholder="Rechercher..." style={{ ...inputStyle, marginBottom: 12 }} autoFocus/>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {library.filter(e => e.name.toLowerCase().includes(pickerSearch.toLowerCase())).map(libEx => {
                 const mStyle = muscleColors[libEx.muscle] || { bg: T.surface2, text: T.textSub };
                 return (
-                  <button key={libEx.id} onClick={() => addExerciseToSession(picker.sessionIdx, libEx)} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
+                  <button key={libEx.id} onClick={() => addExerciseToSession(picker.sessionIdx, libEx)} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{libEx.name}</div>
                     </div>
@@ -4589,10 +4651,10 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
       {/* Modale : Importer depuis un coaché existant */}
       {importOpen && (
         <>
-          <div className="sheet-backdrop" onClick={() => setImportOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }}/>
-          <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "80vh", overflowY: "auto", padding: "10px 18px 28px" }}>
-            <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" }}/>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 }}>IMPORTER UN PROGRAMME</div>
+          <div className="sheet-backdrop" onClick={() => setImportOpen(false)} style={{ zIndex: 400 }}/>
+          <div className="sheet" style={{ zIndex: 401, maxHeight: "80vh", overflowY: "auto", padding: "0 18px 28px" }}>
+            <div className="poignee"/>
+            <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, marginBottom: 4 }}>IMPORTER UN PROGRAMME</div>
             <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
               Choisis un coaché : son programme actif sera copié ici comme base. Tu pourras tout ajuster avant d'activer.
             </div>
@@ -4606,8 +4668,8 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
                     Aucun autre coaché disponible. Crée d'abord un programme pour un autre coaché.
                   </div>
                 ) : (coachees || []).filter(c => c.id !== coachee.id && c.is_active !== false).map(c => (
-                  <button key={c.id} onClick={() => importFromCoachee(c)} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, #064E3B, #2DD4BF)`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue'", fontSize: 17, color: "white" }}>
+                  <button key={c.id} onClick={() => importFromCoachee(c)} className="pressable" style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: "var(--degrade-marque-clair)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 17, color: "white" }}>
                       {(c.name || "?")[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -4619,7 +4681,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
                 ))}
               </div>
             )}
-            <button onClick={() => setImportOpen(false)} style={{ width: "100%", marginTop: 14, padding: "13px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+            <button onClick={() => setImportOpen(false)} style={{ width: "100%", marginTop: 14, padding: "13px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
           </div>
         </>
       )}
@@ -4678,20 +4740,20 @@ function CoachProgressView({ ctx, coachee }) {
   return (
     <div className="fade-in">
       <div style={{ padding: "0 0 14px", display: "flex", gap: 8 }}>
-        <div style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent }}>{totalLogged}</div>
-          <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700 }}>SÉRIES LOG</div>
+        <div style={{ flex: 1, background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px", textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 22, color: T.accent }}>{totalLogged}</div>
+          <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700 }}>SÉRIES LOG</div>
         </div>
-        <div style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.accent }}>{muscleMap.size}</div>
-          <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1, fontWeight: 700 }}>MUSCLES</div>
+        <div style={{ flex: 1, background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px", textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 22, color: T.accent }}>{muscleMap.size}</div>
+          <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700 }}>MUSCLES</div>
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {Array.from(muscleMap.entries()).map(([muscle, exercises]) => {
           const mStyle = muscleColors[muscle] || { bg: T.surface2, text: T.textSub };
           return (
-            <div key={muscle} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div key={muscle} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 14px" }}>
               <span style={{ background: mStyle.bg, color: mStyle.text, fontSize: 10, padding: "2px 9px", borderRadius: 20, fontWeight: 800 }}>{muscle}</span>
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                 {exercises.map(ex => {
@@ -4700,7 +4762,7 @@ function CoachProgressView({ ctx, coachee }) {
                     <div key={ex.name} onClick={() => setSheetExercise({ exercice: ex.name, muscle: ex.muscle })} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", cursor: "pointer", borderBottom: `1px solid ${T.border}` }}>
                       <div style={{ flex: 1, fontSize: 12, color: T.text }}>{ex.name}</div>
                       {prog.bestWeight > 0 ? (
-                        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 14, color: T.accent }}>{prog.bestWeight} <span style={{ fontSize: 9 }}>KG</span></div>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: T.accent }}>{prog.bestWeight} <span style={{ fontSize: 9 }}>KG</span></div>
                       ) : <span style={{ fontSize: 10, color: T.textMuted }}>—</span>}
                       <Icon name="chevronRight" size={14} color={T.borderStrong}/>
                     </div>
@@ -4724,8 +4786,8 @@ function NotesDeSeance({ notes }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {notes.map(n => (
         <div key={n.id} style={{ background: T.bg, borderLeft: `2px solid ${T.borderStrong}`, borderRadius: "0 8px 8px 0", padding: "8px 11px" }}>
-          <div style={{ fontSize: 8.5, color: T.textMuted, letterSpacing: 1, fontWeight: 800, marginBottom: 3 }}>
-            {(n.session_name || `SÉANCE ${n.session_config_id}`).toUpperCase()}
+          <div style={{ fontSize: 8.5, color: T.textMuted, letterSpacing: 0.5, fontWeight: 800, marginBottom: 3 }}>
+            {n.session_name || `Séance ${n.session_config_id}`}
           </div>
           <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{n.note}</div>
         </div>
@@ -4801,17 +4863,17 @@ function CoachBilansView({ ctx, coachee }) {
         const b = bilans.find(x => x.week_number === num);
         const notesSem = notes.filter(n => n.week_number === num);
         if (!b) return (
-          <div key={`n${num}`} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px" }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5, marginBottom: 4 }}>SEMAINE {num}</div>
+          <div key={`n${num}`} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 16px" }}>
+            <div style={{ fontWeight: 800, fontSize: 17, color: T.text, letterSpacing: -0.3, marginBottom: 4 }}>Semaine {num}</div>
             <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 10 }}>Pas de bilan, mais des notes de séance</div>
             <NotesDeSeance notes={notesSem}/>
           </div>
         );
         const enAttente = !b.coach_reply;
         return (
-          <div key={b.id} style={{ background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 14, padding: "14px 16px" }}>
+          <div key={b.id} style={{ background: T.surface, border: `1px solid ${enAttente ? T.accentA38 : T.border}`, borderRadius: 18, padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 11 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, color: T.text, letterSpacing: 1.5 }}>SEMAINE {b.week_number}</div>
+              <div style={{ fontWeight: 800, fontSize: 17, color: T.text, letterSpacing: -0.3 }}>Semaine {b.week_number}</div>
               {enAttente && (
                 <span style={{ background: T.warnBg, color: T.warnText, fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800 }}>
                   SANS RÉPONSE
@@ -4821,8 +4883,8 @@ function CoachBilansView({ ctx, coachee }) {
 
             <div style={{ display: "flex", gap: 6, marginBottom: b.note ? 11 : 0 }}>
               {BILAN_CRITERES.map(c => (
-                <div key={c.cle} style={{ flex: 1, textAlign: "center", background: T.bg, borderRadius: 9, padding: "8px 2px" }}>
-                  <div style={{ fontFamily: "'Bebas Neue'", fontSize: 18, lineHeight: 1, color: b[c.cle] == null ? T.textMuted : b[c.cle] <= 2 ? "var(--cmp-down-text)" : b[c.cle] >= 4 ? "var(--cmp-up-text)" : T.textSub }}>
+                <div key={c.cle} style={{ flex: 1, textAlign: "center", background: T.bg, borderRadius: 12, padding: "8px 2px" }}>
+                  <div style={{ fontWeight: 800, fontSize: 18, lineHeight: 1, color: b[c.cle] == null ? T.textMuted : b[c.cle] <= 2 ? "var(--cmp-down-text)" : b[c.cle] >= 4 ? "var(--cmp-up-text)" : T.textSub }}>
                     {b[c.cle] == null ? "—" : b[c.cle]}
                   </div>
                   <div style={{ fontSize: 7.5, color: T.textMuted, letterSpacing: .4, fontWeight: 700, marginTop: 4 }}>{c.label.toUpperCase()}</div>
@@ -4831,7 +4893,7 @@ function CoachBilansView({ ctx, coachee }) {
             </div>
 
             {b.note && (
-              <div style={{ background: T.bg, borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: T.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+              <div style={{ background: T.bg, borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: T.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
                 {b.note}
               </div>
             )}
@@ -4839,8 +4901,8 @@ function CoachBilansView({ ctx, coachee }) {
             {notesSem.length > 0 && <div style={{ marginTop: 11 }}><NotesDeSeance notes={notesSem}/></div>}
 
             {b.coach_reply ? (
-              <div style={{ marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 9, color: T.accent, fontWeight: 800, letterSpacing: 1, marginBottom: 4 }}>TA RÉPONSE</div>
+              <div style={{ marginTop: 11, background: T.accentLight, border: `1px solid ${T.accentA38}`, borderRadius: 12, padding: "10px 12px" }}>
+                <div style={{ fontSize: 9, color: T.accent, fontWeight: 800, letterSpacing: 0.5, marginBottom: 4 }}>TA RÉPONSE</div>
                 <div style={{ fontSize: 12, color: T.accentDark, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{b.coach_reply}</div>
               </div>
             ) : (
@@ -4851,7 +4913,7 @@ function CoachBilansView({ ctx, coachee }) {
                   style={{ ...inputStyle, fontSize: 12.5, resize: "vertical", lineHeight: 1.5 }}/>
                 <button onClick={() => repondre(b)}
                   disabled={!(brouillons[b.id] ?? "").trim() || occupe === b.id} className="pressable"
-                  style={{ width: "100%", marginTop: 8, padding: "10px", background: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accent : T.surface2, color: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accentText : T.textMuted, border: "none", borderRadius: 10, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? "pointer" : "default", fontFamily: "inherit" }}>
+                  style={{ width: "100%", marginTop: 8, padding: "10px", background: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accent : T.surface2, color: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? T.accentText : T.textMuted, border: "none", borderRadius: 12, fontSize: 11, fontWeight: 800, letterSpacing: .5, cursor: (brouillons[b.id] ?? "").trim() && occupe !== b.id ? "pointer" : "default", fontFamily: "inherit" }}>
                   {occupe === b.id ? "ENVOI..." : "RÉPONDRE"}
                 </button>
               </div>
@@ -4903,16 +4965,16 @@ function CoachPushSender({ ctx, coachee }) {
   if (!ouvert) {
     return (
       <button onClick={() => setOuvert(true)} className="pressable"
-        style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
         Envoyer une notification
       </button>
     );
   }
 
   return (
-    <div style={{ marginTop: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16 }}>
+    <div style={{ marginTop: 10, background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 16, color: T.text, letterSpacing: 1.5 }}>NOTIFICATION</div>
+        <div style={{ fontWeight: 800, fontSize: 16, color: T.text, letterSpacing: 0.5 }}>NOTIFICATION</div>
         <button onClick={() => { setOuvert(false); setRetour(null); }}
           style={{ background: "none", border: "none", color: T.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
           Fermer
@@ -4934,7 +4996,7 @@ function CoachPushSender({ ctx, coachee }) {
       </Field>
 
       <button onClick={envoyer} disabled={!pret} className="pressable"
-        style={{ width: "100%", marginTop: 4, padding: "13px", background: pret ? T.accent : T.surface2, color: pret ? T.accentText : T.textMuted, border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: pret ? "pointer" : "default", fontFamily: "inherit" }}>
+        style={{ width: "100%", marginTop: 4, padding: "13px", background: pret ? T.accent : T.surface2, color: pret ? T.accentText : T.textMuted, border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: pret ? "pointer" : "default", fontFamily: "inherit" }}>
         {occupe ? "ENVOI..." : "ENVOYER"}
       </button>
 
@@ -4969,21 +5031,21 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
   }
 
   return (
-    <div style={{ paddingBottom: 100 }} className="fade-in">
+    <div style={{ paddingBottom: 112 }} className="fade-in">
       {confirmUI}
       <div style={{ padding: "16px 18px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={onBack} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+        <button onClick={onBack} className="pressable" style={{ background: T.surface, border: `1px solid ${T.border}`, width: 36, height: 36, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
           <Icon name="chevronLeft" size={20} color={T.text}/>
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: T.text, letterSpacing: 2, lineHeight: 1 }}>{coachee.name}</div>
+          <div style={{ fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1, lineHeight: 1 }}>{coachee.name}</div>
           <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{coachee.access_code}</div>
         </div>
       </div>
 
-      <div style={{ padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div className="rail" style={{ padding: "0 18px 14px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         {[["infos", "Infos"], ["bilans", "Retours"], ["programme", "Programme"], ["periodisation", "Périodisation"], ["nutrition", "Nutrition"], ["progression", "Progression"]].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <button key={id} onClick={() => setTab(id)} style={{ flexShrink: 0, padding: "9px 13px", background: tab === id ? T.accent : T.surface, color: tab === id ? "white" : T.textSub, border: `1px solid ${tab === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
             {label}
           </button>
         ))}
@@ -4992,7 +5054,7 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
       <div style={{ padding: "0 18px" }}>
         {tab === "infos" && (
           <div>
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "16px" }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "16px" }}>
               {[["Nom", coachee.name], ["Code d'accès", coachee.access_code], ["Objectif", coachee.goal || "—"], ["Date de début", coachee.start_date || "—"]].map(([k, v], i, arr) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none" }}>
                   <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>{k}</span>
@@ -5008,10 +5070,10 @@ function CoacheeDetailPage({ ctx, coachee, onBack, onChanged }) {
                 <span style={{ fontSize: 11, fontWeight: 700, color: coachee.is_active === false ? T.danger : T.accent }}>{coachee.is_active === false ? "Inactif" : "Actif"}</span>
               </div>
             </div>
-            <button onClick={() => setEditOpen(true)} style={{ width: "100%", marginTop: 14, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>
+            <button onClick={() => setEditOpen(true)} style={{ width: "100%", marginTop: 14, padding: "13px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>
               Éditer les infos
             </button>
-            <button onClick={toggleActive} disabled={busy} style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 12, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={toggleActive} disabled={busy} style={{ width: "100%", marginTop: 10, padding: "13px", background: T.surface, border: `1.5px solid ${coachee.is_active === false ? T.accent : T.danger}`, borderRadius: 16, color: coachee.is_active === false ? T.accent : T.danger, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               {coachee.is_active === false ? "Réactiver ce coaché" : "Désactiver ce coaché"}
             </button>
             <CoachPushSender ctx={ctx} coachee={coachee}/>
@@ -5053,35 +5115,35 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 401, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 400 }}/>
+      <div className="sheet" style={{ zIndex: 401, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
         <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 }}>ÉDITER LE COACHÉ</div>
-          <Field label="NOM"><input type="text" value={name} onChange={e => { setName(e.target.value); setError(""); }} style={inputStyle}/></Field>
-          <Field label="OFFRE">
+          <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, marginBottom: 16 }}>ÉDITER LE COACHÉ</div>
+          <Field label="Nom"><input type="text" value={name} onChange={e => { setName(e.target.value); setError(""); }} style={inputStyle}/></Field>
+          <Field label="Offre">
             <div style={{ display: "flex", gap: 8 }}>
               {OFFER_OPTIONS.map(o => (
-                <button key={o} onClick={() => setOffer(o)} style={{ flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 10, fontSize: 12, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "uppercase" }}>{o}</button>
+                <button key={o} onClick={() => setOffer(o)} style={{ flex: 1, padding: "12px", background: offer === o ? T.accent : T.surface, color: offer === o ? "white" : T.textSub, border: `1.5px solid ${offer === o ? T.accent : T.border}`, borderRadius: 12, fontSize: 12, fontWeight: 700, letterSpacing: .5, cursor: "pointer", textTransform: "uppercase" }}>{o}</button>
               ))}
             </div>
           </Field>
-          <Field label="CODE D'ACCÈS">
+          <Field label="Code d'accès">
             <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 1 }}/>
-              <button onClick={() => { setCode(generateAccessCode(name)); setError(""); }} title="Générer un nouveau code" style={{ flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 10, cursor: "pointer", fontSize: 16 }}>↻</button>
+              <input type="text" value={code} onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }} style={{ ...inputStyle, fontWeight: 700, letterSpacing: 0.5 }}/>
+              <button onClick={() => { setCode(generateAccessCode(name)); setError(""); }} title="Générer un nouveau code" style={{ flexShrink: 0, padding: "0 14px", background: T.surface2, border: `1.5px solid ${T.border}`, borderRadius: 12, cursor: "pointer", fontSize: 16 }}>↻</button>
             </div>
           </Field>
           {codeChanged && (
-            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 12, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
               Attention : changer le code modifie les identifiants de connexion du coaché. Il devra utiliser le nouveau code <b>{code.trim().toUpperCase()}</b> pour se connecter, et sera déconnecté de ses sessions actuelles.
             </div>
           )}
           {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{error}</div>}
         </div>
         <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-          <button onClick={handleSave} disabled={saving || !name.trim() || !code.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+          <button onClick={handleSave} disabled={saving || !name.trim() || !code.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : "var(--btn-primaire)", color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {saving ? (<><Spinner size={14} color={T.textMuted}/> ENREGISTREMENT...</>) : "ENREGISTRER"}
           </button>
         </div>
@@ -5098,7 +5160,7 @@ function CoachTabBar({ activePage, onNavigate }) {
     { id: "library",  label: "Exercices", icon: "workout" },
   ];
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bar-bg)", backdropFilter: "blur(20px) saturate(180%)", borderTop: `1px solid ${T.border}`, padding: "10px 8px 16px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: `0 -2px 24px ${T.shadow}` }}>
+    <div className="verre" style={{ position: "fixed", bottom: "calc(10px + env(safe-area-inset-bottom))", left: 12, right: 12, border: `1px solid ${T.border}`, borderRadius: 28, padding: "9px 6px", display: "flex", justifyContent: "space-around", zIndex: 100, boxShadow: "var(--e3)" }}>
       {tabs.map(tab => {
         const isActive = activePage === tab.id;
         return (
@@ -5149,23 +5211,13 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
         input,select,textarea{font-family:inherit}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-thumb{background:${T.borderStrong};border-radius:2px}
-        /* spin, pulse, fadeIn et fadeUp : voir theme.css. */
-        @keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-        @keyframes sheetFadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes growUp{from{height:0;opacity:0}to{opacity:1}}
-        .fade-in{animation:fadeIn .3s ease forwards}
-        .pressable{transition:transform .12s cubic-bezier(0.34,1.56,0.64,1)}
-        .pressable:active{transform:scale(.96)}
-        .quick-card{transition:transform .15s}
-        .quick-card:active{transform:scale(.985)}
-        .sheet-backdrop{animation:sheetFadeIn .25s ease both}
-        .sheet{animation:sheetSlideUp .38s cubic-bezier(0.32,0.72,0.34,1) both}
+        /* Animations, feuilles et réponse au toucher : voir theme.css. */
       `}</style>
 
-      <div style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--bar-bg)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${T.border}`, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="verre" style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, color: T.accent, letterSpacing: 2 }}>FORGE · COACH</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: T.accent, letterSpacing: 1 }}>FORGE · COACH</div>
         </div>
         <button onClick={onLogout} title="Déconnexion" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" }}>
           <Icon name="logout" size={18} color={T.textMuted}/>
@@ -5958,22 +6010,23 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
 
   return (
     <Portail>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.45)", zIndex: 500, animation: "fadeIn .2s ease" }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 18px 10px", borderBottom: `1px solid ${T.border}` }}>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 500 }}/>
+      <div className="sheet" style={{ zIndex: 501, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
+        <div style={{ padding: "4px 18px 10px", borderBottom: `1px solid ${T.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text }}>
-              {titre || (itemRemplace ? "REMPLACER " + itemRemplace.food_name.toUpperCase() : "AJOUTER UN ALIMENT")}
+            <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: -0.3, color: T.text }}>
+              {titre || (itemRemplace ? "Remplacer " + itemRemplace.food_name : "Ajouter un aliment")}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: T.textMuted, cursor: "pointer", lineHeight: 1 }}>✕</button>
           </div>
           {!creation && (<>
             <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un aliment"
               style={{ ...inputStyle, marginBottom: 8 }}/>
-            <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2 }}>
-              <button onClick={() => setRole("")} style={{ padding: "6px 10px", background: !role ? T.accent : T.surface, color: !role ? "white" : T.textSub, border: `1px solid ${!role ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>Tous</button>
+            <div className="rail" style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2 }}>
+              <button onClick={() => setRole("")} style={{ padding: "6px 10px", background: !role ? T.accent : T.surface, color: !role ? "white" : T.textSub, border: `1px solid ${!role ? T.accent : T.border}`, borderRadius: 16, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>Tous</button>
               {DIET_ROLE_LABELS.map(([id, lab]) => (
-                <button key={id} onClick={() => setRole(id)} style={{ padding: "6px 10px", background: role === id ? T.accent : T.surface, color: role === id ? "white" : T.textSub, border: `1px solid ${role === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{lab}</button>
+                <button key={id} onClick={() => setRole(id)} style={{ padding: "6px 10px", background: role === id ? T.accent : T.surface, color: role === id ? "white" : T.textSub, border: `1px solid ${role === id ? T.accent : T.border}`, borderRadius: 16, fontSize: 9.5, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{lab}</button>
               ))}
             </div>
           </>)}
@@ -5983,22 +6036,22 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
           {err && <div style={{ fontSize: 11, color: T.danger, fontWeight: 700, marginBottom: 8 }}>{err}</div>}
           {creation ? (
             <div>
-              <Field label="NOM"><input value={creation.name} onChange={e => setCreation({ ...creation, name: e.target.value })} placeholder="Skyr nature" style={inputStyle}/></Field>
-              <Field label="RÔLE DANS LE REPAS">
+              <Field label="Nom"><input value={creation.name} onChange={e => setCreation({ ...creation, name: e.target.value })} placeholder="Skyr nature" style={inputStyle}/></Field>
+              <Field label="Rôle dans le repas">
                 <select value={creation.role} onChange={e => setCreation({ ...creation, role: e.target.value })} style={inputStyle}>
                   {DIET_ROLE_LABELS.map(([id, lab]) => <option key={id} value={id}>{lab}</option>)}
                 </select>
               </Field>
-              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 1, margin: "4px 0 8px" }}>VALEURS POUR 100 G</div>
+              <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.5, margin: "4px 0 8px" }}>VALEURS POUR 100 G</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Field label="CALORIES"><input type="number" min="0" value={creation.kcal_100} onChange={e => setCreation({ ...creation, kcal_100: e.target.value })} style={inputStyle}/></Field>
-                <Field label="PROTÉINES (G)"><input type="number" min="0" step="0.1" value={creation.protein_100} onChange={e => setCreation({ ...creation, protein_100: e.target.value })} style={inputStyle}/></Field>
-                <Field label="GLUCIDES (G)"><input type="number" min="0" step="0.1" value={creation.carbs_100} onChange={e => setCreation({ ...creation, carbs_100: e.target.value })} style={inputStyle}/></Field>
-                <Field label="LIPIDES (G)"><input type="number" min="0" step="0.1" value={creation.fat_100} onChange={e => setCreation({ ...creation, fat_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="Calories"><input type="number" min="0" value={creation.kcal_100} onChange={e => setCreation({ ...creation, kcal_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="Protéines (g)"><input type="number" min="0" step="0.1" value={creation.protein_100} onChange={e => setCreation({ ...creation, protein_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="Glucides (g)"><input type="number" min="0" step="0.1" value={creation.carbs_100} onChange={e => setCreation({ ...creation, carbs_100: e.target.value })} style={inputStyle}/></Field>
+                <Field label="Lipides (g)"><input type="number" min="0" step="0.1" value={creation.fat_100} onChange={e => setCreation({ ...creation, fat_100: e.target.value })} style={inputStyle}/></Field>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                <button onClick={() => { setCreation(null); setErr(""); }} style={{ flex: 1, padding: 13, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, fontSize: 12, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>Annuler</button>
-                <button onClick={creer} style={{ flex: 2, padding: 13, background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>CRÉER ET UTILISER</button>
+                <button onClick={() => { setCreation(null); setErr(""); }} style={{ flex: 1, padding: 13, background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, fontSize: 12, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>Annuler</button>
+                <button onClick={creer} style={{ flex: 2, padding: 13, background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>Créer et utiliser</button>
               </div>
             </div>
           ) : (<>
@@ -6012,7 +6065,7 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
               // clic : le coach voit tout de suite si la portion est réaliste.
               const gEquiv = itemRemplace ? grammesEquivalents(itemRemplace, f, foods) : null;
               return (
-                <button key={f.id} onClick={() => onChoose(f)} className="pressable" style={{ width: "100%", textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, opacity: horsRepas ? 0.55 : 1 }}>
+                <button key={f.id} onClick={() => onChoose(f)} className="pressable" style={{ width: "100%", textAlign: "left", background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "10px 12px", marginBottom: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, opacity: horsRepas ? 0.55 : 1 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{f.name}</div>
                     <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2 }}>
@@ -6033,8 +6086,8 @@ function FoodPickerSheet({ foods, nutri, coachId, supabase, mealType, itemRempla
               );
             })}
             <button onClick={() => setCreation({ name: q, role: "proteine", kcal_100: "", protein_100: "", carbs_100: "", fat_100: "" })}
-              style={{ width: "100%", padding: 12, marginTop: 6, background: T.surface2, border: `1px dashed ${T.borderStrong}`, borderRadius: 12, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
-              CRÉER UN ALIMENT
+              style={{ width: "100%", padding: 12, marginTop: 6, background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 16, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
+              Créer un aliment
             </button>
           </>)}
         </div>
@@ -6055,11 +6108,11 @@ function MacroRing({ label, value, unit, color, size = 84 }) {
             strokeDasharray={circ} strokeDashoffset={circ * 0.25} style={{ transition: "stroke-dashoffset .6s ease" }}/>
         </svg>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: size * 0.26, color: T.text, lineHeight: 1 }}>{value}</div>
+          <div style={{ fontWeight: 800, fontSize: size * 0.26, color: T.text, lineHeight: 1 }}>{value}</div>
           <div style={{ fontSize: 8, color: T.textMuted, fontWeight: 700 }}>{unit}</div>
         </div>
       </div>
-      <div style={{ fontSize: 9, color: T.textSub, fontWeight: 800, letterSpacing: 1 }}>{label}</div>
+      <div style={{ fontSize: 9, color: T.textSub, fontWeight: 800, letterSpacing: 0.5 }}>{label}</div>
     </div>
   );
 }
@@ -6321,13 +6374,13 @@ function CoachNutritionView({ ctx, coachee }) {
 
   if (loading) return <SqPage onglets={5} variante="chiffres" n={4}/>;
   if ((coachee.offer || "essentiel") !== "premium") return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "26px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
+    <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "26px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
       Ce coaché est en offre Essentiel.<br/>Le module diète est réservé à l'offre <b style={{ color: T.warnText }}>Premium</b>.
     </div>
   );
 
   const sectionBtn = (id, label) => (
-    <button key={id} onClick={() => setSection(id)} style={{ padding: "7px 11px", background: section === id ? T.accent : T.surface, color: section === id ? "white" : T.textSub, border: `1px solid ${section === id ? T.accent : T.border}`, borderRadius: 14, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{label}</button>
+    <button key={id} onClick={() => setSection(id)} style={{ padding: "7px 11px", background: section === id ? T.accent : T.surface, color: section === id ? "white" : T.textSub, border: `1px solid ${section === id ? T.accent : T.border}`, borderRadius: 18, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}>{label}</button>
   );
   // Volontairement PAS des hooks : on est ici après les `return` anticipés du
   // composant (chargement, offre Essentiel). Un useMemo placé après un return
@@ -6354,12 +6407,12 @@ function CoachNutritionView({ ctx, coachee }) {
 
   return (
     <div className="fade-in">
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12 }}>
+      <div className="rail" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12 }}>
         {sectionBtn("parametres", "Paramètres")}{sectionBtn("sante", "Santé")}{sectionBtn("cibles", "Cibles")}{sectionBtn("diete", "Diète")}{sectionBtn("poids", "Poids")}
       </div>
       {msg && <div style={{ fontSize: 11, color: msg.includes("Erreur") || msg.includes("requis") || msg.includes("sensible") ? T.danger : T.accent, fontWeight: 700, textAlign: "center", marginBottom: 10, lineHeight: 1.5 }}>{msg}</div>}
       {nutri.medical_flag && (
-        <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
+        <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 12, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, lineHeight: 1.5, fontWeight: 600 }}>
           Pathologie déclarée : l'avis d'un médecin ou diététicien est recommandé avant toute mise en place.
         </div>
       )}
@@ -6367,19 +6420,19 @@ function CoachNutritionView({ ctx, coachee }) {
       {section === "parametres" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label="SEXE">
+            <Field label="Sexe">
               <select value={clientProfile?.sex || ""} onChange={e => setClientProfile({ ...clientProfile, sex: e.target.value })} style={inputStyle}>
                 <option value="">—</option><option value="homme">Homme</option><option value="femme">Femme</option>
               </select>
             </Field>
-            <Field label="TAILLE (CM)">
+            <Field label="Taille (cm)">
               <input type="number" value={clientProfile?.height_cm || ""} onChange={e => setClientProfile({ ...clientProfile, height_cm: e.target.value ? parseInt(e.target.value) : null })} placeholder="178" style={inputStyle}/>
             </Field>
           </div>
-          <Field label="DATE DE NAISSANCE">
+          <Field label="Date de naissance">
             <input type="date" value={clientProfile?.birth_date || ""} onChange={e => setClientProfile({ ...clientProfile, birth_date: e.target.value })} style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }}/>
           </Field>
-          <Field label="ACTIVITÉ QUOTIDIENNE (HORS SPORT)">
+          <Field label="Activité quotidienne (hors sport)">
             <select value={nutri.activity_factor} onChange={e => updNutri("activity_factor", parseFloat(e.target.value))} style={inputStyle}>
               {ACTIVITY_FACTORS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
             </select>
@@ -6389,25 +6442,25 @@ function CoachNutritionView({ ctx, coachee }) {
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: T.textMuted, fontWeight: 700 }}><span>−25% (sèche)</span><span>0</span><span>+25% (masse)</span></div>
           </Field>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            <Field label="REPAS / JOUR">
+            <Field label="Repas par jour">
               <select value={nutri.meals_per_day} onChange={e => updNutri("meals_per_day", parseInt(e.target.value))} style={inputStyle}>
                 <option value={3}>3</option><option value={4}>4</option>
               </select>
             </Field>
-            <Field label="PROT (G/KG)">
+            <Field label="Protéines (g/kg)">
               <input type="number" step="0.1" min="1" max="2.4" value={nutri.protein_g_per_kg} onChange={e => updNutri("protein_g_per_kg", e.target.value)} style={inputStyle}/>
             </Field>
-            <Field label="LIP (G/KG)">
+            <Field label="Lipides (g/kg)">
               <input type="number" step="0.1" min="0.5" max="1.5" value={nutri.fat_g_per_kg} onChange={e => updNutri("fat_g_per_kg", e.target.value)} style={inputStyle}/>
             </Field>
           </div>
           {program && (
-            <Field label="INTENSITÉ PAR SÉANCE (estimation calorique)">
+            <Field label="Intensité par séance (estimation calorique)">
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {(program.sessions_structure || []).map(s => {
                   const v = parseFloat((nutri.session_intensity || {})[String(s.id)]) || 1.0;
                   return (
-                    <div key={s.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px" }}>
+                    <div key={s.id} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 12, padding: "9px 12px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: T.text, marginBottom: 4 }}>
                         <span>{s.name}</span><span style={{ color: T.accent }}>×{v.toFixed(2)}</span>
                       </div>
@@ -6418,7 +6471,7 @@ function CoachNutritionView({ ctx, coachee }) {
               </div>
             </Field>
           )}
-          <button onClick={() => saveParams({ sex: clientProfile?.sex || null, birth_date: clientProfile?.birth_date || null, height_cm: clientProfile?.height_cm || null }, stripNutri(nutri))} disabled={busy} style={{ width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>
+          <button onClick={() => saveParams({ sex: clientProfile?.sex || null, birth_date: clientProfile?.birth_date || null, height_cm: clientProfile?.height_cm || null }, stripNutri(nutri))} disabled={busy} style={{ width: "100%", padding: "14px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>
             {busy ? "..." : "ENREGISTRER LES PARAMÈTRES"}
           </button>
         </div>
@@ -6426,16 +6479,16 @@ function CoachNutritionView({ ctx, coachee }) {
 
       {section === "sante" && (
         <div>
-          <Field label="ALLERGIES (séparées par des virgules)">
+          <Field label="Allergies (séparées par des virgules)">
             <input type="text" value={(nutri.allergies || []).join(", ")} onChange={e => updNutri("allergies", e.target.value.split(",").map(x => x.trim()).filter(Boolean))} placeholder="arachide, lactose" style={inputStyle}/>
           </Field>
-          <Field label="PRÉFÉRENCES / RESTRICTIONS (tags de recettes)">
+          <Field label="Préférences et restrictions (tags de recettes)">
             <input type="text" value={(nutri.dietary_preferences || []).join(", ")} onChange={e => updNutri("dietary_preferences", e.target.value.split(",").map(x => x.trim().toLowerCase()).filter(Boolean))} placeholder="vegetarien, halal, sans porc" style={inputStyle}/>
           </Field>
           {/* Ce qu'il mange déjà. Le levier le plus fort sur le suivi : on ne
               demande à personne de tout changer d'un coup. */}
           {!dieteAbsente && !praticiteAbsente && (
-            <Field label="ALIMENTS HABITUELS (LE GÉNÉRATEUR Y PIOCHE EN PRIORITÉ)">
+            <Field label="Aliments habituels (le générateur y pioche en priorité)">
               {habituels.length === 0 ? (
                 <div style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.6, marginBottom: 8 }}>
                   Rien pour l'instant. Ajoute ce qu'il mange déjà et que tu valides pour une diète
@@ -6446,7 +6499,7 @@ function CoachNutritionView({ ctx, coachee }) {
                   {habituels.map(h => {
                     const f = foodById(h.food_id);
                     return (
-                      <span key={h.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: T.accentLight, border: `1px solid ${T.accent}44`, borderRadius: 10, padding: "5px 8px", fontSize: 11, color: T.text }}>
+                      <span key={h.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: T.accentLight, border: `1px solid ${T.accent}44`, borderRadius: 12, padding: "5px 8px", fontSize: 11, color: T.text }}>
                         {f ? f.name : "aliment retiré de la base"}
                         <button onClick={() => retirerHabitude(h)} style={{ background: "none", border: "none", color: T.accent, fontSize: 13, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
                       </span>
@@ -6454,36 +6507,36 @@ function CoachNutritionView({ ctx, coachee }) {
                   })}
                 </div>
               )}
-              <button onClick={() => setPickerHabitude(true)} style={{ width: "100%", padding: 10, background: T.surface2, border: `1px dashed ${T.borderStrong}`, borderRadius: 10, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
-                AJOUTER UN ALIMENT HABITUEL
+              <button onClick={() => setPickerHabitude(true)} style={{ width: "100%", padding: 10, background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 11, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>
+                Ajouter un aliment habituel
               </button>
             </Field>
           )}
-          <Field label="ALIMENTS DÉTESTÉS">
+          <Field label="Aliments détestés">
             <input type="text" value={(nutri.disliked_foods || []).join(", ")} onChange={e => updNutri("disliked_foods", e.target.value.split(",").map(x => x.trim()).filter(Boolean))} placeholder="brocoli, thon" style={inputStyle}/>
           </Field>
-          <Field label="SITUATION MÉDICALE">
+          <Field label="Situation médicale">
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <button onClick={() => updNutri("medical_flag", !nutri.medical_flag)} style={{ flex: 1, padding: "11px", background: nutri.medical_flag ? T.warnBg : T.surface, color: nutri.medical_flag ? T.warnText : T.textSub, border: `1.5px solid ${nutri.medical_flag ? T.warnText : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              <button onClick={() => updNutri("medical_flag", !nutri.medical_flag)} style={{ flex: 1, padding: "11px", background: nutri.medical_flag ? T.warnBg : T.surface, color: nutri.medical_flag ? T.warnText : T.textSub, border: `1.5px solid ${nutri.medical_flag ? T.warnText : T.border}`, borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                 {nutri.medical_flag ? "Pathologie déclarée" : "Aucune pathologie déclarée"}
               </button>
             </div>
             {nutri.medical_flag && <textarea value={nutri.medical_notes || ""} onChange={e => updNutri("medical_notes", e.target.value)} rows={2} placeholder="Notes (diabète, traitement...)" style={{ ...inputStyle, resize: "vertical" }}/>}
           </Field>
-          <Field label="ANTÉCÉDENT DE TROUBLE ALIMENTAIRE (déclaré avec bienveillance)">
-            <button onClick={() => updNutri("ed_screening_flag", !nutri.ed_screening_flag)} style={{ width: "100%", padding: "11px", background: nutri.ed_screening_flag ? "var(--cmp-down-bg)" : T.surface, color: nutri.ed_screening_flag ? "var(--cmp-down-text)" : T.textSub, border: `1.5px solid ${nutri.ed_screening_flag ? T.danger : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+          <Field label="Antécédent de trouble alimentaire (déclaré avec bienveillance)">
+            <button onClick={() => updNutri("ed_screening_flag", !nutri.ed_screening_flag)} style={{ width: "100%", padding: "11px", background: nutri.ed_screening_flag ? "var(--cmp-down-bg)" : T.surface, color: nutri.ed_screening_flag ? "var(--cmp-down-text)" : T.textSub, border: `1.5px solid ${nutri.ed_screening_flag ? T.danger : T.border}`, borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
               {nutri.ed_screening_flag ? "Antécédent / risque signalé — pas de déficit automatique" : "Aucun antécédent signalé"}
             </button>
           </Field>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "13px 14px", marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>DISCLAIMER</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "13px 14px", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 0.5, marginBottom: 8 }}>DISCLAIMER</div>
             <p style={{ fontSize: 11, color: T.textSub, lineHeight: 1.6, margin: 0 }}>{NUTRITION_DISCLAIMER}</p>
           </div>
-          <button onClick={() => { const v = !nutri.consent_disclaimer; updNutri("consent_disclaimer", v); }} style={{ width: "100%", padding: "12px", background: nutri.consent_disclaimer ? T.accentLight : T.surface, color: nutri.consent_disclaimer ? T.accent : T.textSub, border: `1.5px solid ${nutri.consent_disclaimer ? T.accent : T.border}`, borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={() => { const v = !nutri.consent_disclaimer; updNutri("consent_disclaimer", v); }} style={{ width: "100%", padding: "12px", background: nutri.consent_disclaimer ? T.accentLight : T.surface, color: nutri.consent_disclaimer ? T.accent : T.textSub, border: `1.5px solid ${nutri.consent_disclaimer ? T.accent : T.border}`, borderRadius: 16, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {nutri.consent_disclaimer && <Icon name="check" size={15} stroke={3} color={T.accent}/>}
             {nutri.consent_disclaimer ? "Consentement donné" : "Le client consent au disclaimer ci-dessus"}
           </button>
-          <button onClick={() => saveParams(null, { ...stripNutri(nutri), consent_date: nutri.consent_disclaimer ? new Date().toISOString() : null })} disabled={busy} style={{ width: "100%", padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>
+          <button onClick={() => saveParams(null, { ...stripNutri(nutri), consent_date: nutri.consent_disclaimer ? new Date().toISOString() : null })} disabled={busy} style={{ width: "100%", padding: "14px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>
             {busy ? "..." : "ENREGISTRER LE QUESTIONNAIRE"}
           </button>
         </div>
@@ -6492,22 +6545,22 @@ function CoachNutritionView({ ctx, coachee }) {
       {section === "cibles" && (
         <div>
           {!targets.ready ? (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
               Calcul impossible : {targets.missing}.<br/>Complète les paramètres et enregistre au moins une pesée.
             </div>
           ) : (<>
             {targets.floored && (
-              <div style={{ background: "var(--cmp-down-bg)", border: `1px solid ${T.danger}40`, borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "var(--cmp-down-text)", fontWeight: 600, lineHeight: 1.5 }}>
+              <div style={{ background: "var(--cmp-down-bg)", border: `1px solid ${T.danger}40`, borderRadius: 12, padding: "9px 12px", marginBottom: 12, fontSize: 11, color: "var(--cmp-down-text)", fontWeight: 600, lineHeight: 1.5 }}>
                 La cible calculée passait sous le plancher de sécurité ({targets.floor} kcal). Elle a été plafonnée au plancher.
               </div>
             )}
-            <div style={{ display: "flex", justifyContent: "space-around", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 8px", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-around", background: T.surface, boxShadow: "var(--e1)", borderRadius: 20, padding: "18px 8px", marginBottom: 12 }}>
               <MacroRing label="CALORIES" value={targets.target} unit="KCAL" color={T.accent}/>
               <MacroRing label="PROTÉINES" value={targets.protein} unit="G" color="var(--cmp-up-text)" size={72}/>
               <MacroRing label="GLUCIDES" value={targets.carbs} unit="G" color={T.warnText} size={72}/>
               <MacroRing label="LIPIDES" value={targets.fat} unit="G" color="var(--p-seche-tx)" size={72}/>
             </div>
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px", marginBottom: 12 }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "4px 16px", marginBottom: 12 }}>
               {[["Âge / Poids / Taille", `${targets.age} ans · ${lastWeight} kg · ${clientProfile.height_cm} cm`],
                 ["Métabolisme de base (BMR)", `${targets.bmr} kcal`],
                 ["Dépense quotidienne (hors sport)", `${targets.dailyActivity} kcal`],
@@ -6522,7 +6575,7 @@ function CoachNutritionView({ ctx, coachee }) {
               ))}
             </div>
             {targets.perSession.length > 0 && (
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px" }}>
+              <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "4px 16px" }}>
                 {targets.perSession.map((s, i, arr) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 11 }}>
                     <span style={{ color: T.textSub }}>{s.day} · {s.name} <span style={{ color: T.textMuted }}>(×{s.mult})</span></span>
@@ -6538,7 +6591,7 @@ function CoachNutritionView({ ctx, coachee }) {
       {section === "diete" && (
         <div>
           {dieteAbsente ? (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
               La diète personnalisée attend sa migration SQL.<br/>
               Joue <b style={{ color: T.textSub }}>sql/2026-08-14-diete-personnalisee.sql</b> dans Supabase.
             </div>
@@ -6546,8 +6599,8 @@ function CoachNutritionView({ ctx, coachee }) {
 
           {/* Retours du coaché : en tête, parce que c'est ce qui appelle une action */}
           {retours.length > 0 && (
-            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 13, padding: "12px 13px", marginBottom: 12 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.6, color: T.warnText, marginBottom: 8 }}>
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 0.5, color: T.warnText, marginBottom: 8 }}>
                 {retours.length} ALIMENT{retours.length > 1 ? "S" : ""} SIGNALÉ{retours.length > 1 ? "S" : ""}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -6556,7 +6609,7 @@ function CoachNutritionView({ ctx, coachee }) {
                     <div style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: T.text, lineHeight: 1.4 }}>
                       <b>{r.food_name}</b>{r.meal_label ? <span style={{ color: T.textMuted }}> · {r.meal_label}</span> : null}
                     </div>
-                    <button onClick={() => traiterRetour(r, true)} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 9.5, fontWeight: 700, color: T.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>NE PLUS PROPOSER</button>
+                    <button onClick={() => traiterRetour(r, true)} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 10, padding: "5px 9px", fontSize: 9.5, fontWeight: 700, color: T.textSub, cursor: "pointer", whiteSpace: "nowrap" }}>Ne plus proposer</button>
                     <button onClick={() => traiterRetour(r, false)} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 15, cursor: "pointer", padding: "0 3px", lineHeight: 1 }} title="Ignorer">✕</button>
                   </div>
                 ))}
@@ -6568,7 +6621,7 @@ function CoachNutritionView({ ctx, coachee }) {
               abandonnée en dix jours : une diète juste que la personne n'a ni
               le temps ni les moyens de faire ne vaut rien. */}
           {praticiteAbsente && (
-            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 11, padding: "9px 12px", marginBottom: 12, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
+            <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14, padding: "9px 12px", marginBottom: 12, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
               Budget et temps de préparation : joue <b>sql/2026-08-15-diete-praticite.sql</b> dans
               Supabase pour les activer. La génération fonctionne sans, sans contrainte de praticité.
             </div>
@@ -6591,7 +6644,7 @@ function CoachNutritionView({ ctx, coachee }) {
               </div>
             );
             return (
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "12px 14px", marginBottom: 12 }}>
                 {curseur("max_cost_level", maxC, ["Serré", "Modéré", "Sans contrainte"])}
                 {curseur("max_prep_level", maxP, ["Rapide", "Normal", "Sans contrainte"])}
                 <div style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.55 }}>
@@ -6602,23 +6655,23 @@ function CoachNutritionView({ ctx, coachee }) {
             );
           })()}
 
-          <button onClick={genererLaDiete} disabled={busy} className="pressable" style={{ width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={genererLaDiete} disabled={busy} className="pressable" style={{ width: "100%", padding: "13px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {busy ? (<><Spinner size={14} color="white"/> COMPOSITION EN COURS...</>) : (diete ? "REGÉNÉRER LA DIÈTE" : "GÉNÉRER LA DIÈTE")}
           </button>
 
           {!diete ? (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "24px 20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
               Aucune diète pour ce coaché.<br/>
               {foods.length ? `${foods.length} aliments disponibles dans la base.` : "La base d'aliments est vide : importe d'abord la table Ciqual."}
             </div>
           ) : (<>
             {consent === false && (
-              <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 11, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
+              <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.textSub, lineHeight: 1.55 }}>
                 En attente : le coaché doit accepter le cadre nutrition depuis son app avant de voir sa diète.
               </div>
             )}
             {Math.abs(derive) >= 100 && (
-              <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 11, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.warnText, lineHeight: 1.55, fontWeight: 600 }}>
+              <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 14, padding: "9px 12px", marginBottom: 10, fontSize: 10.5, color: T.warnText, lineHeight: 1.55, fontWeight: 600 }}>
                 La cible a bougé de {derive > 0 ? "+" : ""}{derive} kcal depuis la génération
                 {diete.plan.weight_at_gen ? ` (poids passé de ${diete.plan.weight_at_gen} à ${lastWeight} kg)` : ""}. Régénère ou ajuste les repas.
               </div>
@@ -6627,7 +6680,7 @@ function CoachNutritionView({ ctx, coachee }) {
             {/* Bascule des deux journées types */}
             <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
               {[["entrainement", "ENTRAÎNEMENT"], ["repos", "REPOS"]].map(([id, lab]) => (
-                <button key={id} onClick={() => setJourVu(id)} style={{ flex: 1, padding: "9px 6px", background: jourVu === id ? T.accent : T.surface, color: jourVu === id ? "white" : T.textSub, border: `1px solid ${jourVu === id ? T.accent : T.border}`, borderRadius: 11, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, cursor: "pointer" }}>{lab}</button>
+                <button key={id} onClick={() => setJourVu(id)} style={{ flex: 1, padding: "9px 6px", background: jourVu === id ? T.accent : T.surface, color: jourVu === id ? "white" : T.textSub, border: `1px solid ${jourVu === id ? T.accent : T.border}`, borderRadius: 14, fontSize: 10, fontWeight: 800, letterSpacing: 0.8, cursor: "pointer" }}>{lab}</button>
               ))}
             </div>
 
@@ -6637,9 +6690,9 @@ function CoachNutritionView({ ctx, coachee }) {
               const ecart = tot.kcal - cibleJourVu.target;
               const couleur = Math.abs(ecart) <= 60 ? T.accent : T.warnText;
               return (
-                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 13, padding: "11px 14px", marginBottom: 12 }}>
+                <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "11px 14px", marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: T.textMuted }}>TOTAL DE LA JOURNÉE</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, color: T.textMuted }}>TOTAL DE LA JOURNÉE</span>
                     <span style={{ fontSize: 13, fontWeight: 800, color: couleur }}>{tot.kcal} / {cibleJourVu.target} kcal</span>
                   </div>
                   <div style={{ fontSize: 10.5, color: T.textSub, fontWeight: 600 }}>
@@ -6657,9 +6710,9 @@ function CoachNutritionView({ ctx, coachee }) {
                 const cible = r.cible;
                 const ecart = cible ? tot.kcal - Math.round(cible.kcal) : 0;
                 return (
-                  <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "12px 13px" }}>
+                  <div key={r.id} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "12px 13px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13.5, letterSpacing: 1.4, color: T.text }}>{dietMealLabel(r.meal_type).toUpperCase()}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: -0.2, color: T.text }}>{dietMealLabel(r.meal_type)}</div>
                       <div style={{ fontSize: 10.5, fontWeight: 800, color: Math.abs(ecart) <= 40 ? T.accent : T.warnText }}>
                         {tot.kcal}{cible ? ` / ${Math.round(cible.kcal)}` : ""} kcal
                       </div>
@@ -6678,16 +6731,16 @@ function CoachNutritionView({ ctx, coachee }) {
                           </button>
                           <input type="number" min="1" max="2000" step="5" value={Math.round(it.grams)}
                             onChange={e => { const v = parseInt(e.target.value); if (v > 0 && v <= 2000) majItem(it, { grams: v }); }}
-                            style={{ width: 58, padding: "6px 4px", textAlign: "right", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, fontWeight: 700, color: T.text, flexShrink: 0 }}/>
+                            style={{ width: 58, padding: "6px 4px", textAlign: "right", background: T.bg, border: `1px solid ${T.border}`, borderRadius: 10, fontSize: 12, fontWeight: 700, color: T.text, flexShrink: 0 }}/>
                           <span style={{ fontSize: 10, color: T.textMuted, flexShrink: 0 }}>g</span>
                           <button onClick={() => supprimerItem(it)} title="Retirer" style={{ flexShrink: 0, background: "none", border: "none", color: T.textMuted, fontSize: 14, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}>✕</button>
                         </div>
                       ))}
                     </div>
                     <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
-                      <button onClick={() => setPicker({ mealId: r.id, item: null })} style={{ flex: 1, padding: "8px", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 9, fontSize: 10, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>AJOUTER UN ALIMENT</button>
+                      <button onClick={() => setPicker({ mealId: r.id, item: null })} style={{ flex: 1, padding: "8px", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 12, fontSize: 10, fontWeight: 700, color: T.textSub, cursor: "pointer" }}>Ajouter un aliment</button>
                       {cible && (
-                        <button onClick={() => ajusterLeRepas(r, cible)} disabled={busy} style={{ flex: 1, padding: "8px", background: T.accentLight, border: `1px solid ${T.accent}55`, borderRadius: 9, fontSize: 10, fontWeight: 700, color: T.accent, cursor: "pointer" }}>AJUSTER AUX CIBLES</button>
+                        <button onClick={() => ajusterLeRepas(r, cible)} disabled={busy} style={{ flex: 1, padding: "8px", background: T.accentLight, border: `1px solid ${T.accent}55`, borderRadius: 12, fontSize: 10, fontWeight: 700, color: T.accent, cursor: "pointer" }}>Ajuster aux cibles</button>
                       )}
                     </div>
                     <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 7, fontWeight: 600 }}>
@@ -6699,7 +6752,7 @@ function CoachNutritionView({ ctx, coachee }) {
             </div>
 
             {/* Mot du coach, affiché en tête de la diète du coaché */}
-            <Field label="MOT AFFICHÉ EN TÊTE DE SA DIÈTE (FACULTATIF)">
+            <Field label="Mot affiché en tête de sa diète (facultatif)">
               <textarea value={diete.plan.note || ""} rows={2}
                 onChange={e => setDiete({ ...diete, plan: { ...diete.plan, note: e.target.value } })}
                 onBlur={async e => { await supabase.from("diet_plans").update({ note: e.target.value || null }).eq("id", diete.plan.id); }}
@@ -6714,17 +6767,17 @@ function CoachNutritionView({ ctx, coachee }) {
       {section === "poids" && (
         <div>
           {alert && (
-            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 8 }}>
+            <div style={{ background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 12, padding: "10px 12px", marginBottom: 12, fontSize: 11, color: T.warnText, fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 8 }}>
               <Icon name="alert" size={15} color={T.warnText}/>
               <span>{alert}</span>
             </div>
           )}
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px", marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>ÉVOLUTION DU POIDS</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px", marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 800, letterSpacing: 0.5, marginBottom: 8 }}>ÉVOLUTION DU POIDS</div>
             <WeightChart logs={logs}/>
           </div>
           {logs.length > 0 && (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 14px" }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "4px 14px" }}>
               {logs.slice(-6).reverse().map((l, i, arr) => (
                 <div key={l.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 12 }}>
                   <span style={{ color: T.textSub }}>{l.logged_date}</span>
@@ -6957,16 +7010,16 @@ function NutritionPage({ ctx }) {
   }
 
   return (
-    <div style={{ paddingBottom: 100 }}>
+    <div style={{ paddingBottom: 112 }}>
       <div style={{ padding: "22px 18px 14px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>NUTRITION</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>NUTRITION</div>
         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>Ton plan personnalisé{weekInfo ? ` · Semaine ${weekInfo.week_number}` : ""}</div>
       </div>
 
       {!weighedTodayLocal && (
         <div style={{ padding: "0 18px 14px" }}>
-          <button onClick={scrollToWeigh} className="pressable" style={{ width: "100%", background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 11, cursor: "pointer", textAlign: "left" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--warn-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button onClick={scrollToWeigh} className="pressable" style={{ width: "100%", background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 18, padding: "12px 14px", display: "flex", alignItems: "center", gap: 11, cursor: "pointer", textAlign: "left" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: "var(--warn-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon name="trending" size={18} color={T.warnText}/>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -6981,9 +7034,9 @@ function NutritionPage({ ctx }) {
       {/* Cibles du jour */}
       <div style={{ padding: "0 18px 14px" }}>
         {targets.ready ? (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, padding: "14px 8px 18px", boxShadow: `0 2px 14px ${T.shadow}` }}>
+          <div style={{ background: T.surface, borderRadius: 22, padding: "14px 8px 18px", boxShadow: "var(--e1)" }}>
             {targets.deuxJournees && (
-              <div style={{ textAlign: "center", fontSize: 9.5, fontWeight: 800, letterSpacing: 1.4, color: jourAujourdhui === "entrainement" ? T.accent : T.textMuted, marginBottom: 10 }}>
+              <div style={{ textAlign: "center", fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: jourAujourdhui === "entrainement" ? T.accent : T.textMuted, marginBottom: 10 }}>
                 {jourAujourdhui === "entrainement" ? "AUJOURD'HUI · JOUR D'ENTRAÎNEMENT" : "AUJOURD'HUI · JOUR DE REPOS"}
               </div>
             )}
@@ -6995,7 +7048,7 @@ function NutritionPage({ ctx }) {
             </div>
           </div>
         ) : (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 20, padding: "20px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
             Tes cibles apparaîtront dès que ton coach aura complété ton profil et que tu auras saisi ta première pesée ci-dessous.
           </div>
         )}
@@ -7007,26 +7060,26 @@ function NutritionPage({ ctx }) {
         // le coach à la place du coaché n'en est pas un : c'est lui qui accepte,
         // depuis son compte, et l'acceptation est horodatée.
         <div style={{ padding: "0 18px 6px" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 16px", boxShadow: `0 2px 12px ${T.shadow}` }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 17, letterSpacing: 1.6, color: T.text, marginBottom: 10 }}>AVANT DE COMMENCER</div>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
+          <div style={{ background: T.surface, borderRadius: 20, padding: "18px 16px", boxShadow: "var(--e1)" }}>
+            <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: 0.5, color: T.text, marginBottom: 10 }}>AVANT DE COMMENCER</div>
             <p style={{ fontSize: 12, color: T.textSub, lineHeight: 1.65, margin: "0 0 14px" }}>{NUTRITION_DISCLAIMER}</p>
-            <button onClick={accepterCadre} className="pressable" style={{ width: "100%", padding: 14, background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1.2, cursor: "pointer" }}>
-              J'AI COMPRIS
+            <button onClick={accepterCadre} className="pressable" style={{ width: "100%", padding: 14, background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>
+              J'ai compris
             </button>
           </div>
         </div>
       ) : diete ? (
         <div style={{ padding: "0 18px 6px" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub }}>MA DIÈTE</div>
+            <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub }}>MA DIÈTE</div>
             {jourActif !== jourAujourdhui && (
               <button onClick={() => setJourVu(null)} style={{ background: "none", border: "none", color: T.accent, fontSize: 10.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>Revenir à aujourd'hui</button>
             )}
           </div>
 
           {diete.plan.note && (
-            <div style={{ background: T.accentLight, border: `1px solid ${T.accent}33`, borderRadius: 12, padding: "10px 13px", marginBottom: 10, fontSize: 11.5, color: T.text, lineHeight: 1.6 }}>
+            <div style={{ background: T.accentLight, border: `1px solid ${T.accent}33`, borderRadius: 16, padding: "10px 13px", marginBottom: 10, fontSize: 11.5, color: T.text, lineHeight: 1.6 }}>
               {diete.plan.note}
             </div>
           )}
@@ -7034,14 +7087,14 @@ function NutritionPage({ ctx }) {
           {/* Bascule entraînement / repos */}
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {[["entrainement", "JOUR D'ENTRAÎNEMENT"], ["repos", "JOUR DE REPOS"]].map(([id, lab]) => (
-              <button key={id} onClick={() => setJourVu(id)} className="pressable" style={{ flex: 1, padding: "10px 6px", background: jourActif === id ? T.accent : T.surface, color: jourActif === id ? "white" : T.textSub, border: `1px solid ${jourActif === id ? T.accent : T.border}`, borderRadius: 12, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, cursor: "pointer" }}>
+              <button key={id} onClick={() => setJourVu(id)} className="pressable" style={{ flex: 1, padding: "10px 6px", background: jourActif === id ? T.accent : T.surface, color: jourActif === id ? "white" : T.textSub, border: `1px solid ${jourActif === id ? T.accent : T.border}`, borderRadius: 16, fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, cursor: "pointer" }}>
                 {lab}{id === jourAujourdhui ? " ·" : ""}
               </button>
             ))}
           </div>
 
           {repasDuJour.length === 0 ? (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+            <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
               Aucun repas pour cette journée.<br/>Ton coach finalise ta diète.
             </div>
           ) : (
@@ -7049,9 +7102,9 @@ function NutritionPage({ ctx }) {
               {repasDuJour.map((r, i) => {
                 const tot = totauxItems(r.items);
                 return (
-                  <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 15, padding: "13px 14px", animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
+                  <div key={r.id} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "13px 14px", animation: `fadeUp .3s ease ${i * 0.05}s both` }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
-                      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 1.4, color: T.text }}>{dietMealLabel(r.meal_type).toUpperCase()}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.2, color: T.text }}>{dietMealLabel(r.meal_type)}</div>
                       <div style={{ fontSize: 11, fontWeight: 800, color: T.accent }}>{tot.kcal} kcal</div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -7071,7 +7124,7 @@ function NutritionPage({ ctx }) {
                                 disabled={!!enCours[it.id]}
                                 aria-pressed={marque}
                                 title={marque ? "Signalé à ton coach — appuie pour annuler" : "Je n'aime pas cet aliment"}
-                                style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: 12, fontWeight: 800, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }}>
+                                style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 10, background: marque ? T.warnBg : "transparent", border: `1px solid ${marque ? "var(--warn-border)" : T.border}`, color: marque ? T.warnText : T.textMuted, fontSize: 12, fontWeight: 800, cursor: "pointer", lineHeight: 1, opacity: enCours[it.id] ? 0.5 : 1 }}>
                                 {marque ? "✓" : "✕"}
                               </button>
                             );
@@ -7095,8 +7148,8 @@ function NutritionPage({ ctx }) {
         </div>
       ) : (
         <div style={{ padding: "0 18px 6px" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>MA DIÈTE</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "22px", textAlign: "center", color: T.textMuted, fontSize: 12, lineHeight: 1.6 }}>
             Ton coach n'a pas encore établi ta diète.<br/>Tes cibles ci-dessus restent valables en attendant.
           </div>
         </div>
@@ -7104,11 +7157,11 @@ function NutritionPage({ ctx }) {
 
       {/* Pesée quotidienne */}
       <div id="forge-weigh-block" style={{ padding: "14px 18px 0", scrollMarginTop: 80 }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>MA PESÉE</div>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px", boxShadow: `0 2px 12px ${T.shadow}` }}>
+        <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>MA PESÉE</div>
+        <div style={{ background: T.surface, borderRadius: 20, padding: "14px", boxShadow: "var(--e1)" }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input type="number" inputMode="decimal" step="0.1" min="30" max="300" value={weightInput} onChange={e => setWeightInput(e.target.value)} placeholder={lastWeight ? `Dernier : ${lastWeight} kg` : "Ton poids (kg)"} style={{ ...inputStyle, flex: 1 }}/>
-            <button onClick={saveWeight} disabled={savingWeight || !weightInput} style={{ flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+            <button onClick={saveWeight} disabled={savingWeight || !weightInput} style={{ flexShrink: 0, padding: "0 18px", background: !weightInput ? T.surface2 : "var(--btn-primaire)", color: !weightInput ? T.textMuted : "white", border: "none", borderRadius: 16, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
               {savingWeight ? "..." : "OK"}
             </button>
           </div>
@@ -7123,7 +7176,7 @@ function NutritionPage({ ctx }) {
           Avertissement nutritionnel
         </button>
         {showDisclaimer && (
-          <p style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>{NUTRITION_DISCLAIMER}</p>
+          <p style={{ fontSize: 10, color: T.textMuted, lineHeight: 1.6, marginTop: 8, textAlign: "left", background: T.surface, boxShadow: "var(--e1)", borderRadius: 12, padding: "10px 12px" }}>{NUTRITION_DISCLAIMER}</p>
         )}
       </div>
 
@@ -7157,12 +7210,13 @@ function EquivalencesSheet({ item, mealType, chargement, echec, foods, nutriProf
 
   return (
     <Portail>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.45)", zIndex: 500, animation: "fadeIn .2s ease" }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", boxShadow: "0 -10px 50px rgba(30,40,32,0.25)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${T.border}` }}>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 500 }}/>
+      <div className="sheet" style={{ zIndex: 501, maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
+        <div style={{ padding: "4px 18px 12px", borderBottom: `1px solid ${T.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 1.8, color: T.textSub }}>À LA PLACE DE</div>
+              <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.5, color: T.textSub }}>À LA PLACE DE</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginTop: 3, lineHeight: 1.3 }}>{item.food_name}</div>
               <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>
                 {Math.round(item.grams)} g · {Math.round(m.kcal)} kcal · P{Math.round(m.protein)} G{Math.round(m.carbs)} L{Math.round(m.fat)}
@@ -7190,7 +7244,7 @@ function EquivalencesSheet({ item, mealType, chargement, echec, foods, nutriProf
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {res.liste.map(e => (
-                <div key={e.food.id} style={{ background: T.surface, border: `1px solid ${e.habituel ? T.accent + "55" : T.border}`, borderRadius: 12, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 }}>
+                <div key={e.food.id} style={{ background: T.surface, border: `1px solid ${e.habituel ? T.accent + "55" : T.border}`, borderRadius: 16, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.35 }}>{e.food.name}</div>
                     <div style={{ fontSize: 9.5, color: T.textMuted, marginTop: 2 }}>
@@ -7409,7 +7463,7 @@ function PhaseTimeline({ phases, weightLogs, onPhaseClick, selectedId }) {
               <button key={ph.id} onClick={() => onPhaseClick && onPhaseClick(ph)} style={{
                 position: "absolute", left: x, top: 0, width: w - 3, height: "100%",
                 background: st.bg, border: isSel ? `2.5px solid ${st.text}` : isActive ? `2px solid ${st.text}` : `1px solid ${st.text}30`,
-                borderRadius: 10, cursor: "pointer", padding: "8px 6px", textAlign: "left", overflow: "hidden",
+                borderRadius: 12, cursor: "pointer", padding: "8px 6px", textAlign: "left", overflow: "hidden",
                 display: "flex", flexDirection: "column", justifyContent: "space-between",
                 boxShadow: isActive ? `0 3px 12px ${st.text}30` : "none",
               }}>
@@ -7451,22 +7505,22 @@ function ActivePhaseCard({ phase, phases, programs }) {
   const weeksLeft = Math.max(Math.ceil(daysBetween(today, phase.end_date) / 7), 0);
   const prog = programs && phase.program_id ? programs.find(p => p.id === phase.program_id) : null;
   return (
-    <div style={{ background: st.bg, border: `1.5px solid ${st.text}40`, borderRadius: 16, padding: "16px", marginBottom: 14 }}>
+    <div style={{ background: st.bg, border: `1.5px solid ${st.text}40`, borderRadius: 20, padding: "16px", marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: 800, color: st.text, letterSpacing: 1, opacity: .8 }}>PHASE EN COURS</div>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: st.text, letterSpacing: 1, lineHeight: 1.1, marginTop: 2 }}>{phase.name || phaseLabel(phase.phase_type)}</div>
+          <div style={{ fontSize: 9, fontWeight: 800, color: st.text, letterSpacing: 0.5, opacity: .8 }}>PHASE EN COURS</div>
+          <div style={{ fontWeight: 800, fontSize: 22, color: st.text, letterSpacing: 0.5, lineHeight: 1.1, marginTop: 2 }}>{phase.name || phaseLabel(phase.phase_type)}</div>
         </div>
         <span style={{ background: st.text, color: "#FFF", fontSize: 9, padding: "3px 9px", borderRadius: 20, fontWeight: 800, whiteSpace: "nowrap" }}>{phaseLabel(phase.phase_type)}</span>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 18, color: st.text }}>{curW} / {totalW}</div>
+        <div style={{ flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "8px 10px", textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 18, color: st.text }}>{curW} / {totalW}</div>
           <div style={{ fontSize: 8, color: st.text, opacity: .7, fontWeight: 700 }}>SEMAINE</div>
         </div>
-        <div style={{ flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 18, color: st.text }}>{weeksLeft}</div>
-          <div style={{ fontSize: 8, color: st.text, opacity: .7, fontWeight: 700 }}>SEM. RESTANTES</div>
+        <div style={{ flex: 1, background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "8px 10px", textAlign: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 18, color: st.text }}>{weeksLeft}</div>
+          <div style={{ fontSize: 9, color: st.text, opacity: .75, fontWeight: 600, letterSpacing: -0.1 }}>sem. restantes</div>
         </div>
       </div>
       {/* Barre de progression */}
@@ -7488,18 +7542,18 @@ function PhaseDetailSheet({ phase, programs, isPremium, onClose }) {
   const nutriQual = pct == null ? "Non défini" : pct > 3 ? "Surplus calorique (prise de masse)" : pct < -3 ? "Déficit calorique (sèche)" : "Maintien calorique";
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "82vh", overflowY: "auto", padding: "10px 18px calc(26px + env(safe-area-inset-bottom))" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "0 auto 16px" }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 500 }}/>
+      <div className="sheet" style={{ zIndex: 501, maxHeight: "82vh", overflowY: "auto", padding: "0 18px calc(26px + env(safe-area-inset-bottom))" }}>
+        <div className="poignee"/>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 12, height: 12, borderRadius: 4, background: st.text }}/>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 21, color: T.text, letterSpacing: 1, lineHeight: 1.1 }}>{phase.name || phaseLabel(phase.phase_type)}</div>
+            <div style={{ fontWeight: 800, fontSize: 21, color: T.text, letterSpacing: 0.5, lineHeight: 1.1 }}>{phase.name || phaseLabel(phase.phase_type)}</div>
             <div style={{ fontSize: 10, color: st.text, fontWeight: 700, marginTop: 2 }}>{phaseLabel(phase.phase_type)}</div>
           </div>
-          <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 10, fontSize: 16, color: T.textSub, cursor: "pointer" }}>×</button>
+          <button onClick={onClose} style={{ background: T.surface, border: `1px solid ${T.border}`, width: 32, height: 32, borderRadius: 12, fontSize: 16, color: T.textSub, cursor: "pointer" }}>×</button>
         </div>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "4px 16px" }}>
+        <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "4px 16px" }}>
           {[
             ["Durée", `${weeks} semaines`],
             ["Dates", `${fmtDateShort(phase.start_date)} → ${fmtDateShort(phase.end_date)}`],
@@ -7555,15 +7609,15 @@ function ParcoursPage({ ctx }) {
   if (loading) return <div style={{ padding: "0 18px" }}><SqPage variante="graphe" n={3}/></div>;
 
   return (
-    <div style={{ paddingBottom: 100 }}>
+    <div style={{ paddingBottom: 112 }}>
       <div style={{ padding: "22px 18px 14px" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 3, lineHeight: 1 }}>PARCOURS</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, color: T.text, letterSpacing: 1.4, lineHeight: 1 }}>PARCOURS</div>
         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>Ta planification sur le long terme</div>
       </div>
 
       {phases.length === 0 ? (
         <div style={{ padding: "0 18px" }}>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "40px 24px", textAlign: "center" }}>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 20, padding: "40px 24px", textAlign: "center" }}>
             <div style={{ width: 54, height: 54, borderRadius: "50%", background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <Icon name="calendar" size={26} color={T.accent}/>
             </div>
@@ -7574,8 +7628,8 @@ function ParcoursPage({ ctx }) {
       ) : (
         <div style={{ padding: "0 18px" }}>
           <ActivePhaseCard phase={active} phases={phases} programs={programs}/>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2.5, color: T.textSub, marginBottom: 10 }}>FRISE COMPLÈTE</div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px 12px", marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>FRISE COMPLÈTE</div>
+          <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 20, padding: "14px 12px", marginBottom: 14 }}>
             <PhaseTimeline phases={phases} weightLogs={logs} onPhaseClick={setSelected} selectedId={selected?.id}/>
           </div>
           <div style={{ fontSize: 10, color: T.textMuted, textAlign: "center", lineHeight: 1.6 }}>
@@ -7670,49 +7724,49 @@ function CoachPeriodizationView({ ctx, coachee }) {
 
       {/* Proposition de transition */}
       {transitionProposal && (
-        <div style={{ background: T.accentLight, border: `1.5px solid ${T.accent}`, borderRadius: 14, padding: "14px", marginBottom: 14 }}>
+        <div style={{ background: T.accentLight, border: `1.5px solid ${T.accent}`, borderRadius: 18, padding: "14px", marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: T.accentDark, marginBottom: 6 }}>Transition de phase détectée</div>
           <div style={{ fontSize: 11.5, color: T.text, lineHeight: 1.5, marginBottom: 12 }}>
             Phase active : <b>{transitionProposal.phase.name || phaseLabel(transitionProposal.phase.phase_type)}</b>. Activer le programme <b>{transitionProposal.program.name}</b>{transitionProposal.phase.goal_adjustment_pct != null ? ` et passer l'objectif nutrition à ${transitionProposal.phase.goal_adjustment_pct > 0 ? "+" : ""}${transitionProposal.phase.goal_adjustment_pct}%` : ""} ?
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setTransitionProposal(null)} style={{ flex: 1, padding: "11px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Plus tard</button>
-            <button onClick={confirmTransition} style={{ flex: 2, padding: "11px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 11, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>Confirmer</button>
+            <button onClick={() => setTransitionProposal(null)} style={{ flex: 1, padding: "11px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 14, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Plus tard</button>
+            <button onClick={confirmTransition} style={{ flex: 2, padding: "11px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 14, fontSize: 12, fontWeight: 800, letterSpacing: .5, cursor: "pointer" }}>Confirmer</button>
           </div>
         </div>
       )}
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button onClick={() => setTplOpen(true)} className="pressable" style={{ flex: 1, padding: "11px", background: T.surface, border: `1.5px solid ${T.accent}50`, borderRadius: 12, color: T.accent, fontSize: 11.5, fontWeight: 800, cursor: "pointer" }}>Appliquer un modèle</button>
-        <button onClick={() => setEditPhase({})} className="pressable" style={{ flex: 1, padding: "11px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 11.5, fontWeight: 800, cursor: "pointer" }}>+ Nouvelle phase</button>
+        <button onClick={() => setTplOpen(true)} className="pressable" style={{ flex: 1, padding: "11px", background: T.surface, border: `1.5px solid ${T.accent}50`, borderRadius: 16, color: T.accent, fontSize: 11.5, fontWeight: 800, cursor: "pointer" }}>Appliquer un modèle</button>
+        <button onClick={() => setEditPhase({})} className="pressable" style={{ flex: 1, padding: "11px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 16, fontSize: 11.5, fontWeight: 800, cursor: "pointer" }}>+ Nouvelle phase</button>
       </div>
 
       {phases.length === 0 ? (
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "30px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
           Aucune phase planifiée. Applique un modèle pré-construit ou crée une phase manuellement.
         </div>
       ) : (<>
         <ActivePhaseCard phase={active} phases={phases} programs={programs}/>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "14px 12px", marginBottom: 14 }}>
+        <div style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 20, padding: "14px 12px", marginBottom: 14 }}>
           <PhaseTimeline phases={phases} weightLogs={logs} onPhaseClick={setSelected} selectedId={selected?.id}/>
         </div>
 
         {/* Liste éditable des phases */}
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 2, color: T.textSub, marginBottom: 10 }}>PHASES</div>
+        <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 1, color: T.textSub, marginBottom: 10 }}>PHASES</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {[...phases].sort((a, b) => a.start_date.localeCompare(b.start_date)).map(ph => {
             const st = PHASE_TYPES[ph.phase_type] || { bg: T.surface2, text: T.textSub };
             const weeks = Math.round(daysBetween(ph.start_date, ph.end_date) / 7);
             const prog = ph.program_id ? programs.find(p => p.id === ph.program_id) : null;
             return (
-              <div key={ph.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 }}>
+              <div key={ph.id} style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, padding: "11px 13px", display: "flex", alignItems: "center", gap: 11 }}>
                 <div style={{ width: 10, height: 38, borderRadius: 4, background: st.text, flexShrink: 0 }}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{ph.name || phaseLabel(ph.phase_type)}</div>
                   <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2 }}>{fmtDateShort(ph.start_date)} → {fmtDateShort(ph.end_date)} · {weeks} sem{prog ? ` · ${prog.name}` : ""}</div>
                 </div>
-                <button onClick={() => setEditPhase(ph)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: T.textSub, cursor: "pointer", fontWeight: 700 }}>Éditer</button>
+                <button onClick={() => setEditPhase(ph)} style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 10, padding: "6px 10px", fontSize: 10, color: T.textSub, cursor: "pointer", fontWeight: 700 }}>Éditer</button>
                 <button onClick={() => deletePhase(ph)} style={{ background: "transparent", border: "none", color: T.danger, cursor: "pointer", fontSize: 16 }}>×</button>
               </div>
             );
@@ -7765,26 +7819,26 @@ function PhaseEditorModal({ supabase, coacheeId, phase, programs, existingPhases
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 500 }}/>
+      <div className="sheet" style={{ zIndex: 501, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
         <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 16 }}>{phase ? "MODIFIER LA PHASE" : "NOUVELLE PHASE"}</div>
-          <Field label="TYPE DE PHASE">
+          <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, marginBottom: 16 }}>{phase ? "MODIFIER LA PHASE" : "NOUVELLE PHASE"}</div>
+          <Field label="Type de phase">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {PHASE_TYPE_LIST.map(t => {
                 const st = PHASE_TYPES[t];
                 const on = type === t;
-                return <button key={t} onClick={() => setType(t)} style={{ padding: "8px 11px", background: on ? st.bg : T.surface, color: on ? st.text : T.textSub, border: `1.5px solid ${on ? st.text : T.border}`, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{st.label}</button>;
+                return <button key={t} onClick={() => setType(t)} style={{ padding: "8px 11px", background: on ? st.bg : T.surface, color: on ? st.text : T.textSub, border: `1.5px solid ${on ? st.text : T.border}`, borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{st.label}</button>;
               })}
             </div>
           </Field>
-          <Field label="LIBELLÉ (optionnel)"><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={phaseLabel(type)} style={inputStyle}/></Field>
+          <Field label="Libellé (optionnel)"><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={phaseLabel(type)} style={inputStyle}/></Field>
           <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 }}>
-            <Field label="DATE DE DÉBUT"><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }}/></Field>
-            <Field label="DURÉE (SEM.)"><input type="number" min="1" max="52" value={weeks} onChange={e => setWeeks(e.target.value)} style={inputStyle}/></Field>
+            <Field label="Date de début"><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }}/></Field>
+            <Field label="Durée (sem.)"><input type="number" min="1" max="52" value={weeks} onChange={e => setWeeks(e.target.value)} style={inputStyle}/></Field>
           </div>
-          <Field label="PROGRAMME ASSOCIÉ (optionnel)">
+          <Field label="Programme associé (optionnel)">
             <select value={programId} onChange={e => setProgramId(e.target.value)} style={inputStyle}>
               <option value="">Aucun</option>
               {(programs || []).map(p => <option key={p.id} value={p.id}>{p.name}{p.is_active ? " (actif)" : ""}</option>)}
@@ -7794,12 +7848,12 @@ function PhaseEditorModal({ supabase, coacheeId, phase, programs, existingPhases
             <input type="range" min="-25" max="25" step="1" value={pct} onChange={e => setPct(parseInt(e.target.value))} style={{ width: "100%", accentColor: T.accent }}/>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: T.textMuted, fontWeight: 700 }}><span>−25% sèche</span><span>0</span><span>+25% masse</span></div>
           </Field>
-          <Field label="NOTE D'OBJECTIF (optionnel)"><input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Ex : Atteindre 80 kg" style={inputStyle}/></Field>
+          <Field label="Note d'objectif (optionnel)"><input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Ex : Atteindre 80 kg" style={inputStyle}/></Field>
           {error && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{error}</div>}
         </div>
         <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "14px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer" }}>{saving ? "..." : "ENREGISTRER"}</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: "14px", background: "var(--btn-primaire)", color: "white", border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer" }}>{saving ? "..." : "ENREGISTRER"}</button>
         </div>
       </div>
     </>
@@ -7813,20 +7867,20 @@ function TemplateModal({ onClose, onApply }) {
 
   return (
     <>
-      <div className="sheet-backdrop" onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,40,32,0.5)", backdropFilter: "blur(4px)", zIndex: 500 }}/>
-      <div className="sheet" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 501, background: T.bg, borderRadius: "22px 22px 0 0", maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ width: 40, height: 4, background: T.borderStrong, borderRadius: 2, margin: "10px auto 12px", flexShrink: 0 }}/>
+      <div className="sheet-backdrop" onClick={onClose} style={{ zIndex: 500 }}/>
+      <div className="sheet" style={{ zIndex: 501, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div className="poignee"/>
         <div style={{ overflowY: "auto", padding: "0 18px", flex: "0 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 20, color: T.text, letterSpacing: 2, marginBottom: 4 }}>MODÈLES DE PÉRIODISATION</div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: T.text, letterSpacing: 1, marginBottom: 4 }}>MODÈLES DE PÉRIODISATION</div>
           <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 }}>Choisis une trame : elle génère les phases automatiquement depuis une date de début. Tu pourras tout ajuster ensuite. Attention : appliquer un modèle remplace les phases existantes.</div>
-          <Field label="DATE DE DÉBUT DU PARCOURS">
+          <Field label="Date de début du parcours">
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...inputStyle, WebkitAppearance: "none", appearance: "none", maxWidth: "100%", display: "block" }}/>
           </Field>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {PERIODIZATION_TEMPLATES.map(tpl => {
               const on = chosen?.id === tpl.id;
               return (
-                <div key={tpl.id} onClick={() => setChosen(tpl)} style={{ background: on ? T.accentLight : T.surface, border: `1.5px solid ${on ? T.accent : T.border}`, borderRadius: 14, padding: "13px 14px", cursor: "pointer" }}>
+                <div key={tpl.id} onClick={() => setChosen(tpl)} style={{ background: on ? T.accentLight : T.surface, border: `1.5px solid ${on ? T.accent : T.border}`, borderRadius: 18, padding: "13px 14px", cursor: "pointer" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 800, color: T.text }}>{tpl.name}</div>
                     <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 700, flexShrink: 0 }}>~{tpl.weeks} sem</span>
@@ -7841,7 +7895,7 @@ function TemplateModal({ onClose, onApply }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
                     {tpl.phases.map((ph, i) => {
                       const st = PHASE_TYPES[ph.phase_type];
-                      return <span key={i} style={{ fontSize: 8, background: st.bg, color: st.text, padding: "2px 6px", borderRadius: 8, fontWeight: 700 }}>{ph.weeks}sem {st.label}</span>;
+                      return <span key={i} style={{ fontSize: 8, background: st.bg, color: st.text, padding: "2px 6px", borderRadius: 10, fontWeight: 700 }}>{ph.weeks}sem {st.label}</span>;
                     })}
                   </div>
                 </div>
@@ -7850,8 +7904,8 @@ function TemplateModal({ onClose, onApply }) {
           </div>
         </div>
         <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
-          <button onClick={() => chosen && onApply(chosen, startDate)} disabled={!chosen} style={{ flex: 2, padding: "14px", background: chosen ? `linear-gradient(135deg, #064E3B, #0D9488)` : T.surface2, color: chosen ? "white" : T.textMuted, border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: chosen ? "pointer" : "default" }}>APPLIQUER</button>
+          <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
+          <button onClick={() => chosen && onApply(chosen, startDate)} disabled={!chosen} style={{ flex: 2, padding: "14px", background: chosen ? "var(--btn-primaire)" : T.surface2, color: chosen ? "white" : T.textMuted, border: "none", borderRadius: 18, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: chosen ? "pointer" : "default" }}>Appliquer</button>
         </div>
       </div>
     </>
@@ -7942,7 +7996,7 @@ function UpdateBanner({ onUpdate }) {
       <style>{`@keyframes forgeSlideDown{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        background: "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        background: "var(--btn-primaire)",
         color: "white", fontFamily: "'DM Sans', sans-serif",
         padding: "calc(10px + env(safe-area-inset-top)) 16px 12px",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
@@ -7950,7 +8004,7 @@ function UpdateBanner({ onUpdate }) {
         animation: "forgeSlideDown .35s ease both",
       }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 15, letterSpacing: 1.8, lineHeight: 1.1 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.5, lineHeight: 1.1 }}>
             MISE À JOUR DISPONIBLE
           </div>
           <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
@@ -7962,8 +8016,8 @@ function UpdateBanner({ onUpdate }) {
           disabled={enCours}
           style={{
             flexShrink: 0, background: "white", color: "#064E3B", border: "none",
-            borderRadius: 11, padding: "10px 16px", fontSize: 11, fontWeight: 800,
-            letterSpacing: 1, cursor: enCours ? "default" : "pointer",
+            borderRadius: 14, padding: "10px 16px", fontSize: 11, fontWeight: 800,
+            letterSpacing: 0.5, cursor: enCours ? "default" : "pointer",
             opacity: enCours ? 0.7 : 1, fontFamily: "inherit",
             boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
           }}>

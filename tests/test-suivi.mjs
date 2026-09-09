@@ -157,17 +157,17 @@ const carte = (nom) => p.evaluate((n) => {
 }, nom);
 
 const alice = await carte("Alice Assidue");
-ok(/SEMAINE 6 · 2\/3 SÉANCES/.test(alice || ""), `Alice : ${alice?.match(/SEMAINE[^\n]*/)?.[0]}`);
-ok(/100% SUR 4 SEM\./.test(alice || ""), "Alice est à 100% sur les 4 semaines écoulées");
+ok(/Semaine 6 · 2\/3 séances/i.test(alice || ""), `Alice : ${alice?.match(/Semaine[^\n]*/i)?.[0]}`);
+ok(/100\s*% sur 4 sem\./i.test(alice || ""), "Alice est à 100% sur les 4 semaines écoulées");
 ok(/Dernière séance hier/.test(alice || ""), "sa dernière séance est datée en clair");
 
 const bruno = await carte("Bruno Retard");
-ok(/SEMAINE 6 · 0\/3 SÉANCES/.test(bruno || ""), `Bruno : ${bruno?.match(/SEMAINE[^\n]*/)?.[0]}`);
-ok(/33% SUR 4 SEM\./.test(bruno || ""), "Bruno est à 33% (1 séance sur 3 attendues, 4 semaines de suite)");
+ok(/Semaine 6 · 0\/3 séances/i.test(bruno || ""), `Bruno : ${bruno?.match(/Semaine[^\n]*/i)?.[0]}`);
+ok(/33\s*% sur 4 sem\./i.test(bruno || ""), "Bruno est à 33% (1 séance sur 3 attendues, 4 semaines de suite)");
 ok(/il y a 8 jours/.test(bruno || ""), "le délai depuis sa dernière séance est affiché");
 
 const chloe = await carte("Chloe Decroche");
-ok(/8% SUR 4 SEM\./.test(chloe || ""),
+ok(/8\s*% sur 4 sem\./i.test(chloe || ""),
    "Chloé : 1 séance faite sur 12 attendues en 4 semaines = 8%");
 
 const david = await carte("David Neuf");
@@ -176,7 +176,7 @@ ok(/Jamais démarré/.test(david || ""), "il a son propre statut, distinct du d�
 
 console.log("\n─── La semaine en cours ne pénalise pas ───");
 // Alice n'a fait que 2 séances sur 3 cette semaine, et reste pourtant à 100%.
-ok(/100% SUR 4 SEM\./.test(alice || ""),
+ok(/100\s*% sur 4 sem\./i.test(alice || ""),
    "le taux ne compte que les semaines écoulées — une semaine entamée ne fait pas chuter le score");
 
 await p.screenshot({ path: `${CAPTURES}suivi.png`, fullPage: true });
