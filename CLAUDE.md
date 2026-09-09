@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v7y** | **Les écrans de chargement** : les animations existaient dans des composants pas encore montés, donc le logo du démarrage ne bougeait pas. Le texte suit maintenant les vraies étapes, une connexion lente est annoncée, et les 11 pages internes affichent leur structure au lieu d'un spinner seul | 597 131 o | 8106 |
 | **v7x** | **La comparaison vert/rouge remonte jusqu'à 3 semaines** au lieu d'exiger la semaine N−1 (18 % des séries n'avaient aucune couleur), **affiche sa référence chiffrée** sous chaque série, et **sépare les emplacements** : un exercice fait 2 fois dans la semaine a deux historiques et deux records | 590 721 o | 7975 |
 | **v7w** | **Cinq sonneries au choix** · plus de bip à l'ouverture de l'app · plus de carte « Lecture en cours » sur l'écran verrouillé · **la semaine bascule le lundi à minuit pour tout le monde** · « commencer la séance » ouvre la séance du jour | 588 345 o | 7884 |
 | **v7v** | **Regénérer une diète demande confirmation** — le bouton écrasait 8 repas sans rien demander, et la diète composée à la main d'une coachée cœliaque y est passée | 579 906 o | 7628 |
@@ -1073,6 +1074,33 @@ Le réglage prend cinq formes selon ce que permet l'appareil :
 > C'est une règle d'Apple, pas une limite de l'app : Safari n'expose même pas `PushManager` hors
 > installation. D'où l'encart d'explication plutôt qu'un bouton qui échouerait sans dire pourquoi.
 
+## I.3 bis — Les écrans de chargement *(v7y)*
+
+Trois niveaux, et aucun n'est décoratif.
+
+- **L'écran plein (`LoadingScreen`)** — au démarrage, puis à l'ouverture de l'espace coach. Le
+  texte suit les **vraies étapes** : « Connexion… » → « Ton profil… » → « Ton programme… » →
+  « Tes performances… ». Il est posé juste avant chaque requête, donc ce que lit le coaché
+  correspond à ce que l'app attend réellement. **Aucun pourcentage inventé** : les quatre
+  requêtes n'ont pas la même durée, une barre régulière mentirait.
+  Au-delà de **6 secondes**, un encart ambre annonce que la connexion est lente ; à **12 s**, un
+  bouton RÉESSAYER. En salle, au sous-sol, c'est le moment précis où le coaché croit que l'app a
+  planté et la ferme.
+- **Les squelettes (`SqPage`, `SqListe`, `SqCarte`, `Sq`)** — les 11 pages internes affichent
+  leur structure en gris miroitant plutôt qu'un spinner au milieu du vide. Un squelette reprend
+  les **masses**, pas les détails : trop fidèle, il devient un deuxième composant à maintenir en
+  parallèle du vrai. La classe `.squelette` et son dégradé vivent dans `theme.css`, donc le mode
+  sombre suit tout seul, et le miroitement s'efface si le téléphone demande de réduire les
+  animations (`prefers-reduced-motion`).
+- **Les boutons occupés** — spinner + libellé de l'action en cours (« ACTIVATION… »,
+  « ENREGISTREMENT… », « COMPOSITION EN COURS… »). Trois d'entre eux n'affichaient qu'un « … ».
+
+> **Le cache local change ce que ces écrans veulent dire.** Un coaché qui revient voit son
+> programme **instantanément**, depuis `loadCache` : l'écran plein ne s'affiche qu'à la première
+> ouverture ou après une perte de cache. Ce qui reste vu à chaque lancement, c'est
+> « Connexion… » — la vérification de session Supabase, avant que quoi que ce soit d'autre
+> puisse commencer. C'est précisément l'écran dont l'animation était morte.
+
 ## I.4 — Modèles de périodisation (`PERIODIZATION_TEMPLATES`, constante en dur)
 
 1. **Débutant · Premiers résultats** — 24 semaines
@@ -1193,6 +1221,16 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Une `@keyframes` définie dans un composant n'existe pas avant qu'il soit monté (trouvé le
+  9 septembre 2026, v7y).** `spin`, `pulse`, `fadeIn`, `fadeUp` et `popIn` vivaient dans les
+  blocs `<style>` de `AuthenticatedApp` et de `CoachApp`. Or l'écran de démarrage s'affiche
+  **avant** que l'un ou l'autre soit monté : le logo de « Initialisation… » demandait
+  `animation: pulse` dans le vide et restait **parfaitement immobile**, sur l'écran le plus vu de
+  toute l'app, depuis toujours. Le spinner de l'écran de connexion ne tournait pas davantage.
+  Une animation utilisée hors d'un composant doit être déclarée dans `theme.css`, qui est inliné
+  dans le `<head>` au build. Le test `test-chargement.mjs` compare désormais les animations
+  **demandées** par la page à celles réellement **définies** — c'est ce contrôle-là qui rattrape
+  ce genre de panne silencieuse.
 - **Un `session_config_id` ne désigne pas le même exercice d'un programme à l'autre (trouvé le
   9 septembre 2026, v7x).** Les ids de séance sont de petits entiers réattribués à chaque
   nouveau programme : relevé en base, **11 ids partagés entre programmes et 19 emplacements
@@ -1498,11 +1536,11 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **9 septembre 2026** — v7x, 590 721 octets, 7975 lignes |
-| Contenu de ce build | Comparaison vert/rouge : recul jusqu'à 3 semaines, référence chiffrée affichée, emplacements séparés dans l'historique et les records |
-| Build précédent | 3 septembre 2026 — v7w, 588 345 octets. Sonneries au choix, semaine lundi→dimanche |
+| Dernier build déployé | **9 septembre 2026** — v7y, 597 131 octets, 8106 lignes |
+| Contenu de ce build | Écrans de chargement : animations réparées, étapes réelles, alerte réseau lent, squelettes sur les 11 pages internes |
+| Build précédent | 9 septembre 2026 — v7x, 590 721 octets. Comparaison vert/rouge sur 3 semaines et par emplacement |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
-| Vérification du déploiement | Faite le 25 août : workflow `success` sur `b1f00a3`, et `index.html` sur `main` identique au build local à l'octet près (579 292 o, empreinte `bbd29d65c8`) |
+| Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.

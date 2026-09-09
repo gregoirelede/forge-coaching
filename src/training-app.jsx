@@ -1125,6 +1125,104 @@ function Spinner({ size = 16, color = T.accent }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SQUELETTES DE CHARGEMENT
+//
+//  Un spinner seul au milieu d'une page vide dit « attends » ; un squelette dit
+//  « voilà ce qui arrive, et où ». La page garde sa structure, l'œil se place
+//  avant que les données soient là, et l'attente paraît plus courte à durée
+//  égale — c'est le seul gain de vitesse qui ne demande pas de serveur plus
+//  rapide.
+//
+//  Le miroitement et ses deux teintes vivent dans theme.css (classe
+//  `.squelette`) : ils suivent donc le mode sombre sans un réglage de plus, et
+//  s'effacent si le téléphone demande de réduire les animations.
+//
+//  Un squelette N'EST PAS un dessin fidèle. Il reprend les MASSES — hauteurs,
+//  largeurs, espacements — pas les détails. Trop fidèle, il devient un
+//  deuxième composant à maintenir en parallèle du vrai.
+// ═══════════════════════════════════════════════════════════════════════════════
+function Sq({ h = 12, w = "100%", r = 8, mb = 0, style }) {
+  return <div className="squelette" style={{ height: h, width: w, borderRadius: r, marginBottom: mb, ...style }}/>;
+}
+
+// Une carte : un titre, deux lignes, éventuellement une pastille à droite.
+function SqCarte({ lignes = 2, hauteurTitre = 15, pastille = false }) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Sq h={hauteurTitre} w="58%" mb={9}/>
+        {Array.from({ length: lignes }).map((_, i) => (
+          <Sq key={i} h={9} w={i === lignes - 1 ? "38%" : "82%"} mb={i === lignes - 1 ? 0 : 7}/>
+        ))}
+      </div>
+      {pastille && <Sq h={34} w={52} r={10}/>}
+    </div>
+  );
+}
+
+// Une liste de cartes. Le décalage d'animation évite l'effet « rideau » où
+// tout clignote au même instant.
+function SqListe({ n = 4, ...reste }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{ animation: `fadeIn .3s ease ${i * 0.05}s both` }}>
+          <SqCarte {...reste}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// L'en-tête d'une page : gros titre + sous-titre.
+function SqTitre({ large = "52%" }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <Sq h={26} w={large} r={6} mb={9}/>
+      <Sq h={10} w="34%"/>
+    </div>
+  );
+}
+
+// Une rangée d'onglets ou de filtres.
+function SqOnglets({ n = 4 }) {
+  return (
+    <div style={{ display: "flex", gap: 7, marginBottom: 14, overflow: "hidden" }}>
+      {Array.from({ length: n }).map((_, i) => <Sq key={i} h={30} w={78 + (i % 3) * 18} r={14}/>)}
+    </div>
+  );
+}
+
+// Le gabarit complet d'une page interne. `variante` décide de ce qu'il y a
+// entre le titre et la liste.
+function SqPage({ titre = true, onglets = 0, variante = "liste", n = 4 }) {
+  return (
+    <div style={{ padding: "6px 0 40px" }} aria-busy="true" aria-label="Chargement en cours">
+      {titre && <SqTitre/>}
+      {onglets > 0 && <SqOnglets n={onglets}/>}
+      {variante === "chiffres" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
+              <Sq h={20} w="60%" r={6} mb={8} style={{ margin: "0 auto 8px" }}/>
+              <Sq h={8} w="80%" style={{ margin: "0 auto" }}/>
+            </div>
+          ))}
+        </div>
+      )}
+      {variante === "graphe" && (
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16, marginBottom: 14, display: "flex", alignItems: "flex-end", gap: 7, height: 132 }}>
+          {[52, 74, 61, 88, 70, 96, 82, 100].map((h, i) => (
+            <Sq key={i} h={`${h}%`} w="100%" r={5} style={{ animationDelay: `${i * 0.06}s` }}/>
+          ))}
+        </div>
+      )}
+      <SqListe n={n} pastille={variante === "chiffres" || variante === "seance"} lignes={variante === "seance" ? 1 : 2}/>
+    </div>
+  );
+}
+
 // SyncDot
 function SyncDot({ status }) {
   const cfg = {
@@ -1356,11 +1454,40 @@ function LoginScreen({ onAuthSuccess, onCoachClick }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  LoadingScreen / ErrorScreen
 // ═══════════════════════════════════════════════════════════════════════════════
+// L'écran que tout le monde voit à chaque ouverture. Trois choses :
+//
+//  · le LOGO PULSE — voir theme.css : la keyframe y a été déplacée parce
+//    qu'ici, aucun composant n'est encore monté ;
+//  · le TEXTE SUIT LES VRAIES ÉTAPES du chargement, il n'est pas décoratif.
+//    Aucun pourcentage inventé : les quatre requêtes ne durent pas le même
+//    temps, une barre régulière mentirait ;
+//  · AU-DELÀ DE 6 SECONDES ON LE DIT. En salle, au sous-sol, c'est le moment
+//    précis où le coaché croit que l'app a planté et la ferme. À 12 s, un
+//    bouton pour relancer plutôt que de rester devant un logo qui pulse.
 function LoadingScreen({ text = "Chargement..." }) {
+  const [secondes, setSecondes] = useState(0);
+  useEffect(() => {
+    const debut = Date.now();
+    const id = setInterval(() => setSecondes(Math.round((Date.now() - debut) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const lent = secondes >= 6, tresLent = secondes >= 12;
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", gap: 18 }}>
+    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", gap: 18, padding: 24 }}>
       <div style={{ animation: "pulse 1.4s ease-in-out infinite" }}><ForgeLogo size={62}/></div>
-      <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, fontWeight: 700 }}>{text}</div>
+      <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, fontWeight: 700, textAlign: "center", minHeight: 15 }}>{text}</div>
+      {lent && (
+        <div style={{ fontSize: 11.5, color: T.warnText, background: T.warnBg, border: "1px solid var(--warn-border)", borderRadius: 11, padding: "9px 14px", textAlign: "center", lineHeight: 1.5, maxWidth: 300, animation: "fadeIn .4s ease" }}>
+          La connexion est lente.<br/>
+          {tresLent ? "Tes données sont peut-être hors de portée d'ici." : "On continue d'essayer."}
+        </div>
+      )}
+      {tresLent && (
+        <button onClick={() => window.location.reload()} className="pressable"
+          style={{ padding: "11px 24px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 800, letterSpacing: .8, cursor: "pointer", fontFamily: "inherit", animation: "fadeIn .4s ease" }}>
+          RÉESSAYER
+        </button>
+      )}
     </div>
   );
 }
@@ -2533,6 +2660,9 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   // null = en cours de chargement, sinon { client, week, sessions, programId }
   const [appData, setAppData] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  // Ce que l'app est en train d'attendre, affiché tel quel sur l'écran de
+  // chargement. Posé avant chaque requête, jamais après.
+  const [etape, setEtape] = useState("Connexion...");
 
   // ── État : workout / nav ──
   const [page, setPage] = useState("home");
@@ -2638,6 +2768,9 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
   }, [supabase, userId, isDemo, appData?.client]);
 
   // ── Chargement initial : profil + programme + logs ────────────────────────
+  // `etape` n'est pas décorative : elle est posée juste avant chaque requête,
+  // donc ce que lit le coaché correspond à ce que l'app est réellement en
+  // train d'attendre.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -2662,10 +2795,12 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         }
 
         // 2) Mode Supabase : charger profil + programme actif depuis la base
+        if (!cancelled) setEtape("Ton profil...");
         const { data: profile, error: profileErr } = await supabase
           .from("profiles").select("*").eq("id", userId).single();
         if (profileErr) throw new Error("Impossible de charger ton profil");
 
+        if (!cancelled) setEtape("Ton programme...");
         const { data: program, error: programErr } = await supabase
           .from("programs").select("*")
           .eq("coachee_id", userId).eq("is_active", true)
@@ -2690,6 +2825,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         if (!cancelled) setAppData(remoteAppData);
 
         // 3) Charger tous les sets depuis Supabase
+        if (!cancelled) setEtape("Tes performances...");
         const { allCompletedSets: rcs, allSetLogs: rls, maxWeek } = await loadAllSetsFromSupabase(supabase, userId);
         // La semaine en cours est calculée depuis la date de création du compte (figée).
         const computedWeek = currentWeekFromDate(profile.created_at);
@@ -2857,7 +2993,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
 
   // ── Loading / Error states ──
   if (loadError) return <ErrorScreen title="Oups..." message={loadError} onLogout={!isDemo ? onLogout : null}/>;
-  if (!appData)  return <LoadingScreen text="Chargement de ton programme..."/>;
+  if (!appData)  return <LoadingScreen text={etape}/>;
 
   const activeSessions = appData.sessions.filter(s => appData.week.some(w => w.sessionId === s.id));
 
@@ -2912,11 +3048,9 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:${T.surface2}}
         ::-webkit-scrollbar-thumb{background:${T.borderStrong};border-radius:2px}
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        @keyframes popIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+        /* spin, pulse, fadeIn, fadeUp et popIn sont dans theme.css : elles
+           doivent exister AVANT que ce composant soit monté, sinon l'écran de
+           démarrage s'affiche figé. */
         @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
         @keyframes pageInForward{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
         @keyframes pageInBackward{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
@@ -3775,7 +3909,7 @@ function CoachFollowUpPage({ ctx }) {
       {erreur}
     </div>
   );
-  if (!assiduite) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (!assiduite) return <div style={{ padding: "0 18px" }}><SqPage onglets={3} variante="chiffres" n={4}/></div>;
 
   const triés = [...actifs].sort((a, b) => {
     const sa = STATUTS[assiduite[a.id]?.statut] || STATUTS.sans_programme;
@@ -4301,7 +4435,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
     setSaving(false);
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (loading) return <SqPage onglets={5} variante="seance" n={5}/>;
 
   const activeSessionsForWeek = sessions;
 
@@ -4421,7 +4555,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={doSaveDraft} disabled={saving} style={{ flex: 1, padding: "13px", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, color: T.textSub, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Brouillon</button>
           <button onClick={doActivate} disabled={saving} style={{ flex: 2, padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {saving ? (<><Spinner size={14} color="white"/> ...</>) : "ACTIVER LE PROGRAMME"}
+            {saving ? (<><Spinner size={14} color="white"/> ACTIVATION...</>) : "ACTIVER LE PROGRAMME"}
           </button>
         </div>
       </div>
@@ -4464,7 +4598,7 @@ function ProgramBuilder({ ctx, coachee, onClose }) {
             </div>
             {importError && <div style={{ fontSize: 11, color: T.danger, fontWeight: 600, textAlign: "center", marginBottom: 12 }}>{importError}</div>}
             {importLoading ? (
-              <div style={{ padding: 30, textAlign: "center" }}><Spinner size={22}/></div>
+              <div style={{ padding: "6px 0" }}><SqListe n={3} lignes={1}/></div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {(coachees || []).filter(c => c.id !== coachee.id && c.is_active !== false).length === 0 ? (
@@ -4515,7 +4649,7 @@ function CoachProgressView({ ctx, coachee }) {
     })();
   }, [coachee.id, supabase]);
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (loading) return <SqPage variante="graphe" n={4}/>;
   if (!program) return <div style={{ padding: 30, textAlign: "center", color: T.textMuted, fontSize: 13 }}>Aucun programme actif pour ce coaché.</div>;
 
   // Réutilise la logique de groupement par muscle de ProgressPage
@@ -4647,7 +4781,7 @@ function CoachBilansView({ ctx, coachee }) {
       Joue <span style={{ fontWeight: 700 }}>sql/2026-08-08-bilan-hebdomadaire.sql</span> dans Supabase.
     </div>
   );
-  if (bilans === null) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (bilans === null) return <SqPage n={3}/>;
 
   // Une carte par semaine, qu'elle porte un bilan, des notes de séance, ou les
   // deux. Un coaché peut très bien laisser un mot sur une séance sans remplir
@@ -4948,7 +5082,7 @@ function EditCoacheeModal({ supabase, coachee, onClose, onSaved }) {
         <div style={{ flexShrink: 0, display: "flex", gap: 10, padding: "12px 18px calc(18px + env(safe-area-inset-bottom))", borderTop: `1px solid ${T.border}`, background: T.bg }}>
           <button onClick={onClose} style={{ flex: 1, padding: "14px", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, color: T.textSub, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Annuler</button>
           <button onClick={handleSave} disabled={saving || !name.trim() || !code.trim()} style={{ flex: 2, padding: "14px", background: saving || !name.trim() ? T.surface2 : `linear-gradient(135deg, #064E3B, #0D9488)`, color: saving || !name.trim() ? T.textMuted : "white", border: "none", borderRadius: 14, fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {saving ? (<><Spinner size={14} color={T.textMuted}/> ...</>) : "ENREGISTRER"}
+            {saving ? (<><Spinner size={14} color={T.textMuted}/> ENREGISTREMENT...</>) : "ENREGISTRER"}
           </button>
         </div>
       </div>
@@ -5005,7 +5139,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
   const ctx = { supabase, coachId, coachees, library, reloadCoachees, reloadLibrary,
     openCoachee: setSelectedCoachee, setShowNewModal };
 
-  if (loading) return <LoadingScreen text="Chargement de l'espace coach..."/>;
+  if (loading) return <LoadingScreen text="Ton espace coach..."/>;
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans','Segoe UI',sans-serif", color: T.text, overflowX: "hidden" }}>
@@ -5015,10 +5149,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
         input,select,textarea{font-family:inherit}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-thumb{background:${T.borderStrong};border-radius:2px}
-        @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        /* spin, pulse, fadeIn et fadeUp : voir theme.css. */
         @keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         @keyframes sheetFadeIn{from{opacity:0}to{opacity:1}}
         @keyframes growUp{from{height:0;opacity:0}to{opacity:1}}
@@ -6188,7 +6319,7 @@ function CoachNutritionView({ ctx, coachee }) {
     setRetours(rs => rs.filter(x => x.id !== r.id));
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (loading) return <SqPage onglets={5} variante="chiffres" n={4}/>;
   if ((coachee.offer || "essentiel") !== "premium") return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: "26px 20px", textAlign: "center", color: T.textMuted, fontSize: 13, lineHeight: 1.6 }}>
       Ce coaché est en offre Essentiel.<br/>Le module diète est réservé à l'offre <b style={{ color: T.warnText }}>Premium</b>.
@@ -6472,7 +6603,7 @@ function CoachNutritionView({ ctx, coachee }) {
           })()}
 
           <button onClick={genererLaDiete} disabled={busy} className="pressable" style={{ width: "100%", padding: "13px", background: `linear-gradient(135deg, #064E3B, #0D9488)`, color: "white", border: "none", borderRadius: 13, fontSize: 12, fontWeight: 800, letterSpacing: 1, cursor: "pointer", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {busy ? (<><Spinner size={14} color="white"/> ...</>) : (diete ? "REGÉNÉRER LA DIÈTE" : "GÉNÉRER LA DIÈTE")}
+            {busy ? (<><Spinner size={14} color="white"/> COMPOSITION EN COURS...</>) : (diete ? "REGÉNÉRER LA DIÈTE" : "GÉNÉRER LA DIÈTE")}
           </button>
 
           {!diete ? (
@@ -6800,7 +6931,7 @@ function NutritionPage({ ctx }) {
     setSavingWeight(false);
   }
 
-  if (loading) return <div style={{ padding: 60, textAlign: "center" }}><Spinner size={26}/></div>;
+  if (loading) return <div style={{ padding: "0 18px" }}><SqPage variante="chiffres" n={4}/></div>;
 
   // Type de journée d'aujourd'hui, et celui que le coaché regarde. Par défaut
   // on ouvre sur AUJOURD'HUI : il consulte sa diète pour savoir quoi manger
@@ -7043,7 +7174,7 @@ function EquivalencesSheet({ item, mealType, chargement, echec, foods, nutriProf
 
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 18px calc(20px + env(safe-area-inset-bottom))" }}>
           {chargement ? (
-            <div style={{ padding: "30px 0", textAlign: "center" }}><Spinner size={22}/></div>
+            <div style={{ padding: "4px 0 10px" }}><SqListe n={3} lignes={1} pastille/></div>
           ) : echec ? (
             <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: "24px 10px", lineHeight: 1.6 }}>
               Impossible de charger les équivalences.<br/>Vérifie ta connexion et réessaie.
@@ -7421,7 +7552,7 @@ function ParcoursPage({ ctx }) {
 
   const active = findActivePhase(phases);
 
-  if (loading) return <div style={{ padding: 60, textAlign: "center" }}><Spinner size={26}/></div>;
+  if (loading) return <div style={{ padding: "0 18px" }}><SqPage variante="graphe" n={3}/></div>;
 
   return (
     <div style={{ paddingBottom: 100 }}>
@@ -7529,7 +7660,7 @@ function CoachPeriodizationView({ ctx, coachee }) {
     await reload();
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}><Spinner size={24}/></div>;
+  if (loading) return <SqPage variante="graphe" n={3}/>;
 
   return (
     <>
@@ -7940,7 +8071,7 @@ function ForgeCoachingRoot() {
     setBootState("login");
   }, []);
 
-  if (bootState === "loading")    return <LoadingScreen text="Initialisation..."/>;
+  if (bootState === "loading")    return <LoadingScreen text="Connexion..."/>;
   if (bootState === "bootError")  return <ErrorScreen title="CONNEXION IMPOSSIBLE" message="L'application n'a pas réussi à joindre le serveur. Vérifie ta connexion internet, puis réessaie." onLogout={() => window.location.reload()} actionLabel="Réessayer"/>;
   if (bootState === "login")      return <LoginScreen onAuthSuccess={handleAuthSuccess} onCoachClick={() => setBootState("coachLogin")}/>;
   if (bootState === "coachLogin") return <CoachLoginScreen onBack={() => setBootState("login")} onAuthSuccess={handleAuthSuccess}/>;
