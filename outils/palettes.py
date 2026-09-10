@@ -120,6 +120,12 @@ if __name__ == "__main__":
 # ═══════════════════════════════════════════════════════════════════════════
 import re
 
+def _degrade(hexa, dL=0.045):
+    L, C, H = hex_oklch(hexa)
+    haut = oklch_hex(min(0.99, L + dL), C, H)
+    bas = oklch_hex(max(0.02, L - dL), C * 0.96, H)
+    return f"linear-gradient(180deg, {haut} 0%, {bas} 100%)"
+
 def _rgba(hexa, a):
     h = hexa.lstrip("#")
     return f"rgba({int(h[0:2],16)}, {int(h[2:4],16)}, {int(h[4:6],16)}, {a})"
@@ -169,6 +175,15 @@ def emettre(nom, spec, source):
         "--barre-tx": _rgba("#FFFFFF", "0.72") if entete_vert else oklch_hex(0.635, 0.014, spec["sable_H"]),
         "--barre-tx-actif": "#FFFFFF" if entete_vert else v["700"],
         "--hero-bg": v[spec["hero"].split("-")[1]],
+        # LE DÉGRADÉ DU HERO. Même teinte du haut au bas — seule la clarté
+        # bouge, de ±0,045 en OKLCH. C'est de la lumière tombant du haut, et
+        # c'est cohérent avec ce que les ombres --e1/--e2/--e3 affirment déjà :
+        # une source lumineuse existe. Un aplat parfaitement uniforme la
+        # contredit ; aucune matière réelle n'est uniforme sous une lumière.
+        # À NE PAS CONFONDRE avec le dégradé retiré en v7z, qui traversait
+        # 15,8° de teinte (#064E3B → #0D9488) : un écart de teinte se lit comme
+        # un EFFET, un écart de clarté se lit comme du relief.
+        "--hero-fond": _degrade(v[spec["hero"].split("-")[1]]),
         "--hero-tx": "#FFFFFF",
         "--hero-sub": _rgba("#FFFFFF", "0.72"),
     }
@@ -203,6 +218,7 @@ def emettre(nom, spec, source):
         "--barre-tx": oklch_hex(0.605, 0.014, spec["sable_H"]),
         "--barre-tx-actif": v["400"],
         "--hero-bg": oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"]),
+        "--hero-fond": _degrade(oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"])),
         "--hero-tx": "#FFFFFF", "--hero-sub": _rgba("#FFFFFF", "0.72"),
     }
 
@@ -236,7 +252,7 @@ def emettre(nom, spec, source):
         i = bloc.rindex("}")
         return bloc[:i] + f"  /* Surface de la marque ({spec['titre']}) */\n{ajout}\n" + bloc[i:]
 
-    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--hero-bg", "--hero-tx", "--hero-sub"]
+    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--hero-bg", "--hero-fond", "--hero-tx", "--hero-sub"]
     # Du dernier au premier, pour que les positions restent valides.
     cibles = [(":root {", clair), (':root[data-theme="sombre"]', sombre),
               ("@media (prefers-color-scheme: dark)", sombre)]

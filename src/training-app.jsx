@@ -1607,7 +1607,7 @@ function HomePage({ ctx }) {
       </div>
       <div style={{ padding: "0 18px" }}>
         {todaySession ? (
-          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: "var(--hero-bg)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
+          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: "var(--hero-fond)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
             {/* POURQUOI LE VERT REVIENT ICI, APRÈS AVOIR ÉTÉ RETIRÉ EN v7z.
                 En v7z, la carte avait été calmée parce qu'un bloc vert SATURÉ
                 remplissait 40 % de l'accueil pour ne rien dire de plus qu'un

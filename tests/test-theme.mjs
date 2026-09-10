@@ -48,10 +48,11 @@ console.log("\n─── Thème clair ───");
   const { ctx, p } = await ouvrir({ mode: "clair", systemeSombre: true });
   const t = await lire(p);
   ok(t.attr === "clair", `data-theme = ${t.attr}`);
-  ok(t.bg === "#F1EDE6", `--bg = ${t.bg} (Forest & Sand, fond calmé en v7z)`);
-  ok(t.accent === "#2D6A4F", `--accent = ${t.accent}`);
-  ok(t.metaColor === "#F1EDE6", `barre d'état alignée : ${t.metaColor}`);
-  ok(/252,\s*249,\s*244/.test(t.barre), `barres translucides claires : ${t.barre}`);
+  ok(t.bg === "#F6EEE0", `--bg = ${t.bg} (sable approfondi, v8b)`);
+  ok(t.accent === "#0C6E48", `--accent = ${t.accent}`);
+  ok(t.metaColor === "#F6EEE0", `barre d'état alignée : ${t.metaColor}`);
+  // En variante B, les barres portent le VERT de marque, pas le sable.
+  ok(/1,\s*60,\s*37/.test(t.barre), `bandeau et barre d'onglets en vert de marque : ${t.barre}`);
   await p.screenshot({ path: `${OUT}/theme-clair.png` });
   await ctx.close();
 }
@@ -62,13 +63,13 @@ console.log("\n─── Thème sombre ───");
   const { ctx, p } = await ouvrir({ mode: "sombre", systemeSombre: false });
   const t = await lire(p);
   ok(t.attr === "sombre", `data-theme = ${t.attr}`);
-  ok(t.bg === "#101512", `--bg = ${t.bg}`);
-  ok(t.accent === "#4FA97F", `--accent = ${t.accent} (éclairci pour rester lisible)`);
-  ok(t.corpsBg === "rgb(16, 21, 18)", `fond de page réellement sombre : ${t.corpsBg}`);
-  ok(t.metaColor === "#101512", `barre d'état alignée : ${t.metaColor}`);
+  ok(t.bg === "#0A130E", `--bg = ${t.bg}`);
+  ok(t.accent === "#4FA67B", `--accent = ${t.accent} (éclairci pour rester lisible)`);
+  ok(t.corpsBg === "rgb(10, 19, 14)", `fond de page réellement sombre : ${t.corpsBg}`);
+  ok(t.metaColor === "#0A130E", `barre d'état alignée : ${t.metaColor}`);
   // Le défaut signalé le 25 août 2026 : les deux barres restaient blanches.
-  ok(/24,\s*30,\s*26/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
-  ok(/24,\s*30,\s*26/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
+  ok(/19,\s*31,\s*24/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
+  ok(/19,\s*31,\s*24/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
   await p.screenshot({ path: `${OUT}/theme-sombre.png` });
   await ctx.close();
 }
@@ -83,8 +84,14 @@ console.log("\n─── Aucune couleur de barre écrite en dur ───");
   // Les deux seules occurrences légitimes sont les définitions de la variable
   // elle-même, dans le bloc de thème clair. Toute autre est un composant qui
   // écrit la couleur à côté du thème.
-  const toutes = (html.match(/rgba\(252,\s*249,\s*244/g) || []).length;
-  const definitions = (html.match(/--bar-bg(-opaque)?:\s*rgba\(252,\s*249,\s*244/g) || []).length;
+  // La teinte des barres change avec la palette : on la LIT dans le thème
+  // plutôt que de l'épingler, sinon ce contrôle casse à chaque refonte alors
+  // qu'il ne parle pas de couleur mais d'architecture.
+  const teinte = (html.match(/--bar-bg:\s*rgba\(([\d\s,]+?),\s*[\d.]+\)/) || [])[1];
+  ok(!!teinte, `la teinte des barres est lisible dans le thème (${teinte})`);
+  const motif = teinte.split(",").map(n => n.trim()).join(",\\s*");
+  const toutes = (html.match(new RegExp("rgba\\(" + motif, "g")) || []).length;
+  const definitions = (html.match(new RegExp("--bar-bg(-opaque)?:\\s*rgba\\(" + motif, "g")) || []).length;
   const enDur = toutes - definitions;
   ok(definitions === 2, `la palette claire définit bien les deux variables (${definitions})`);
   ok(enDur === 0, `aucun composant n'écrit un fond de barre en dur (${enDur})`);
@@ -110,13 +117,13 @@ console.log("\n─── Thème automatique ───");
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: true });
   const t = await lire(p);
   ok(!t.attr, "aucun data-theme posé (mode auto)");
-  ok(t.bg === "#101512", `téléphone en sombre → --bg = ${t.bg}`);
+  ok(t.bg === "#0A130E", `téléphone en sombre → --bg = ${t.bg}`);
   await ctx.close();
 }
 {
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: false });
   const t = await lire(p);
-  ok(t.bg === "#F1EDE6", `téléphone en clair → --bg = ${t.bg}`);
+  ok(t.bg === "#F6EEE0", `téléphone en clair → --bg = ${t.bg}`);
   await ctx.close();
 }
 

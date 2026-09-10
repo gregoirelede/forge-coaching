@@ -12,26 +12,26 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg: #F1EDE6;
+  --bg: #F6EEE0;
   --surface: #FFFDFA;
-  --surface2: #EAE5DC;
+  --surface2: #EDE5D8;
   /* Un contour de carte n'existe pas dans iOS : la séparation vient de la
      PROFONDEUR. --border redevient donc ce qu'il est chez Apple — un filet de
      séparation entre deux lignes d'une même liste, pas le tour d'un objet.
      Passer de #DDD5C8 opaque à un filet à 10 % efface d'un coup les 200 cadres
      qui donnaient à l'app son air de gabarit, sans toucher une ligne de JSX. */
-  --border: rgba(56, 48, 36, 0.10);
-  --border-strong: rgba(56, 48, 36, 0.20);
-  --text: #1E2820;
-  --text-sub: #7A7060;
-  --text-muted: #A89880;
-  --accent: #2D6A4F;
-  --accent-dark: #1E4D38;
-  --accent-light: #E4F0EB;
+  --border: rgba(0, 20, 10, 0.11);
+  --border-strong: rgba(0, 20, 10, 0.22);
+  --text: #1C2821;
+  --text-sub: #67635C;
+  --text-muted: #8F8A81;
+  --accent: #0C6E48;
+  --accent-dark: #013C25;
+  --accent-light: #D8EEE1;
   --accent-text: #FFFFFF;
-  --danger: #C0392B;
-  --input-bg: #EDE8DF;
-  --shadow: rgba(38, 30, 18, 0.10);
+  --danger: #963C34;
+  --input-bg: #EDE5D8;
+  --shadow: rgba(0, 20, 10, 0.10);
 
   /* ── ÉCHELLE DE PROFONDEUR ──────────────────────────────────────────────
      Trois niveaux, pas un de plus. Chacun superpose une ombre courte et nette
@@ -50,33 +50,33 @@
      ce sont les deux seules couleurs de l'app qui ne peuvent pas se contenter
      de --surface. Elles étaient écrites en dur, et restaient donc blanches en
      mode sombre — le défaut signalé le 25 août 2026. */
-  --scrim: rgba(30, 40, 32, 0.42);
-  --bar-bg: rgba(252, 249, 244, 0.72);
-  --bar-bg-opaque: rgba(252, 249, 244, 0.88);
+  --scrim: rgba(0, 20, 10, 0.44);
+  --bar-bg: rgba(1, 60, 37, 0.80);
+  --bar-bg-opaque: rgba(1, 60, 37, 0.94);
 
   /* Accent avec transparence — remplace les concaténations T.accent + "55" */
-  --accent-a10: rgba(45, 106, 79, 0.09);
+  --accent-a10: rgba(12, 110, 72, 0.09);
   /* Le bouton d'action principale. Il était un dégradé teal (#064E3B → #0D9488)
      écrit à la main 25 fois, avec trois couples de bornes différents : deux
      boutons principaux ne se ressemblaient pas d'un écran à l'autre. Et le teal
      ne donnait que 3,74:1 en blanc dessus, sous le seuil de 4,5:1 pour du 13 px
      gras — la couleur d'accent monte à 6,39:1.
      Le dégradé de marque reste, mais à sa place : le bouclier et les avatars. */
-  --btn-primaire: #2D6A4F;
+  --btn-primaire: #035637;
   --btn-primaire-tx: #FFFFFF;
   --degrade-marque: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
   --degrade-marque-clair: linear-gradient(135deg, #064E3B, #2DD4BF);
-  --accent-a20: rgba(45, 106, 79, 0.21);
-  --accent-a33: rgba(45, 106, 79, 0.33);
-  --accent-a38: rgba(45, 106, 79, 0.38);
-  --accent-light-a53: rgba(228, 240, 235, 0.53);
+  --accent-a20: rgba(12, 110, 72, 0.21);
+  --accent-a33: rgba(12, 110, 72, 0.33);
+  --accent-a38: rgba(12, 110, 72, 0.38);
+  --accent-light-a53: rgba(216, 238, 225, 0.53);
 
   /* Comparaison inter-semaines : progression / régression */
-  --cmp-up-bg: #E0F5EC;   --cmp-up-border: #1A6640;   --cmp-up-text: #1A6640;
-  --cmp-down-bg: #FDE8E8; --cmp-down-border: #9B2C2C; --cmp-down-text: #9B2C2C;
+  --cmp-up-bg: #CDF0F0;   --cmp-up-border: #016B6C;   --cmp-up-text: #013A3A;
+  --cmp-down-bg: #FEE0DB; --cmp-down-border: #963C34; --cmp-down-text: #5A1612;
 
   /* Série validée, chrono terminé */
-  --set-done-bg: #F0F8F4;
+  --set-done-bg: #E5F7F6;
 
   /* Encadré d'avertissement */
   --warn-bg: #FEF3DC; --warn-text: #A06000; --warn-border: rgba(194, 122, 0, 0.25);
@@ -104,30 +104,32 @@
   /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
      choisir une variante de palette revient à les changer, et rien
      d'autre. Le code, lui, ne bouge plus. */
-  --entete-tx: var(--accent);
-  --barre-tx: var(--text-muted);
-  --barre-tx-actif: var(--accent);
-  --hero-bg: var(--surface);
-  --hero-tx: var(--text);
-  --hero-sub: var(--text-muted);
+  --entete-tx: #FFFFFF;
+  --barre-tx: rgba(255, 255, 255, 0.72);
+  --barre-tx-actif: #FFFFFF;
+  --hero-bg: #035637;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #196343 0%, #01482D 100%);
 }
 
 :root[data-theme="sombre"] {
-  --bg: #101512;
-  --surface: #1C231E;
-  --surface2: #242C26;
-  --border: rgba(255, 255, 255, 0.09);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --text: #ECE8E0;
-  --text-sub: #A7A093;
-  --text-muted: #7C766A;
-  --accent: #4FA97F;
-  --accent-dark: #3C8A66;
-  --accent-light: #1D2B24;
-  --accent-text: #0A0E0B;
-  --danger: #E4695A;
-  --input-bg: #242C26;
-  --shadow: rgba(0, 0, 0, 0.5);
+  --bg: #0A130E;
+  --surface: #17221C;
+  --surface2: #243029;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --text: #F3F0EA;
+  --text-sub: #AFAAA2;
+  --text-muted: #868178;
+  --accent: #4FA67B;
+  --accent-dark: #7FC9A1;
+  --accent-light: #20382B;
+  --accent-text: #FFFFFF;
+  --danger: #D47266;
+  --input-bg: #243029;
+  --shadow: rgba(0, 0, 0, 0.55);
 
   --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
   --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
@@ -135,21 +137,21 @@
   --verre-reflet: rgba(255, 255, 255, 0.10);
 
   /* Même teinte que --surface, en translucide pour le flou. */
-  --scrim: rgba(0, 0, 0, 0.58);
-  --btn-primaire: #35855D;
-  --bar-bg: rgba(24, 30, 26, 0.72);
-  --bar-bg-opaque: rgba(24, 30, 26, 0.90);
+  --scrim: rgba(0, 0, 0, 0.62);
+  --btn-primaire: #1A7C53;
+  --bar-bg: rgba(19, 31, 24, 0.76);
+  --bar-bg-opaque: rgba(19, 31, 24, 0.93);
 
-  --accent-a10: rgba(79, 169, 127, 0.10);
-  --accent-a20: rgba(79, 169, 127, 0.22);
-  --accent-a33: rgba(79, 169, 127, 0.34);
-  --accent-a38: rgba(79, 169, 127, 0.40);
-  --accent-light-a53: rgba(29, 43, 36, 0.60);
+  --accent-a10: rgba(79, 166, 123, 0.12);
+  --accent-a20: rgba(79, 166, 123, 0.24);
+  --accent-a33: rgba(79, 166, 123, 0.36);
+  --accent-a38: rgba(79, 166, 123, 0.42);
+  --accent-light-a53: rgba(32, 56, 43, 0.53);
 
-  --cmp-up-bg: #17301F;   --cmp-up-border: #4FA97F;   --cmp-up-text: #6FCB9B;
-  --cmp-down-bg: #331B1B; --cmp-down-border: #E4695A; --cmp-down-text: #F09287;
+  --cmp-up-bg: #053131;   --cmp-up-border: #36A5A6;   --cmp-up-text: #6FC7C8;
+  --cmp-down-bg: #411E1A; --cmp-down-border: #D47266; --cmp-down-text: #F49A8E;
 
-  --set-done-bg: #1A2620;
+  --set-done-bg: #0F2727;
 
   --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
 
@@ -174,54 +176,56 @@
   /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
      choisir une variante de palette revient à les changer, et rien
      d'autre. Le code, lui, ne bouge plus. */
-  --entete-tx: var(--accent);
-  --barre-tx: var(--text-muted);
-  --barre-tx-actif: var(--accent);
-  --hero-bg: var(--surface);
-  --hero-tx: var(--text);
-  --hero-sub: var(--text-muted);
+  --entete-tx: #F3F0EA;
+  --barre-tx: #868178;
+  --barre-tx-actif: #4FA67B;
+  --hero-bg: #014128;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #134D33 0%, #02341F 100%);
 }
 
 /* Mode automatique : suit le réglage du téléphone tant que le coaché n'a pas
    choisi explicitement. data-theme="clair" ou "sombre" prend le dessus. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="clair"]):not([data-theme="sombre"]) {
-    --bg: #101512;
-    --surface: #1C231E;
-    --surface2: #242C26;
-    --border: rgba(255, 255, 255, 0.09);
-    --border-strong: rgba(255, 255, 255, 0.18);
-    --text: #ECE8E0;
-    --text-sub: #A7A093;
-    --text-muted: #7C766A;
-    --accent: #4FA97F;
-    --accent-dark: #3C8A66;
-    --accent-light: #1D2B24;
-    --accent-text: #0A0E0B;
-    --danger: #E4695A;
-    --input-bg: #242C26;
-    --shadow: rgba(0, 0, 0, 0.5);
+    --bg: #0A130E;
+    --surface: #17221C;
+    --surface2: #243029;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.22);
+    --text: #F3F0EA;
+    --text-sub: #AFAAA2;
+    --text-muted: #868178;
+    --accent: #4FA67B;
+    --accent-dark: #7FC9A1;
+    --accent-light: #20382B;
+    --accent-text: #FFFFFF;
+    --danger: #D47266;
+    --input-bg: #243029;
+    --shadow: rgba(0, 0, 0, 0.55);
 
     --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
     --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
     --e3: 0 6px 18px rgba(0, 0, 0, .44), 0 24px 56px rgba(0, 0, 0, .52);
     --verre-reflet: rgba(255, 255, 255, 0.10);
 
-    --scrim: rgba(0, 0, 0, 0.58);
-  --btn-primaire: #35855D;
-  --bar-bg: rgba(24, 30, 26, 0.72);
-    --bar-bg-opaque: rgba(24, 30, 26, 0.90);
+    --scrim: rgba(0, 0, 0, 0.62);
+  --btn-primaire: #1A7C53;
+  --bar-bg: rgba(19, 31, 24, 0.76);
+    --bar-bg-opaque: rgba(19, 31, 24, 0.93);
 
-    --accent-a10: rgba(79, 169, 127, 0.10);
-    --accent-a20: rgba(79, 169, 127, 0.22);
-    --accent-a33: rgba(79, 169, 127, 0.34);
-    --accent-a38: rgba(79, 169, 127, 0.40);
-    --accent-light-a53: rgba(29, 43, 36, 0.60);
+    --accent-a10: rgba(79, 166, 123, 0.12);
+    --accent-a20: rgba(79, 166, 123, 0.24);
+    --accent-a33: rgba(79, 166, 123, 0.36);
+    --accent-a38: rgba(79, 166, 123, 0.42);
+    --accent-light-a53: rgba(32, 56, 43, 0.53);
 
-    --cmp-up-bg: #17301F;   --cmp-up-border: #4FA97F;   --cmp-up-text: #6FCB9B;
-    --cmp-down-bg: #331B1B; --cmp-down-border: #E4695A; --cmp-down-text: #F09287;
+    --cmp-up-bg: #053131;   --cmp-up-border: #36A5A6;   --cmp-up-text: #6FC7C8;
+    --cmp-down-bg: #411E1A; --cmp-down-border: #D47266; --cmp-down-text: #F49A8E;
 
-    --set-done-bg: #1A2620;
+    --set-done-bg: #0F2727;
 
     --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
 
@@ -247,12 +251,14 @@
   /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
      choisir une variante de palette revient à les changer, et rien
      d'autre. Le code, lui, ne bouge plus. */
-  --entete-tx: var(--accent);
-  --barre-tx: var(--text-muted);
-  --barre-tx-actif: var(--accent);
-  --hero-bg: var(--surface);
-  --hero-tx: var(--text);
-  --hero-sub: var(--text-muted);
+  --entete-tx: #F3F0EA;
+  --barre-tx: #868178;
+  --barre-tx-actif: #4FA67B;
+  --hero-bg: #014128;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #134D33 0%, #02341F 100%);
 }
 
 /* Le fond de page suit le thème, y compris derrière la zone sûre iOS. */
