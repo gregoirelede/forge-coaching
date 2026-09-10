@@ -55,7 +55,11 @@ function requete(table) {
   const notes  = table === "session_notes";
   const bilans = table === "weekly_reviews";
   const q = { _f: {},
-    select(){ return q; }, order(){ return q; }, in(){ return q; }, gte(){ return q; }, limit(){ return q; },
+    select(){ return q; }, order(){ return q; },
+    // La pagination réelle passe par .range() : un stub qui l'ignore rend
+    // tout d'un coup, ce qui suffit pour ces jeux d'essai (bien sous les
+    // 1 000 lignes). test-pagination.mjs, lui, applique le vrai plafond.
+    range(){ return q; }, in(){ return q; }, gte(){ return q; }, limit(){ return q; },
     eq(c,v){ q._f[c]=v; return q; },
     update(vals){ return { eq: async () => ({ error: null }) }; },
     upsert: async (vals, opts) => {

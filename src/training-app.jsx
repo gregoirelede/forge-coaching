@@ -551,11 +551,50 @@ async function pushSetToSupabase({ supabase, userId, programId, weekIdCache, pay
   if (error) throw error;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  LIRE UNE TABLE EN ENTIER
+//
+//  PostgREST plafonne toute requête non paginée à 1 000 lignes, et ne le dit
+//  PAS : pas d'erreur, pas d'avertissement, juste un tableau qui s'arrête. Trois
+//  lectures de l'app dépassaient déjà ce plafond, relevé en base le
+//  10 septembre 2026 :
+//
+//   · `foods` — 3 286 aliments, dont 1 000 seulement arrivaient jusqu'à l'app.
+//     Il ne restait au générateur de diète que 56 féculents sur 313 et 193
+//     protéines sur 788, découpés par ordre alphabétique.
+//   · la sauvegarde du coach — 1 383 séries loguées, donc 383 absentes de
+//     CHAQUE fichier exporté. Une sauvegarde qui perd des données en silence
+//     est pire que pas de sauvegarde : on croit être couvert.
+//   · `loadAllSetsFromSupabase` — 536 séries pour la coachée la plus active,
+//     et ~52 de plus par semaine. Pas encore atteint, mais c'est une échéance,
+//     pas un risque.
+//
+//  L'ORDRE EXPLICITE N'EST PAS UNE COQUETTERIE. Sans `ORDER BY`, Postgres ne
+//  garantit aucun ordre stable entre deux requêtes : deux pages successives
+//  pourraient renvoyer deux fois la même ligne et en oublier une autre. Chaque
+//  appel ci-dessous ordonne donc sur une clé unique, ou termine par `id`.
+const PAGE_SUPABASE = 1000;
+// Garde-fou : à 200 pages on a lu 200 000 lignes, l'app a un autre problème.
+const PAGES_MAX = 200;
+
+async function lireTout(construire) {
+  const tout = [];
+  for (let page = 0; page < PAGES_MAX; page++) {
+    const debut = page * PAGE_SUPABASE;
+    const { data, error } = await construire().range(debut, debut + PAGE_SUPABASE - 1);
+    if (error) throw error;
+    const lot = data || [];
+    tout.push(...lot);
+    // Un lot incomplet signifie qu'on a atteint la fin.
+    if (lot.length < PAGE_SUPABASE) return tout;
+  }
+  return tout;
+}
+
 async function loadAllSetsFromSupabase(supabase, userId) {
-  const { data, error } = await supabase
+  const data = await lireTout(() => supabase
     .from("sets_logged").select("*, week:week_id(week_number)")
-    .eq("coachee_id", userId);
-  if (error) throw error;
+    .eq("coachee_id", userId).order("id"));
   const allCompletedSets = {}, allSetLogs = {};
   let maxWeek = 1;
   (data || []).forEach(row => {
@@ -3634,16 +3673,27 @@ async function construireSauvegarde(supabase, coachId, coachees) {
   // Les profils, débarrassés du code d'accès.
   donnees.profiles = coachees.map(({ access_code, ...reste }) => reste);
 
+  // Chaque table est lue EN ENTIER : `sets_logged` dépassait déjà les 1 000
+  // lignes que PostgREST renvoie par défaut, et personne ne pouvait le voir —
+  // le fichier exporté avait l'air complet.
   for (const table of SAUVEGARDE_TABLES_COACHES) {
     if (ids.length === 0) { donnees[table] = []; continue; }
-    const { data, error } = await supabase.from(table).select("*").in("coachee_id", ids);
-    // Une table absente (migration pas jouée) ne doit pas faire échouer toute
-    // la sauvegarde : on note l'incident et on continue.
-    donnees[table] = error ? { _erreur: error.message, lignes: [] } : (data || []);
+    try {
+      donnees[table] = await lireTout(() =>
+        supabase.from(table).select("*").in("coachee_id", ids).order("id"));
+    } catch (e) {
+      // Une table absente (migration pas jouée) ne doit pas faire échouer toute
+      // la sauvegarde : on note l'incident et on continue.
+      donnees[table] = { _erreur: e.message, lignes: [] };
+    }
   }
   for (const table of SAUVEGARDE_TABLES_COACH) {
-    const { data, error } = await supabase.from(table).select("*").eq("coach_id", coachId);
-    donnees[table] = error ? { _erreur: error.message, lignes: [] } : (data || []);
+    try {
+      donnees[table] = await lireTout(() =>
+        supabase.from(table).select("*").eq("coach_id", coachId).order("id"));
+    } catch (e) {
+      donnees[table] = { _erreur: e.message, lignes: [] };
+    }
   }
 
   // Les repas et leurs aliments pendent d'un plan, pas d'un coaché : ils ne
@@ -3653,15 +3703,14 @@ async function construireSauvegarde(supabase, coachId, coachees) {
     const plans = Array.isArray(donnees.diet_plans) ? donnees.diet_plans : [];
     const planIds = plans.map(p => p.id);
     if (planIds.length) {
-      const { data: repas, error: eR } = await supabase.from("diet_meals").select("*").in("plan_id", planIds);
-      if (eR) throw eR;
-      donnees.diet_meals = repas || [];
-      const repasIds = (repas || []).map(r => r.id);
-      if (repasIds.length) {
-        const { data: items, error: eI } = await supabase.from("diet_items").select("*").in("meal_id", repasIds);
-        if (eI) throw eI;
-        donnees.diet_items = items || [];
-      } else donnees.diet_items = [];
+      const repas = await lireTout(() =>
+        supabase.from("diet_meals").select("*").in("plan_id", planIds).order("id"));
+      donnees.diet_meals = repas;
+      const repasIds = repas.map(r => r.id);
+      donnees.diet_items = repasIds.length
+        ? await lireTout(() =>
+            supabase.from("diet_items").select("*").in("meal_id", repasIds).order("id"))
+        : [];
     } else { donnees.diet_meals = []; donnees.diet_items = []; }
   } catch (e) {
     donnees.diet_meals = { _erreur: e.message, lignes: [] };
@@ -5906,8 +5955,10 @@ function ajusterRepas(items, cibleRepas, foods) {
 
 // ── Helpers Supabase diète fixe ──
 async function loadFoods(supabase, coachId) {
-  const { data, error } = await supabase.from("foods").select("*").order("name");
-  if (error) throw error;
+  // `name` n'est pas unique (un coach peut créer son propre « Riz basmati » à
+  // côté de celui de Ciqual) : `id` départage, sinon la pagination boiterait.
+  const data = await lireTout(() => supabase.from("foods").select("*")
+    .order("name").order("id"));
   // La policy filtre déjà : base commune + aliments du coach connecté.
   return data || [];
 }

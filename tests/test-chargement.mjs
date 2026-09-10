@@ -118,7 +118,7 @@ const COACHE = { id:"c1", name:"Marie Dupont", role:"coachee", coach_id:"coach-1
   access_code:"MDUPONT27", offer:"premium", is_active:true, created_at:"2026-06-01T09:00:00Z" };
 function requete(t){
   const jamais = () => new Promise(()=>{});
-  const q={_f:{},select(){return q},order(){return q},in(){return q},gte(){return q},limit(){return q},
+  const q={_f:{},select(){return q},order(){return q},range(){return q},in(){return q},gte(){return q},limit(){return q},
    eq(c,v){q._f[c]=v;return q},update(){return q},insert:async()=>({data:null,error:null}),upsert:async()=>({data:null,error:null}),
    delete(){return{eq:async()=>({error:null})}},
    single:async()=>({data:t==="profiles"?COACHE:t==="programs"?PROG:null,error:null}),
