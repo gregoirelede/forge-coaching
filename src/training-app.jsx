@@ -1607,25 +1607,34 @@ function HomePage({ ctx }) {
       </div>
       <div style={{ padding: "0 18px" }}>
         {todaySession ? (
-          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: T.surface, borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
-            {/* LA COULEUR SIGNALE L'ACTION, ELLE NE REMPLIT PAS LA SURFACE.
-                Le bloc vert saturé remplissait 40 % de l'écran d'accueil pour
-                ne rien dire de plus qu'un nom de séance : c'est ce qui donnait
-                à la page son air de gabarit. La carte redevient une surface
-                calme, et le vert se concentre là où il compte — le bouton. */}
+          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: "var(--hero-bg)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
+            {/* POURQUOI LE VERT REVIENT ICI, APRÈS AVOIR ÉTÉ RETIRÉ EN v7z.
+                En v7z, la carte avait été calmée parce qu'un bloc vert SATURÉ
+                remplissait 40 % de l'accueil pour ne rien dire de plus qu'un
+                nom de séance. Le constat était juste, la conclusion trop large :
+                mesuré le 10 septembre, le vert de marque ne couvrait plus que
+                1 % de l'écran, et une marque dont la couleur ne se voit pas
+                n'a pas de couleur.
+                Ce n'est pas le même vert qui revient. L'ancien était un dégradé
+                teal vif ; celui-ci est un ton PROFOND de la rampe (L≈0.40,
+                chroma bas), qui se lit comme une matière et non comme un
+                aplat d'accent. La différence entre « premium » et « gabarit »
+                tient dans cet écart-là. */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textMuted, letterSpacing: 0 }}>Séance du jour · {todayDay.charAt(0) + todayDay.slice(1).toLowerCase()}</div>
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: T.text }}>{todaySession.name}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--hero-sub)", letterSpacing: 0 }}>Séance du jour · {todayDay.charAt(0) + todayDay.slice(1).toLowerCase()}</div>
+                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: "var(--hero-tx)" }}>{todaySession.name}</div>
               </div>
-              <div style={{ background: T.accentLight, color: T.accentDark, padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 }}>S{currentWeek}</div>
+              <div style={{ background: "rgba(255,255,255,0.18)", color: "var(--hero-tx)", padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 }}>S{currentWeek}</div>
             </div>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: T.textSub }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="workout" size={15} color={T.textMuted}/><span>{todaySession.exercises.length} exercices</span></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="clock" size={15} color={T.textMuted}/><span>~{estimateSessionMinutes(todaySession)} min</span></div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: "var(--hero-sub)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="workout" size={15} color="var(--hero-sub)"/><span>{todaySession.exercises.length} exercices</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="clock" size={15} color="var(--hero-sub)"/><span>~{estimateSessionMinutes(todaySession)} min</span></div>
             </div>
-            <button className="pressable" style={{ background: T.accent, color: T.accentText, border: "none", borderRadius: 16, padding: "15px 20px", fontSize: 14, fontWeight: 700, letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
-              <Icon name="play" size={15} color={T.accentText} filled/> Commencer la séance
+            {/* Bouton clair sur fond soutenu : l'inverse du bouton principal
+                ordinaire, parce qu'ici c'est le FOND qui porte la couleur. */}
+            <button className="pressable" style={{ background: "var(--hero-tx)", color: "var(--hero-bg)", border: "none", borderRadius: 16, padding: "15px 20px", fontSize: 14, fontWeight: 700, letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>
+              <Icon name="play" size={15} color="var(--hero-bg)" filled/> Commencer la séance
             </button>
           </div>
         ) : (
@@ -2755,9 +2764,9 @@ function BottomTabBar({ activePage, onNavigate, showNutrition, weighReminder }) 
         const isActive = activePage === tab.id;
         const showDot = tab.id === "nutrition" && weighReminder;
         return (
-          <button key={tab.id} onClick={() => onNavigate(tab.id)} className="tab-bar-btn" style={{ background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? T.accent : T.textMuted, transition: "color .2s" }}>
+          <button key={tab.id} onClick={() => onNavigate(tab.id)} className="tab-bar-btn" style={{ background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? "var(--barre-tx-actif)" : "var(--barre-tx)", transition: "color .2s" }}>
             <div style={{ position: "relative", transition: "transform .25s cubic-bezier(0.34,1.56,0.64,1)", transform: isActive ? "scale(1.1)" : "scale(1)" }}>
-              <Icon name={tab.icon} size={22} color={isActive ? T.accent : T.textMuted} filled={isActive} stroke={2}/>
+              <Icon name={tab.icon} size={22} color={isActive ? "var(--barre-tx-actif)" : "var(--barre-tx)"} filled={isActive} stroke={2}/>
               {showDot && <span style={{ position: "absolute", top: -2, right: -4, width: 9, height: 9, borderRadius: "50%", background: T.danger, border: `1.5px solid ${T.surface}` }}/>}
             </div>
             <div style={{ fontSize: 9, fontWeight: isActive ? 800 : 600, letterSpacing: .3, transition: "all .2s" }}>{tab.label}</div>
@@ -3179,7 +3188,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
       <div className="verre" style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
-          <div style={{ fontWeight: 800, fontSize: 13, color: T.accent, letterSpacing: 1 }}>FORGE COACHING</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: "var(--entete-tx)", letterSpacing: 1 }}>FORGE COACHING</div>
         </div>
         <SyncDot status={syncStatus}/>
       </div>
@@ -5213,8 +5222,8 @@ function CoachTabBar({ activePage, onNavigate }) {
       {tabs.map(tab => {
         const isActive = activePage === tab.id;
         return (
-          <button key={tab.id} onClick={() => onNavigate(tab.id)} className="tab-bar-btn" style={{ background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? T.accent : T.textMuted }}>
-            <Icon name={tab.icon} size={22} color={isActive ? T.accent : T.textMuted} filled={isActive}/>
+          <button key={tab.id} onClick={() => onNavigate(tab.id)} className="tab-bar-btn" style={{ background: "transparent", border: "none", cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 4px", color: isActive ? "var(--barre-tx-actif)" : "var(--barre-tx)" }}>
+            <Icon name={tab.icon} size={22} color={isActive ? "var(--barre-tx-actif)" : "var(--barre-tx)"} filled={isActive}/>
             <div style={{ fontSize: 9, fontWeight: isActive ? 800 : 600 }}>{tab.label}</div>
           </button>
         );
@@ -5266,7 +5275,7 @@ function CoachApp({ session, supabase, coachProfile, onLogout }) {
       <div className="verre" style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: `1px solid ${T.border}`, padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ForgeLogo size={28}/>
-          <div style={{ fontWeight: 800, fontSize: 13, color: T.accent, letterSpacing: 1 }}>FORGE · COACH</div>
+          <div style={{ fontWeight: 800, fontSize: 13, color: "var(--entete-tx)", letterSpacing: 1 }}>FORGE · COACH</div>
         </div>
         <button onClick={onLogout} title="Déconnexion" style={{ background: "transparent", border: "none", cursor: "pointer", color: T.textMuted, display: "flex", alignItems: "center" }}>
           <Icon name="logout" size={18} color={T.textMuted}/>
