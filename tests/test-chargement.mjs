@@ -157,7 +157,7 @@ console.log("\n─── En mode sombre ───");
   await p.goto(URL, { waitUntil: "domcontentloaded" });
   await p.waitForTimeout(1800);
   const fond = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  ok(fond === "rgb(16, 21, 18)", `l'écran de démarrage suit le thème sombre (${fond})`);
+  ok(fond === "rgb(10, 19, 14)", `l'écran de démarrage suit le thème sombre (${fond})`);
   await ctx.close();
 }
 

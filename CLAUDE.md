@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8b** | **La couleur** : palette « Vert d'ancrage » construite en OKLCH — le vert de marque passe de 1 % à la navigation et au hero, le sable gagne 34 points de profondeur, la progression quitte le vert pour turquoise/corail. Dégradé de clarté sur le hero ; grain essayé, mesuré invisible, retiré | 603 167 o | 8211 |
 | **v8a** | **Le plafond des 1 000 lignes** : `foods` n'en livrait que 1 000 sur 3 286 — le générateur de diète ne voyait que 56 féculents sur 313 — et chaque sauvegarde perdait 383 séries en silence. Toute lecture non bornée passe par `lireTout()` | 601 605 o | 8211 |
 | **v7z** | **Refonte des interfaces** : le système de style ne vit plus qu'à un endroit (`theme.css`), contrôle segmenté, listes groupées en encart, chrome des 14 feuilles mutualisé, bouton principal unique et enfin lisible (3,74:1 → 6,39:1). Trois défauts silencieux corrigés au passage | 601 253 o | 8160 |
 | **v7y** | **Les écrans de chargement** : les animations existaient dans des composants pas encore montés, donc le logo du démarrage ne bougeait pas. Le texte suit maintenant les vraies étapes, une connexion lente est annoncée, et les 11 pages internes affichent leur structure au lieu d'un spinner seul | 597 131 o | 8106 |
@@ -1167,7 +1168,17 @@ Appliquer un modèle = générer les `periodization_phases` à partir d'une date
 
 Ne pas les remettre en cause sans validation explicite de ma part.
 
-1. **Charge et reps comparées indépendamment**, jamais par tonnage. Code couleur vert/rouge sur chaque bulle séparément.
+1. **Charge et reps comparées indépendamment**, jamais par tonnage. Code couleur sur chaque bulle
+   séparément. **Le couple n'est plus vert/rouge mais TURQUOISE/CORAIL** *(modifié le 10 septembre
+   2026, avec l'accord explicite de Greg — Partie J.2)*. Deux raisons :
+   - Le vert de la progression partageait sa teinte avec le vert de marque (157° contre 162°,
+     **12° d'écart**). Tant que le vert ne servait qu'à décorer 1 % de l'écran, ça passait ;
+     du jour où il tient la navigation et le hero, une bulle verte cesse de vouloir dire
+     « tu as progressé ». **L'information la plus importante de l'app doit avoir SA couleur,
+     que rien d'autre n'utilise.**
+   - Bénéfice non recherché mais réel : vert/rouge est précisément le couple que ne distinguent
+     pas les ~8 % d'hommes atteints de deutéranopie. Turquoise/corail se sépare aussi sur l'axe
+     bleu-jaune, donc reste lisible pour eux.
 2. **La comparaison se fait au MÊME EMPLACEMENT** — même séance, même position dans la séance,
    même numéro de série — et **jamais** entre deux occurrences du même exercice à des moments
    différents de la semaine. Un tirage vertical fait en 2e exercice le lundi et le même tirage
@@ -1719,6 +1730,72 @@ vivent dans des pastilles de 9 px. Trois conséquences, qui sont les trois levie
 > avancée était fausse. Même schéma qu'en v7x avec les couleurs « inversées » de
 > la comparaison vert/rouge, qui n'étaient pas inversées mais absentes.
 
+## Q.6 — Les dégradés et les textures : ce qui a été éprouvé, et ce qui a été rejeté
+
+Greg, le 10 septembre 2026 : « pourquoi ne pas avoir mis des dégradés comme sur la
+version d'avant ? » Bonne question, et la réponse tient à une distinction qui se
+mesure.
+
+### Un dégradé de CLARTÉ n'est pas un dégradé de TEINTE
+
+| | écart de teinte | écart de clarté |
+|---|---|---|
+| L'ancien dégradé, retiré en v7z (`#064E3B` → `#0D9488`) | **15,8°** | 0,222 |
+| Le dégradé retenu en v8b | **0,1°** | 0,091 |
+
+C'est toute la différence entre un **effet** et du **relief**. Traverser 15,8° de
+teinte, l'œil le lit comme « on a appliqué un dégradé » ; faire varier la seule
+clarté sur une teinte constante, il le lit comme « cette matière est éclairée par
+le haut ».
+
+Et le second n'est pas une coquetterie : **le système de style affirme déjà une
+source lumineuse.** `--e1/--e2/--e3` sont décrits comme « une ombre courte et
+nette (le contact) et une ombre longue et diffuse (la lumière ambiante) ». Un
+aplat parfaitement uniforme contredit cette affirmation — aucune matière réelle
+n'est uniforme sous une lumière. Le dégradé du hero **rend l'app cohérente avec
+sa propre physique**.
+
+### Le grain : essayé, mesuré, rejeté
+
+Le grain SVG (`feTurbulence` en `background-image`) est la technique « premium »
+la plus recommandée en 2026, pour deux raisons annoncées. Les deux ont été
+vérifiées sur l'app, et les deux tombent :
+
+1. **« Il ajoute de la matière. »** Mesuré sur le hero rendu en x3 : le grain à
+   5,5 % en `soft-light` ajoute **+0,13 d'écart-type sur 255**, soit 0,05 % de
+   l'échelle. Poussé à 17 % en `overlay`, il ne registre toujours pas à l'œil sur
+   un vert soutenu. Il est invisible.
+2. **« Il supprime le banding. »** Il n'y a pas de banding à supprimer : le
+   dégradé du hero parcourt 24 niveaux sur 167 px, soit **une bande large de
+   0,7 px**. Très en dessous du seuil de perception.
+
+**Le code du grain a donc été retiré, pas désactivé.** Une technique décorative
+qu'on garde « au cas où » est exactement ce qui s'accumule et alourdit un thème.
+La mesure est consignée ici pour que personne ne refasse l'expérience.
+
+> **Note technique à conserver, elle, parce qu'elle est contre-intuitive :**
+> `feTurbulence` **fonctionne** sur Safari iOS depuis iOS 16 quand il est utilisé
+> en `background-image`. C'est en `backdrop-filter` qu'il est ignoré (Partie H).
+> Les deux mécanismes n'ont rien à voir. En revanche, **animer `baseFrequency`
+> ne marche pas sur iPhone** — un grain doit rester statique.
+
+### Les autres techniques examinées
+
+| Technique | Verdict |
+|---|---|
+| **Dégradé même teinte, vertical** | **Adopté** sur le hero. Cohérent avec les ombres |
+| **Grain / bruit** | Rejeté — invisible, et aucun banding à corriger (mesuré) |
+| **Lumière radiale** (source ponctuelle en haut à gauche) | Rejeté — écart-type 1,87 contre 0,44 : le point chaud dans l'angle se voit, et il se lit comme un effet |
+| **Dégradé en maille (*mesh*)** | Rejeté sans essai — c'est une mode datée d'avance, et elle ne porte aucune information |
+| **Bichromie sur images** | Sans objet : l'app n'affiche aucune photographie |
+| **Filet spéculaire sur les barres** | Déjà en place depuis la v7z (`.verre::before`) |
+
+> **La règle qui se dégage, et elle vaut au-delà des dégradés : un effet visuel
+> doit soit porter une information, soit rendre l'interface cohérente avec ce
+> qu'elle affirme déjà.** Le dégradé du hero fait le second. Le grain ne faisait
+> ni l'un ni l'autre — et le mesurer a pris dix minutes, contre des mois à traîner
+> du code décoratif.
+
 ## Q.5 — Les limites de ce qu'on a le droit de dire
 
 Elles s'ajoutent à celles du mode Coach (Partie P.4), et elles ne se négocient pas.
@@ -1775,9 +1852,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **10 septembre 2026** — v8a, 601 605 octets, 8211 lignes |
-| Contenu de ce build | Pagination : les 3 286 aliments arrivent enfin jusqu'à l'app, et la sauvegarde ne perd plus de séries |
-| Build précédent | 9 septembre 2026 — v7z, 601 253 octets. Refonte des interfaces |
+| Dernier build déployé | **10 septembre 2026** — v8b, 603 167 octets, 8211 lignes |
+| Contenu de ce build | La couleur : palette « Vert d'ancrage », progression en turquoise/corail, dégradé de clarté sur le hero |
+| Build précédent | 10 septembre 2026 — v8a, 601 605 octets. Pagination |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

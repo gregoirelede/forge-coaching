@@ -101,13 +101,17 @@
   --p-recomp-bg: #E0F5EC; --p-recomp-tx: #1A6640;
   --p-maintien-bg: #EDE8DF; --p-maintien-tx: #7A7060;
   --p-decharge-bg: #EDE8FF; --p-decharge-tx: #5B35B0;
-  /* Surface de la marque (Vert d'ancrage) */
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
   --entete-tx: #FFFFFF;
   --barre-tx: rgba(255, 255, 255, 0.72);
   --barre-tx-actif: #FFFFFF;
   --hero-bg: #035637;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #196343 0%, #01482D 100%);
 }
 
 :root[data-theme="sombre"] {
@@ -169,13 +173,17 @@
   --p-recomp-bg: #16301F; --p-recomp-tx: #7ACFA2;
   --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
   --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
-  /* Surface de la marque (Vert d'ancrage) */
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
   --entete-tx: #F3F0EA;
   --barre-tx: #868178;
   --barre-tx-actif: #4FA67B;
   --hero-bg: #014128;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #134D33 0%, #02341F 100%);
 }
 
 /* Mode automatique : suit le réglage du téléphone tant que le coaché n'a pas
@@ -240,13 +248,17 @@
     --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
     --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
   }
-  /* Surface de la marque (Vert d'ancrage) */
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
   --entete-tx: #F3F0EA;
   --barre-tx: #868178;
   --barre-tx-actif: #4FA67B;
   --hero-bg: #014128;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.72);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(180deg, #134D33 0%, #02341F 100%);
 }
 
 /* Le fond de page suit le thème, y compris derrière la zone sûre iOS. */
