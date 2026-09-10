@@ -46,7 +46,11 @@ const ERR_TABLE = { code: "42P01", message: 'relation "public.error_reports" doe
 function requete(table) {
   const err = table === "error_reports";
   const q = { _f: {},
-    select(){ return q; }, order(){ return q; }, gte(){ return q; },
+    select(){ return q; }, order(){ return q; },
+    // La pagination réelle passe par .range() : un stub qui l'ignore rend
+    // tout d'un coup, ce qui suffit pour ces jeux d'essai (bien sous les
+    // 1 000 lignes). test-pagination.mjs, lui, applique le vrai plafond.
+    range(){ return q; }, gte(){ return q; },
     limit(){ return q; },
     eq(c,v){ q._f[c]=v; return q; }, in(c,v){ q._f[c]=v; return q; },
     update(){ return q; }, upsert: async()=>({data:null,error:null}),

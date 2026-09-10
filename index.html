@@ -1239,9 +1239,22 @@ async function pushSetToSupabase({ supabase, userId, programId, weekIdCache, pay
   }, { onConflict: "coachee_id,week_id,session_config_id,exercise_index,set_index" });
   if (error) throw error;
 }
+const PAGE_SUPABASE = 1e3;
+const PAGES_MAX = 200;
+async function lireTout(construire) {
+  const tout = [];
+  for (let page = 0; page < PAGES_MAX; page++) {
+    const debut = page * PAGE_SUPABASE;
+    const { data, error } = await construire().range(debut, debut + PAGE_SUPABASE - 1);
+    if (error) throw error;
+    const lot = data || [];
+    tout.push(...lot);
+    if (lot.length < PAGE_SUPABASE) return tout;
+  }
+  return tout;
+}
 async function loadAllSetsFromSupabase(supabase, userId) {
-  const { data, error } = await supabase.from("sets_logged").select("*, week:week_id(week_number)").eq("coachee_id", userId);
-  if (error) throw error;
+  const data = await lireTout(() => supabase.from("sets_logged").select("*, week:week_id(week_number)").eq("coachee_id", userId).order("id"));
   const allCompletedSets = {}, allSetLogs = {};
   let maxWeek = 1;
   (data || []).forEach((row) => {
@@ -3182,26 +3195,27 @@ async function construireSauvegarde(supabase, coachId, coachees) {
       donnees[table] = [];
       continue;
     }
-    const { data, error } = await supabase.from(table).select("*").in("coachee_id", ids);
-    donnees[table] = error ? { _erreur: error.message, lignes: [] } : data || [];
+    try {
+      donnees[table] = await lireTout(() => supabase.from(table).select("*").in("coachee_id", ids).order("id"));
+    } catch (e) {
+      donnees[table] = { _erreur: e.message, lignes: [] };
+    }
   }
   for (const table of SAUVEGARDE_TABLES_COACH) {
-    const { data, error } = await supabase.from(table).select("*").eq("coach_id", coachId);
-    donnees[table] = error ? { _erreur: error.message, lignes: [] } : data || [];
+    try {
+      donnees[table] = await lireTout(() => supabase.from(table).select("*").eq("coach_id", coachId).order("id"));
+    } catch (e) {
+      donnees[table] = { _erreur: e.message, lignes: [] };
+    }
   }
   try {
     const plans = Array.isArray(donnees.diet_plans) ? donnees.diet_plans : [];
     const planIds = plans.map((p) => p.id);
     if (planIds.length) {
-      const { data: repas, error: eR } = await supabase.from("diet_meals").select("*").in("plan_id", planIds);
-      if (eR) throw eR;
-      donnees.diet_meals = repas || [];
-      const repasIds = (repas || []).map((r) => r.id);
-      if (repasIds.length) {
-        const { data: items, error: eI } = await supabase.from("diet_items").select("*").in("meal_id", repasIds);
-        if (eI) throw eI;
-        donnees.diet_items = items || [];
-      } else donnees.diet_items = [];
+      const repas = await lireTout(() => supabase.from("diet_meals").select("*").in("plan_id", planIds).order("id"));
+      donnees.diet_meals = repas;
+      const repasIds = repas.map((r) => r.id);
+      donnees.diet_items = repasIds.length ? await lireTout(() => supabase.from("diet_items").select("*").in("meal_id", repasIds).order("id")) : [];
     } else {
       donnees.diet_meals = [];
       donnees.diet_items = [];
@@ -4613,8 +4627,7 @@ function ajusterRepas(items, cibleRepas, foods) {
   return items.map((it, i) => __spreadProps(__spreadValues({}, it), { grams: (resolus.find((r) => r.food.id === it.food_id) || resolus[i] || it).grams }));
 }
 async function loadFoods(supabase, coachId) {
-  const { data, error } = await supabase.from("foods").select("*").order("name");
-  if (error) throw error;
+  const data = await lireTout(() => supabase.from("foods").select("*").order("name").order("id"));
   return data || [];
 }
 async function loadHabituels(supabase, coacheeId) {

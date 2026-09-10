@@ -93,6 +93,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8a** | **Le plafond des 1 000 lignes** : `foods` n'en livrait que 1 000 sur 3 286 — le générateur de diète ne voyait que 56 féculents sur 313 — et chaque sauvegarde perdait 383 séries en silence. Toute lecture non bornée passe par `lireTout()` | 601 605 o | 8211 |
 | **v7z** | **Refonte des interfaces** : le système de style ne vit plus qu'à un endroit (`theme.css`), contrôle segmenté, listes groupées en encart, chrome des 14 feuilles mutualisé, bouton principal unique et enfin lisible (3,74:1 → 6,39:1). Trois défauts silencieux corrigés au passage | 601 253 o | 8160 |
 | **v7y** | **Les écrans de chargement** : les animations existaient dans des composants pas encore montés, donc le logo du démarrage ne bougeait pas. Le texte suit maintenant les vraies étapes, une connexion lente est annoncée, et les 11 pages internes affichent leur structure au lieu d'un spinner seul | 597 131 o | 8106 |
 | **v7x** | **La comparaison vert/rouge remonte jusqu'à 3 semaines** au lieu d'exiger la semaine N−1 (18 % des séries n'avaient aucune couleur), **affiche sa référence chiffrée** sous chaque série, et **sépare les emplacements** : un exercice fait 2 fois dans la semaine a deux historiques et deux records | 590 721 o | 7975 |
@@ -1266,6 +1267,25 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **PostgREST plafonne toute requête non paginée à 1 000 lignes, sans le dire (trouvé le
+  10 septembre 2026, v8a).** Pas d'erreur, pas d'avertissement : un tableau qui s'arrête. Trois
+  lectures le dépassaient, dont deux **en production depuis des mois** :
+  1. **`foods` — 3 286 aliments, 1 000 reçus.** Il ne restait au générateur de diète que
+     **56 féculents sur 313** et **193 protéines sur 788**, découpés par ordre alphabétique. Ça
+     jette un jour nouveau sur le constat de la v7s (« le dîner s'arrêtait à 598 kcal, changer de
+     féculent est la bonne réponse ») : le choix de féculents était amputé de 82 %.
+  2. **La sauvegarde du coach — 1 383 séries loguées, donc 383 absentes de CHAQUE fichier
+     exporté.** Une sauvegarde qui perd des données en silence est pire que pas de sauvegarde :
+     on se croit couvert.
+  3. `loadAllSetsFromSupabase` — 536 séries pour la coachée la plus active, +52 par semaine.
+     Pas encore atteint, mais c'est une échéance, pas un risque.
+  Toute lecture qui peut dépasser 1 000 lignes passe désormais par `lireTout()`. **Et toujours
+  avec un `ORDER BY` sur une clé unique** : la doc Supabase le dit noir sur blanc — *« if there
+  is no order clause the range could behave unexpectedly »* — sans ordre stable, deux pages
+  peuvent renvoyer deux fois la même ligne et en oublier une autre.
+  La leçon générale : **un plafond qui ne lève pas d'erreur ne se découvre qu'en comptant.**
+  Comparer `count(*)` en base au nombre de lignes reçues par l'app est un contrôle de trente
+  secondes qui aurait évité des mois de diètes composées sur un cinquième de la base.
 - **Un `<style>` de composant ÉCRASE le thème, en silence (trouvé le 9 septembre 2026, v7z).**
   Deuxième face du piège des `@keyframes`, et plus retorse : les blocs `<style>` de
   `AuthenticatedApp` et de `CoachApp` redéfinissaient `.pressable`, `.quick-card`, `.hero-card`,
@@ -1606,9 +1626,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **9 septembre 2026** — v7z, 601 253 octets, 8160 lignes |
-| Contenu de ce build | Refonte des interfaces : système de style unifié, contrôle segmenté, listes groupées, chrome des feuilles mutualisé, bouton principal unique et lisible |
-| Build précédent | 9 septembre 2026 — v7y, 597 131 octets. Écrans de chargement |
+| Dernier build déployé | **10 septembre 2026** — v8a, 601 605 octets, 8211 lignes |
+| Contenu de ce build | Pagination : les 3 286 aliments arrivent enfin jusqu'à l'app, et la sauvegarde ne perd plus de séries |
+| Build précédent | 9 septembre 2026 — v7z, 601 253 octets. Refonte des interfaces |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

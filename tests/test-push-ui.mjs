@@ -84,7 +84,11 @@ const PROGRAMME = { id: "prog-1", coachee_id: "coache-test", is_active: true,
 function requete(table) {
   const q = {
     _table: table, _filtres: {},
-    select(){ return q; }, order(){ return q; }, in(){ return q; }, gte(){ return q; },
+    select(){ return q; }, order(){ return q; },
+    // La pagination réelle passe par .range() : un stub qui l'ignore rend
+    // tout d'un coup, ce qui suffit pour ces jeux d'essai (bien sous les
+    // 1 000 lignes). test-pagination.mjs, lui, applique le vrai plafond.
+    range(){ return q; }, in(){ return q; }, gte(){ return q; },
     eq(col, val){ q._filtres[col] = val; return q; },
     single: async () => ({ data: table === "profiles" ? PROFIL : table === "programs" ? PROGRAMME : null, error: null }),
     maybeSingle: async () => ({ data: table === "profiles" ? PROFIL : table === "programs" ? PROGRAMME : null, error: null }),
