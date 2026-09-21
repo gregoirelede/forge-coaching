@@ -69,6 +69,48 @@ VARIANTES = {
         # reviendrait à avoir deux marques.
         "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
     },
+    # ── LES DEUX VARIANTES À JUGER, 21 septembre 2026 ────────────────────────
+    #  Greg utilise l'app en CLAIR — l'hypothèse « c'est le défaut du sombre »
+    #  était fausse. Relevé au pixel sur l'accueil clair de la v8d :
+    #    42,7 %  les cartes, chroma 0,0045 — pratiquement blanches
+    #    33,6 %  le sable du fond, chroma 0,0221 — très pâle
+    #    22,7 %  le turquoise de marque
+    #  Soit 77 % de l'écran en surfaces quasi incolores. En approfondissant le
+    #  sable du FOND depuis la v8b, j'avais au passage blanchi les CARTES
+    #  (0,0073 → 0,0045) : le travail a porté là où il se voyait le moins.
+    "E-cartes-chaudes": {
+        "titre": "Cartes chaudes",
+        "resume": "Le sable revient dans les cartes — 43 % de l'écran, celui qu'on regarde.",
+        "sable_C": 0.022,
+        "carte_L": 0.975,
+        "sable_H": 82, "vert_H": 162, "vert_C": 0.105, "accent_H": 184.7,
+        "neutre_H": 82, "neutre_C": 0.004,
+        "entete": "sable-50", "hero": "vert-700",
+        "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+    },
+    "F-sable-dense": {
+        "titre": "Cartes chaudes, sable dense",
+        "resume": "Les cartes chaudes, plus un sable franchement beige sur le fond.",
+        "sable_C": 0.034,
+        "carte_L": 0.975,
+        "sable_H": 82, "vert_H": 162, "vert_C": 0.105, "accent_H": 184.7,
+        "neutre_H": 82, "neutre_C": 0.004,
+        "entete": "sable-50", "hero": "vert-700",
+        "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+    },
+    "G-cartes-chaudes-profond": {
+        "titre": "Cartes chaudes, fond approfondi",
+        "resume": "La chaleur de E, sans perdre la profondeur : le fond descend autant que la carte monte.",
+        "sable_C": 0.024,
+        "carte_L": 0.975, "fond_L": 0.930, "secondaire_L": 0.895,
+        "sable_H": 82, "vert_H": 162, "vert_C": 0.105, "accent_H": 184.7,
+        "neutre_H": 82, "neutre_C": 0.004,
+        "entete": "sable-50", "hero": "vert-700",
+        "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+    },
     "A-sable-approfondi": {
         "titre": "Sable approfondi",
         "resume": "Le sable devient une vraie couleur, le vert prend le bandeau et le hero.",
@@ -123,7 +165,24 @@ def le_plus_vif(H, seuil, fond, lmin=0.30, lmax=0.80, cmax=0.20):
     return best
 
 def construire(spec):
-    s = plat(spec["sable_H"], spec["sable_C"], TONS_SABLE)
+    # LA CLARTÉ DES CARTES EST UN PARAMÈTRE, et c'est le plus sensible de tous.
+    # Le ton "0" du sable est le fond des cartes, soit 43 % de l'écran mesuré.
+    # À 0,995 de clarté on est à un cheveu du blanc, et le sRGB ne sait pas y
+    # tenir de couleur : le convertisseur rabote le chroma jusqu'à ce que la
+    # teinte rentre, SANS RIEN DIRE. Sur 0,022 demandés, il en restait 0,0045 —
+    # 80 % perdus. Les cartes n'étaient donc pas blanches par décision, mais
+    # par écrêtage de gamut. Descendre à 0,975 en rend 98 %.
+    tons_sable = dict(TONS_SABLE)
+    if "carte_L" in spec:
+        tons_sable["0"] = spec["carte_L"]
+    # Réchauffer la carte la RAPPROCHE du fond : à clarté 0,975 contre 0,952,
+    # la séparation tombe de 1,13:1 à 1,07:1, à un cheveu du seuil. On descend
+    # donc le fond d'autant, ce qui rend la profondeur ET garde la chaleur.
+    if "fond_L" in spec:
+        tons_sable["100"] = spec["fond_L"]
+    if "secondaire_L" in spec:
+        tons_sable["200"] = spec["secondaire_L"]
+    s = plat(spec["sable_H"], spec["sable_C"], tons_sable)
     v = rampe(spec["vert_H"], spec["vert_C"], TONS_VERT)
     n = plat(spec["neutre_H"], spec["neutre_C"], TONS_SABLE)
     up = rampe(PROG_H_UP, PROG_C_UP, TONS_VERT)
@@ -156,11 +215,12 @@ def rapport(nom, spec):
         print(f"  {'ok  ' if bon else 'ECHEC'} {libelle:<26} {c:>6}:1   (seuil {seuil})")
     return ko
 
-if __name__ == "__main__":
+def _rapport_global():
     total = sum(rapport(n, s) for n, s in VARIANTES.items())
     print(f"\n{'─'*72}")
     print("Tous les contrôles de contraste passent." if total == 0
           else f"{total} contrôle(s) en échec — la variante n'est pas livrable en l'état.")
+    return total
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  Émission d'un theme.css complet.
@@ -338,3 +398,23 @@ def emettre(nom, spec, source):
         b = ajouter(b, table, neuves)
         css = css[:i] + b + css[k:]
     return css
+
+
+def _cli_emettre(noms):
+    """Écrit outils/palettes/<nom>.css pour chaque variante demandée, à partir
+    du src/theme.css RÉEL — donc rien de ce que le générateur ne connaît pas ne
+    peut être perdu au passage."""
+    racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    source = open(os.path.join(racine, "src/theme.css"), encoding="utf8").read()
+    for nom in noms:
+        if nom not in VARIANTES:
+            print(f"  variante inconnue : {nom}"); continue
+        cible = os.path.join(racine, "outils/palettes", nom + ".css")
+        open(cible, "w", encoding="utf8").write(emettre(nom, VARIANTES[nom], source))
+        print(f"  écrit  outils/palettes/{nom}.css")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--emettre":
+        _cli_emettre(sys.argv[2:] or list(VARIANTES))
+    else:
+        _rapport_global()
