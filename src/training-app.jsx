@@ -92,6 +92,12 @@ const T = {
   border: "var(--border)", borderStrong: "var(--border-strong)",
   text: "var(--text)", textSub: "var(--text-sub)", textMuted: "var(--text-muted)",
   accent: "var(--accent)", accentDark: "var(--accent-dark)",
+  // Le turquoise FORT. Réservé à ce qui n'est PAS du petit texte : gros
+  // chiffres, icônes, traits. Leur seuil de contraste est 3:1 et non
+  // 4,5:1, donc ils peuvent porter une couleur bien plus vive — mesuré,
+  // une vivacité de 103 contre 73 pour --accent. Les confondre revenait à
+  // brider tout l'écran au plafond du petit texte.
+  accentVif: "var(--accent-vif)",
   accentLight: "var(--accent-light)", accentText: "var(--accent-text)",
   danger: "var(--danger)", inputBg: "var(--input-bg)",
   shadow: "var(--shadow)",
@@ -1442,7 +1448,7 @@ function QuickCard({ icon, title, subtitle, onClick }) {
   return (
     <div onClick={onClick} className="quick-card" style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
       <div style={{ width: 30, height: 30, borderRadius: 9, background: T.accentLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Icon name={icon} size={17} color={T.accent}/>
+        <Icon name={icon} size={17} color={T.accentVif}/>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>{title}</div>
@@ -1652,8 +1658,8 @@ function HomePage({ ctx }) {
           { icon: "trending", value: stats.completedSets, label: "SÉRIES" },
         ].map((s, i) => (
           <div key={i} className="stat-card" style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` }}>
-            <Icon name={s.icon} size={18} color={T.accent}/>
-            <div style={{ fontWeight: 800, fontSize: 26, color: T.accent, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 }}>{s.value}</div>
+            <Icon name={s.icon} size={18} color={T.accentVif}/>
+            <div style={{ fontWeight: 800, fontSize: 26, color: T.accentVif, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 }}>{s.value}</div>
             <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
@@ -1676,7 +1682,7 @@ function HomePage({ ctx }) {
               {/* 17 px avec un interlettrage positif ne tenait pas dans 130 px :
                   « FULL BODY A » passait à la ligne et se cognait au bas de la
                   carte. La carte s'élargit, le titre se resserre. */}
-              <div style={{ fontWeight: 800, fontSize: 15.5, color: T.accent, letterSpacing: -0.2, lineHeight: 1.15, marginTop: 7, minHeight: 36 }}>{w.sess.name}</div>
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: T.accentVif, letterSpacing: -0.2, lineHeight: 1.15, marginTop: 7, minHeight: 36 }}>{w.sess.name}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 9, fontSize: 10, color: T.textMuted }}>
                 <Icon name="workout" size={11} color={T.textMuted}/><span>{w.sess.exercises.length} exos</span>
               </div>
