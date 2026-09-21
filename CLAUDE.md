@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8d** | **Le thème sombre était seize fois moins vif que le clair**, et personne ne pouvait le voir en lisant la palette : un hex à 8 chiffres (`#04332715`) mettait le hero à 8 % d'opacité, il se dissolvait dans la page. 1,1 % de pixels vifs contre 17,5 % en clair — désormais 17,1 % des deux côtés. La pastille de semaine repasse de 3,74:1 à 7,06:1 : un voile blanc sur un dégradé éclaircit le fond d'un texte blanc | 603 900 o | 8226 |
 | **v8c** | **L'éclat** : le dégradé d'origine revient sur le hero (mesuré conforme, mon refus reposait sur un contraste pris au mauvais endroit), la barre d'onglets repasse au sable, et les accents passent au turquoise du bouclier. Deux jetons d'accent au lieu d'un : vivacité 103 sur les chiffres et icônes contre 69 | 603 786 o | 8226 |
 | **v8b** | **La couleur** : palette « Vert d'ancrage » construite en OKLCH — le vert de marque passe de 1 % à la navigation et au hero, le sable gagne 34 points de profondeur, la progression quitte le vert pour turquoise/corail. Dégradé de clarté sur le hero ; grain essayé, mesuré invisible, retiré | 603 167 o | 8211 |
 | **v8a** | **Le plafond des 1 000 lignes** : `foods` n'en livrait que 1 000 sur 3 286 — le générateur de diète ne voyait que 56 féculents sur 313 — et chaque sauvegarde perdait 383 séries en silence. Toute lecture non bornée passe par `lireTout()` | 601 605 o | 8211 |
@@ -890,6 +891,7 @@ que React démarre, et jamais écrasé par un `<style>` de composant (voir Parti
 | Bouton principal | `--btn-primaire` | un dégradé écrit dans un `style={{}}` |
 | Accent, petit texte | `--accent` (4,5:1) | monter sa vivacité : elle est déjà au plafond |
 | Accent, chiffres et icônes | `--accent-vif` (3:1) | l'aligner sur `--accent`, ce serait le brider |
+| Voile sur fond soutenu | `--hero-pastille` (noir, jamais blanc) | un `rgba(255,255,255,…)` sur un dégradé sous du texte blanc |
 | Barres | classe `.verre` (`.verre.dense`) | un `backdropFilter` + un fond à la main |
 | Feuilles | classes `.sheet` `.sheet-backdrop` `.poignee` | le chrome d'une feuille inline |
 | Rangées qui défilent | `.rail` (`.rail.cartes` pour l'accrochage) | un `overflowX` nu |
@@ -1286,6 +1288,35 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Un calque translucide POSÉ SUR un dégradé devient le vrai fond du texte
+  (trouvé le 21 septembre 2026, v8d).** Suite directe du piège ci-dessous, et
+  c'est moi qui y suis retombé. La pastille « S17 » du hero portait
+  `rgba(255,255,255,0.18)` — un voile **blanc**, donc elle *éclaircit* le dégradé
+  sous un texte **blanc**. Échantillonné au pixel rendu : le fond réel vaut
+  `#369286` et le contraste tombe à **3,74:1**, sous le seuil. En v8c j'avais
+  mesuré le dégradé **sous** la pastille (`#0B7F71`, 4,90:1) : un calque trop bas.
+  La règle complète tient donc en deux axes. **La v8c dit où mesurer dans le plan
+  (x, y) ; celle-ci dit à quelle profondeur (z) : au calque le plus HAUT sous le
+  texte, pas au fond qu'on croit avoir posé.** Le moyen sûr est de rendre l'écran,
+  masquer les textes, et échantillonner le pixel — c'est ce que fait
+  `outils/` désormais.
+  Corollaire : un voile sur un fond soutenu se fait en **noir**, pas en blanc.
+  `rgba(0,0,0,0.18)` remonte la même pastille à 7,06:1 sans rien changer d'autre.
+  Elle vit maintenant dans `--hero-pastille`, parce qu'une couleur écrite en dur
+  dans un composant ne suit ni le thème ni la charte (Partie H).
+- **Un hex à 8 chiffres passe pour un hex à 6, en silence (même date, v8d).**
+  `--hero-fond` du thème sombre valait
+  `linear-gradient(135deg, #04332715 0%, #0A6F66 100%)`. Les deux derniers
+  caractères ne sont pas une coquille de saisie repérable : `#04332715` est un
+  **CSS parfaitement valide**, c'est `#043327` à **8 % d'opacité**. Aucune erreur,
+  aucun avertissement. Composé sur le fond de page sombre, ça donne un écart de
+  **3 niveaux sur 255** : la moitié haute du hero se dissolvait dans la page.
+  Mesuré en surface d'écran, le thème sombre tombait à **1,1 % de pixels vifs
+  contre 17,5 % en clair** — l'app était objectivement terne d'un côté et pas de
+  l'autre, et personne ne pouvait le voir en lisant la palette.
+  Deux réflexes : **un hex à 8 chiffres au milieu d'un fichier qui n'en écrit
+  qu'à 6 est une alerte**, et le contrôle qui tranche est le comptage de surface
+  vive, pas la relecture.
 - **Le contraste d'un texte sur un DÉGRADÉ ne se mesure pas contre la borne du
   dégradé (trouvé le 21 septembre 2026, v8c).** J'avais déconseillé à Greg son
   dégradé d'origine en annonçant **3,74:1**, sous le seuil. C'était faux : ce
@@ -1917,9 +1948,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **21 septembre 2026** — v8c, 603 786 octets, 8226 lignes |
-| Contenu de ce build | L'éclat : dégradé d'origine sur le hero, accents turquoise, barre d'onglets revenue au sable |
-| Build précédent | 10 septembre 2026 — v8b, 603 167 octets. Palette « Vert d'ancrage » |
+| Dernier build déployé | **21 septembre 2026** — v8d, 603 900 octets, 8226 lignes |
+| Contenu de ce build | Le thème sombre retrouve l'éclat du clair (1,1 % → 17,1 % de surface vive) ; la pastille du hero repasse au-dessus du seuil |
+| Build précédent | 21 septembre 2026 — v8c, 603 786 octets. Le dégradé d'origine sur le hero |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

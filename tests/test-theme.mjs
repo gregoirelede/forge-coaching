@@ -225,11 +225,51 @@ console.log("\n─── Un seul bouton principal, pas vingt-cinq ───");
   const definition = (html.match(/--degrade-marque:\s*linear-gradient/g) || []).length;
   const heroFond = (html.match(/--hero-fond:\s*linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
   ok(definition === 1, `le dégradé de marque est défini une fois (${definition})`);
-  ok(heroFond === 1, `le hero le porte, une fois (${heroFond})`);
+  // Le hero le porte dans CHAQUE bloc de thème — clair, sombre, et la requête
+  // média « le téléphone est en sombre ». Trois écritures, donc, et c'est voulu
+  // depuis la v8d : la charte pose que le dégradé de marque est identique dans
+  // les deux thèmes. C'est ce qui le rend reconnaissable.
+  ok(heroFond === 3, `le hero le porte dans les trois blocs de thème (${heroFond})`);
   ok(toutes - definition - heroFond === 0,
      `aucun bouton ne le redessine à la main (${toutes - definition - heroFond})`);
   const via = (html.match(/var\(--btn-primaire\)/g) || []).length;
   ok(via >= 20, `les ${via} boutons principaux lisent la même variable`);
+}
+
+console.log("\n─── Les deux thèmes ont le même éclat ───");
+{
+  // v8d. Le hero sombre portait #04332715 — un hex à HUIT chiffres, donc
+  // #043327 à 8 % d'opacité. CSS parfaitement valide, aucune erreur : la carte
+  // se dissolvait dans la page et le thème sombre tombait à 1,1 % de pixels
+  // vifs contre 17,5 % en clair. Rien dans la palette ne le laissait voir.
+  const theme = readFileSync(import.meta.dirname + "/../src/theme.css", "utf8");
+  const huit = theme.match(/#[0-9a-fA-F]{8}\b/g) || [];
+  ok(huit.length === 0,
+     `aucun hex à 8 chiffres dans le thème — l'alpha caché s'y glisse (${huit.join(", ") || "aucun"})`);
+
+  const fonds = [...theme.matchAll(/--hero-fond:\s*([^;]+);/g)].map(m => m[1].trim());
+  ok(fonds.length >= 2, `le hero a un fond dans chaque thème (${fonds.length})`);
+  ok(new Set(fonds).size === 1,
+     "le hero porte le MÊME dégradé en clair et en sombre — sinon la marque est double");
+}
+
+console.log("\n─── Un voile sur fond soutenu se fait en noir, jamais en blanc ───");
+{
+  // v8d. La pastille « S17 » portait rgba(255,255,255,0.18) : un voile blanc
+  // ÉCLAIRCIT le dégradé sous un texte blanc. Mesuré au pixel rendu : 3,74:1,
+  // sous le seuil. Le même voile en noir remonte à 7,06:1.
+  const src = readFileSync(import.meta.dirname + "/../src/training-app.jsx", "utf8");
+  const hero = src.slice(src.indexOf('className="hero-card"'),
+                         src.indexOf('className="hero-card"') + 3000);
+  const blancs = hero.match(/rgba\(255\s*,\s*255\s*,\s*255\s*,\s*0?\.\d+\)/g) || [];
+  ok(blancs.length === 0,
+     `aucun voile blanc écrit en dur dans le hero (${blancs.join(", ") || "aucun"})`);
+  ok(/var\(--hero-pastille\)/.test(hero),
+     "la pastille de semaine lit son jeton plutôt qu'une couleur en dur");
+  const theme = readFileSync(import.meta.dirname + "/../src/theme.css", "utf8");
+  const voiles = [...theme.matchAll(/--hero-pastille:\s*rgba\((\d+)/g)].map(m => Number(m[1]));
+  ok(voiles.length >= 2 && voiles.every(v => v === 0),
+     `le voile est noir dans les ${voiles.length} thèmes (${voiles.join(", ")})`);
 }
 
 await b.close();
