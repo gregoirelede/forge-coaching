@@ -63,7 +63,11 @@ VARIANTES = {
         # positions réelles des textes : 4 sur 5 passaient déjà le seuil, le
         # cinquième est réglé en remontant l'opacité du texte secondaire.
         "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
-        "hero_fond_sombre": "linear-gradient(135deg, #04332715 0%, #0A6F66 100%)",
+        # Le MÊME dégradé en sombre, volontairement. La charte (Partie H) pose
+        # déjà que le dégradé de marque reste identique dans les deux thèmes :
+        # c'est ce qui fait qu'on le reconnaît. Une version assourdie en sombre
+        # reviendrait à avoir deux marques.
+        "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
     },
     "A-sable-approfondi": {
         "titre": "Sable approfondi",
@@ -247,6 +251,9 @@ def emettre(nom, spec, source):
         "--hero-fond": spec.get("hero_fond") or _degrade(v[spec["hero"].split("-")[1]]),
         "--hero-tx": "#FFFFFF",
         "--hero-sub": _rgba("#FFFFFF", "0.88"),
+        # Voile SOMBRE, pas clair : un voile blanc éclaircit le dégradé sous un
+        # texte blanc et le fait tomber à 3,74:1. Mesuré, pas estimé.
+        "--hero-pastille": "rgba(0, 0, 0, 0.18)",
     }
     # En sombre, le fond est très foncé : le turquoise peut donc monter bien
     # plus haut en clarté, donc en vivacité, sans perdre en lisibilité.
@@ -288,6 +295,7 @@ def emettre(nom, spec, source):
         "--hero-bg": oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"]),
         "--hero-fond": spec.get("hero_fond_sombre") or _degrade(oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"])),
         "--hero-tx": "#FFFFFF", "--hero-sub": _rgba("#FFFFFF", "0.88"),
+        "--hero-pastille": "rgba(0, 0, 0, 0.18)",
     }
 
     css = source
@@ -320,7 +328,7 @@ def emettre(nom, spec, source):
         i = bloc.rindex("}")
         return bloc[:i] + f"  /* Surface de la marque ({spec['titre']}) */\n{ajout}\n" + bloc[i:]
 
-    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--accent-vif", "--hero-bg", "--hero-fond", "--hero-tx", "--hero-sub"]
+    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--accent-vif", "--hero-bg", "--hero-fond", "--hero-tx", "--hero-sub", "--hero-pastille"]
     # Du dernier au premier, pour que les positions restent valides.
     cibles = [(":root {", clair), (':root[data-theme="sombre"]', sombre),
               ("@media (prefers-color-scheme: dark)", sombre)]

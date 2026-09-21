@@ -110,6 +110,7 @@
   --hero-bg: #025639;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
   --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
   /* Surface de la marque (Turquoise du bouclier) */
@@ -184,8 +185,9 @@
   --hero-bg: #02402A;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #04332715 0%, #0A6F66 100%);
+  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }
@@ -261,8 +263,9 @@
   --hero-bg: #02402A;
   --hero-tx: #FFFFFF;
   --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #04332715 0%, #0A6F66 100%);
+  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }

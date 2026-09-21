@@ -1631,7 +1631,7 @@ function HomePage({ ctx }) {
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--hero-sub)", letterSpacing: 0 }}>Séance du jour · {todayDay.charAt(0) + todayDay.slice(1).toLowerCase()}</div>
                 <div style={{ fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: "var(--hero-tx)" }}>{todaySession.name}</div>
               </div>
-              <div style={{ background: "rgba(255,255,255,0.18)", color: "var(--hero-tx)", padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 }}>S{currentWeek}</div>
+              <div style={{ background: "var(--hero-pastille)", color: "var(--hero-tx)", padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 }}>S{currentWeek}</div>
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: "var(--hero-sub)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Icon name="workout" size={15} color="var(--hero-sub)"/><span>{todaySession.exercises.length} exercices</span></div>
