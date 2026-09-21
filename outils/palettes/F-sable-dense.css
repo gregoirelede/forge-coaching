@@ -1,0 +1,456 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FORGE COACHING — PALETTES CLAIRE ET SOMBRE
+
+   Inliné dans le <head> par build.mjs. Toutes les couleurs de l'app passent par
+   ces variables : la constante T du code JS ne contient plus que des var(--x).
+   Changer de thème revient donc à poser data-theme="sombre" sur <html>, sans
+   qu'aucun composant n'ait besoin d'être informé.
+
+   La palette claire est la charte "Forest & Sand" d'origine, inchangée.
+   La palette sombre en garde l'esprit : fonds vert-charbon plutôt que noirs,
+   texte blanc cassé chaud, accent vert éclairci pour rester lisible.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #FBEED6;
+  --surface: #FEF6E7;
+  --surface2: #F2E5CD;
+  /* Un contour de carte n'existe pas dans iOS : la séparation vient de la
+     PROFONDEUR. --border redevient donc ce qu'il est chez Apple — un filet de
+     séparation entre deux lignes d'une même liste, pas le tour d'un objet.
+     Passer de #DDD5C8 opaque à un filet à 10 % efface d'un coup les 200 cadres
+     qui donnaient à l'app son air de gabarit, sans toucher une ligne de JSX. */
+  --border: rgba(0, 20, 10, 0.11);
+  --border-strong: rgba(0, 20, 10, 0.22);
+  --text: #1B2821;
+  --text-sub: #67635C;
+  --text-muted: #8F8A81;
+  --accent: #08796F;
+  --accent-dark: #01534C;
+  --accent-light: #D7EFE2;
+  --accent-text: #FFFFFF;
+  --danger: #963C34;
+  --input-bg: #F2E5CD;
+  --shadow: rgba(0, 20, 10, 0.10);
+
+  /* ── ÉCHELLE DE PROFONDEUR ──────────────────────────────────────────────
+     Trois niveaux, pas un de plus. Chacun superpose une ombre courte et nette
+     (le contact) et une ombre longue et diffuse (la lumière ambiante) : c'est
+     ce qui distingue un objet posé d'un rectangle avec une ombre portée. */
+  --e1: 0 1px 2px rgba(38, 30, 18, .045), 0 4px 12px rgba(38, 30, 18, .05);
+  --e2: 0 2px 5px rgba(38, 30, 18, .055), 0 10px 26px rgba(38, 30, 18, .07);
+  --e3: 0 6px 18px rgba(38, 30, 18, .09), 0 24px 56px rgba(38, 30, 18, .12);
+
+  /* Le reflet spéculaire en haut d'un matériau translucide. Un filet clair
+     d'un pixel : c'est ce qui fait lire « verre » plutôt que « flou ». */
+  --verre-reflet: rgba(255, 255, 255, 0.55);
+
+  /* Barres translucides — en-tête collant et barre d'onglets. Elles sont
+     floutées (backdrop-filter), donc leur fond doit être semi-transparent :
+     ce sont les deux seules couleurs de l'app qui ne peuvent pas se contenter
+     de --surface. Elles étaient écrites en dur, et restaient donc blanches en
+     mode sombre — le défaut signalé le 25 août 2026. */
+  --scrim: rgba(0, 20, 10, 0.44);
+  --bar-bg: rgba(254, 246, 231, 0.72);
+  --bar-bg-opaque: rgba(254, 246, 231, 0.90);
+
+  /* Accent avec transparence — remplace les concaténations T.accent + "55" */
+  --accent-a10: rgba(8, 121, 111, 0.09);
+  /* Le bouton d'action principale. Il était un dégradé teal (#064E3B → #0D9488)
+     écrit à la main 25 fois, avec trois couples de bornes différents : deux
+     boutons principaux ne se ressemblaient pas d'un écran à l'autre. Et le teal
+     ne donnait que 3,74:1 en blanc dessus, sous le seuil de 4,5:1 pour du 13 px
+     gras — la couleur d'accent monte à 6,39:1.
+     Le dégradé de marque reste, mais à sa place : le bouclier et les avatars. */
+  --btn-primaire: #068379;
+  --btn-primaire-tx: #FFFFFF;
+  --degrade-marque: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --degrade-marque-clair: linear-gradient(135deg, #064E3B, #2DD4BF);
+  --accent-a20: rgba(8, 121, 111, 0.21);
+  --accent-a33: rgba(8, 121, 111, 0.33);
+  --accent-a38: rgba(8, 121, 111, 0.38);
+  --accent-light-a53: rgba(215, 239, 226, 0.53);
+
+  /* Comparaison inter-semaines : progression / régression */
+  --cmp-up-bg: #CDF0F0;   --cmp-up-border: #016B6C;   --cmp-up-text: #013A3A;
+  --cmp-down-bg: #FEE0DB; --cmp-down-border: #963C34; --cmp-down-text: #5A1612;
+
+  /* Série validée, chrono terminé */
+  --set-done-bg: #E5F7F6;
+
+  /* Encadré d'avertissement */
+  --warn-bg: #FEF3DC; --warn-text: #A06000; --warn-border: rgba(194, 122, 0, 0.25);
+
+  /* Groupes musculaires — liste fermée (Partie H) */
+  --m-triceps-bg: #FDE8E8;    --m-triceps-tx: #9B2C2C;
+  --m-pectoraux-bg: #FEF0E0;  --m-pectoraux-tx: #974A0A;
+  --m-deltpost-bg: #EDE8FF;   --m-deltpost-tx: #5B35B0;
+  --m-deltlat-bg: #E0EDFF;    --m-deltlat-tx: #1A56A0;
+  --m-quadriceps-bg: #E0F5EC; --m-quadriceps-tx: #1A6640;
+  --m-ischios-bg: #FFF8DC;    --m-ischios-tx: #8A6500;
+  --m-mollets-bg: #FDE8F3;    --m-mollets-tx: #8A2060;
+  --m-dorsal-bg: #D8F5EA;     --m-dorsal-tx: #1A5535;
+  --m-hautdos-bg: #DDEEFF;    --m-hautdos-tx: #1A4A80;
+  --m-biceps-bg: #F0E0FF;     --m-biceps-tx: #5A1A90;
+  --m-fessier-bg: #FFE8E8;    --m-fessier-tx: #902020;
+  --m-adducteurs-bg: #E0FFE8; --m-adducteurs-tx: #1A7030;
+
+  /* Phases de périodisation (Partie H) */
+  --p-masse-bg: #FEF3DC;  --p-masse-tx: #C27A00;
+  --p-seche-bg: #DDEEFF;  --p-seche-tx: #1A4A80;
+  --p-recomp-bg: #E0F5EC; --p-recomp-tx: #1A6640;
+  --p-maintien-bg: #EDE8DF; --p-maintien-tx: #7A7060;
+  --p-decharge-bg: #EDE8FF; --p-decharge-tx: #5B35B0;
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
+  --entete-tx: #00140A;
+  --barre-tx: #8F8A81;
+  --barre-tx-actif: #08796F;
+  --hero-bg: #025639;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  /* Surface de la marque (Turquoise du bouclier) */
+  --accent-vif: #089E91;
+}
+
+:root[data-theme="sombre"] {
+  --bg: #0A130E;
+  --surface: #17221C;
+  --surface2: #233029;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --text: #F3F0EA;
+  --text-sub: #AFAAA2;
+  --text-muted: #868178;
+  --accent: #01CCBC;
+  --accent-dark: #01CCBC;
+  --accent-light: #1F382C;
+  --accent-text: #FFFFFF;
+  --danger: #D47266;
+  --input-bg: #233029;
+  --shadow: rgba(0, 0, 0, 0.55);
+
+  --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
+  --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
+  --e3: 0 6px 18px rgba(0, 0, 0, .44), 0 24px 56px rgba(0, 0, 0, .52);
+  --verre-reflet: rgba(255, 255, 255, 0.10);
+
+  /* Même teinte que --surface, en translucide pour le flou. */
+  --scrim: rgba(0, 0, 0, 0.62);
+  --btn-primaire: #068379;
+  --bar-bg: rgba(18, 31, 25, 0.76);
+  --bar-bg-opaque: rgba(18, 31, 25, 0.93);
+
+  --accent-a10: rgba(1, 204, 188, 0.12);
+  --accent-a20: rgba(1, 204, 188, 0.24);
+  --accent-a33: rgba(1, 204, 188, 0.36);
+  --accent-a38: rgba(1, 204, 188, 0.42);
+  --accent-light-a53: rgba(31, 56, 44, 0.53);
+
+  --cmp-up-bg: #053131;   --cmp-up-border: #36A5A6;   --cmp-up-text: #6FC7C8;
+  --cmp-down-bg: #411E1A; --cmp-down-border: #D47266; --cmp-down-text: #F49A8E;
+
+  --set-done-bg: #0F2727;
+
+  --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
+
+  --m-triceps-bg: #37201F;    --m-triceps-tx: #F2A29B;
+  --m-pectoraux-bg: #362512;  --m-pectoraux-tx: #F0B478;
+  --m-deltpost-bg: #241E3A;   --m-deltpost-tx: #B9A3F0;
+  --m-deltlat-bg: #16263B;    --m-deltlat-tx: #8FBDF0;
+  --m-quadriceps-bg: #16301F; --m-quadriceps-tx: #7ACFA2;
+  --m-ischios-bg: #322A14;    --m-ischios-tx: #E0C263;
+  --m-mollets-bg: #331C29;    --m-mollets-tx: #EFA1C8;
+  --m-dorsal-bg: #14302A;     --m-dorsal-tx: #7CD3B6;
+  --m-hautdos-bg: #16263A;    --m-hautdos-tx: #8FBEE8;
+  --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
+  --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
+  --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+
+  --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
+  --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
+  --p-recomp-bg: #16301F; --p-recomp-tx: #7ACFA2;
+  --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
+  --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
+  --entete-tx: #F3F0EA;
+  --barre-tx: #868178;
+  --barre-tx-actif: #01CCBC;
+  --hero-bg: #02402A;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  /* Surface de la marque (Turquoise du bouclier) */
+  --accent-vif: #01CCBC;
+}
+
+/* Mode automatique : suit le réglage du téléphone tant que le coaché n'a pas
+   choisi explicitement. data-theme="clair" ou "sombre" prend le dessus. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]):not([data-theme="sombre"]) {
+    --bg: #0A130E;
+    --surface: #17221C;
+    --surface2: #233029;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.22);
+    --text: #F3F0EA;
+    --text-sub: #AFAAA2;
+    --text-muted: #868178;
+    --accent: #01CCBC;
+    --accent-dark: #01CCBC;
+    --accent-light: #1F382C;
+    --accent-text: #FFFFFF;
+    --danger: #D47266;
+    --input-bg: #233029;
+    --shadow: rgba(0, 0, 0, 0.55);
+
+    --e1: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .34);
+    --e2: 0 2px 5px rgba(0, 0, 0, .34), 0 10px 26px rgba(0, 0, 0, .40);
+    --e3: 0 6px 18px rgba(0, 0, 0, .44), 0 24px 56px rgba(0, 0, 0, .52);
+    --verre-reflet: rgba(255, 255, 255, 0.10);
+
+    --scrim: rgba(0, 0, 0, 0.62);
+  --btn-primaire: #068379;
+  --bar-bg: rgba(18, 31, 25, 0.76);
+    --bar-bg-opaque: rgba(18, 31, 25, 0.93);
+
+    --accent-a10: rgba(1, 204, 188, 0.12);
+    --accent-a20: rgba(1, 204, 188, 0.24);
+    --accent-a33: rgba(1, 204, 188, 0.36);
+    --accent-a38: rgba(1, 204, 188, 0.42);
+    --accent-light-a53: rgba(31, 56, 44, 0.53);
+
+    --cmp-up-bg: #053131;   --cmp-up-border: #36A5A6;   --cmp-up-text: #6FC7C8;
+    --cmp-down-bg: #411E1A; --cmp-down-border: #D47266; --cmp-down-text: #F49A8E;
+
+    --set-done-bg: #0F2727;
+
+    --warn-bg: #33290F; --warn-text: #E8B451; --warn-border: rgba(232, 180, 81, 0.28);
+
+    --m-triceps-bg: #37201F;    --m-triceps-tx: #F2A29B;
+    --m-pectoraux-bg: #362512;  --m-pectoraux-tx: #F0B478;
+    --m-deltpost-bg: #241E3A;   --m-deltpost-tx: #B9A3F0;
+    --m-deltlat-bg: #16263B;    --m-deltlat-tx: #8FBDF0;
+    --m-quadriceps-bg: #16301F; --m-quadriceps-tx: #7ACFA2;
+    --m-ischios-bg: #322A14;    --m-ischios-tx: #E0C263;
+    --m-mollets-bg: #331C29;    --m-mollets-tx: #EFA1C8;
+    --m-dorsal-bg: #14302A;     --m-dorsal-tx: #7CD3B6;
+    --m-hautdos-bg: #16263A;    --m-hautdos-tx: #8FBEE8;
+    --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
+    --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
+    --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+
+    --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
+    --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
+    --p-recomp-bg: #16301F; --p-recomp-tx: #7ACFA2;
+    --p-maintien-bg: #292723; --p-maintien-tx: #B5AC9C;
+    --p-decharge-bg: #241E3A; --p-decharge-tx: #B9A3F0;
+  }
+  /* Surface de la marque. Ces valeurs reproduisent le rendu actuel :
+     choisir une variante de palette revient à les changer, et rien
+     d'autre. Le code, lui, ne bouge plus. */
+  --entete-tx: #F3F0EA;
+  --barre-tx: #868178;
+  --barre-tx-actif: #01CCBC;
+  --hero-bg: #02402A;
+  --hero-tx: #FFFFFF;
+  --hero-sub: rgba(255, 255, 255, 0.88);
+  --hero-pastille: rgba(0, 0, 0, 0.18);
+  /* Surface de la marque (Vert d'ancrage) */
+  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  /* Surface de la marque (Turquoise du bouclier) */
+  --accent-vif: #01CCBC;
+}
+
+/* Le fond de page suit le thème, y compris derrière la zone sûre iOS. */
+html, body { background: var(--bg); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÉCHELLES — RAYONS, MOUVEMENT, TYPOGRAPHIE
+
+   Ce qui faisait « gabarit » n'était pas l'absence d'effets, c'était l'absence
+   d'ÉCHELLE : 19 rayons différents, des ombres identiques partout, et un
+   interlettrage large sur presque tous les petits textes. Une interface se lit
+   comme premium quand les valeurs se répètent, pas quand elles sont nombreuses.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --r-xs: 10px;   /* pastilles, petits champs */
+  --r-sm: 14px;   /* boutons, lignes de liste */
+  --r-md: 18px;   /* cartes */
+  --r-lg: 24px;   /* grandes cartes, barres flottantes */
+  --r-xl: 30px;   /* feuilles */
+  --r-pill: 999px;
+  --r-sheet: 28px;
+
+  /* La courbe d'iOS. Départ franc, arrivée longue et sans rebond : c'est elle
+     qui fait qu'un mouvement paraît « posé » plutôt que mécanique. */
+  --ressort: cubic-bezier(0.32, 0.72, 0, 1);
+  --sortie:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── LE MATÉRIAU DES BARRES ─────────────────────────────────────────────────
+   Ce qu'une page web peut réellement rendre du Liquid Glass : la translucidité,
+   la saturation du fond qui transparaît, et le filet spéculaire du haut. La
+   réfraction en temps réel d'iOS 26 passe par un filtre SVG dans
+   `backdrop-filter`, que SEUL Chromium accepte — Safari, donc tous les iPhone,
+   l'ignore et retombe sur un flou plat. On ne la simule donc pas : un flou
+   qu'on force sans réfraction rend l'interface plus terne, pas plus riche. */
+.verre {
+  background: var(--bar-bg);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  backdrop-filter: blur(28px) saturate(190%);
+  position: relative;
+}
+.verre::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding-top: 1px; pointer-events: none;
+  background: linear-gradient(var(--verre-reflet), transparent 1px);
+  -webkit-mask: linear-gradient(#000, transparent 55%);
+  mask: linear-gradient(#000, transparent 55%);
+}
+/* Une barre d'action posée SUR du contenu doit rester lisible : même matériau,
+   voile plus dense. */
+.verre.dense { background: var(--bar-bg-opaque); }
+/* « Réduire la transparence » d'iOS : on rend les barres opaques plutôt que
+   d'imposer un flou à quelqu'un qui a demandé de ne pas en avoir. */
+@media (prefers-reduced-transparency: reduce) {
+  .verre, .verre.dense { background: var(--bar-bg-opaque); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .sheet-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ── LA RÉPONSE AU TOUCHER ──────────────────────────────────────────────────
+   Sur iOS, un élément pressé s'enfonce légèrement et s'éclaircit, et il revient
+   plus lentement qu'il n'est parti. C'est ce décalage qui donne la sensation de
+   matière. */
+.pressable { transition: transform .42s var(--ressort), opacity .42s var(--ressort); }
+.pressable:active { transform: scale(.972); opacity: .82; transition-duration: .09s; }
+.quick-card { transition: transform .42s var(--ressort), box-shadow .42s var(--ressort); }
+.quick-card:active { transform: scale(.985); }
+.hero-card { transition: transform .5s var(--ressort), box-shadow .5s var(--ressort); }
+.hero-card:active { transform: scale(.988); }
+@media (prefers-reduced-motion: reduce) {
+  .pressable:active, .quick-card:active, .hero-card:active { transform: none; }
+}
+
+/* Les champs de saisie : anneau de focus à la place du surlignage par défaut. */
+input, select, textarea, button { font-family: inherit; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; box-shadow: 0 0 0 3.5px var(--accent-a20);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS PARTAGÉES — ICI ET PAS DANS UN COMPOSANT
+
+   Elles vivaient dans les blocs <style> de AuthenticatedApp et de CoachApp.
+   Conséquence, mesurée le 9 septembre 2026 : au démarrage de l'app, AUCUN de
+   ces deux composants n'est encore monté, donc aucune keyframe n'existe. Le
+   logo de l'écran « Initialisation… » demandait `animation: pulse` dans le
+   vide et restait parfaitement immobile — sur l'écran le plus vu de toute
+   l'app. Le spinner de l'écran de connexion ne tournait pas davantage.
+
+   Définies dans theme.css, elles sont inlinées dans le <head> au build : donc
+   présentes dès la toute première image, avant même que React démarre.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes spin   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulse  { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); }  to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes popIn  { from { opacity: 0; transform: scale(.8); }        to { opacity: 1; transform: scale(1); } }
+
+/* ── LES FEUILLES ──────────────────────────────────────────────────────────
+   Une feuille est le geste de navigation le plus utilisé de l'app : 18 d'entre
+   elles répétaient inline le même fond, le même rayon, la même ombre et le même
+   voile. Le chrome vit ici ; le composant ne pose plus que son `zIndex` et sa
+   hauteur.
+
+   La poignée de préhension suit la même logique : 12 feuilles sur 14 en avaient
+   une, dessinée à la main, avec trois marges différentes ; les deux autres n'en
+   avaient pas. Une seule règle, appliquée partout. */
+@keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+.sheet-backdrop {
+  position: fixed; inset: 0; background: var(--scrim);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: sheetFadeIn .28s ease both;
+}
+/* La poignée : 36 × 5 aux bouts entièrement arrondis, comme celle d'iOS. */
+.poignee {
+  width: 36px; height: 5px; border-radius: var(--r-pill);
+  background: var(--border-strong); margin: 10px auto 14px; flex-shrink: 0;
+}
+
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow: var(--e3);
+  animation: sheetSlideUp .46s var(--ressort) both;
+}
+
+/* ── LES RANGÉES QUI DÉFILENT ──────────────────────────────────────────────
+   Une rangée horizontale se coupait net au bord de l'écran, au milieu d'un mot
+   (« Sem… »), ce qui se lit comme un défaut d'affichage et non comme « ça
+   continue ». iOS estompe le bord ; on fait pareil, au masque, ce qui marche
+   quel que soit le fond derrière.
+
+   `scroll-snap` en prime : le doigt lâche la rangée sur une carte entière,
+   jamais entre deux. */
+.rail {
+  scrollbar-width: none;
+  -webkit-mask: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+  mask: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+}
+.rail::-webkit-scrollbar { display: none; }
+
+/* L'accrochage ne va QUE sur les rangées de cartes, et il vient toujours avec
+   son `scroll-padding`. Sans lui, le navigateur aligne la première carte sur le
+   bord du conteneur et mange les 18 px de marge de page : la rangée s'ouvrait
+   déjà décalée, collée au bord de l'écran. Mesuré, pas supposé — `scrollLeft`
+   valait 18 à l'ouverture. */
+.rail.cartes { scroll-snap-type: x proximity; scroll-padding-left: 18px; }
+.rail.cartes > * { scroll-snap-align: start; }
+
+/* ── LES TRANSITIONS DE PAGE ───────────────────────────────────────────────
+   Même raison d'être : elles étaient déclarées dans AuthenticatedApp, donc
+   absentes tant qu'il n'était pas monté. */
+@keyframes pageInForward  { from { opacity: 0; transform: translateX(20px); }  to { opacity: 1; transform: translateX(0); } }
+@keyframes pageInBackward { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(18px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes growUp  { from { height: 0; opacity: 0; } to { opacity: 1; } }
+.page-forward  { animation: pageInForward  .38s var(--ressort) both; }
+.page-backward { animation: pageInBackward .38s var(--ressort) both; }
+.fade-in { animation: fadeIn .3s ease forwards; }
+.tab-bar-btn:active > div:first-child { transform: scale(0.9) !important; }
+.upcoming-card { transition: transform .42s var(--ressort); }
+.upcoming-card:active { transform: scale(.978); }
+.stat-card { transition: transform .42s var(--ressort); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .sheet-backdrop, .page-forward, .page-backward, .fade-in { animation-duration: .01ms; }
+  .upcoming-card:active { transform: none; }
+}
+
+/* Le miroitement des squelettes de chargement. Le reflet passe de gauche à
+   droite sur un fond neutre ; les deux teintes viennent du thème, donc il
+   fonctionne en clair comme en sombre sans un seul réglage de plus. */
+@keyframes miroitement { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.squelette {
+  background: linear-gradient(90deg,
+    var(--surface2) 0%, var(--border) 45%, var(--surface2) 90%);
+  background-size: 220% 100%;
+  animation: miroitement 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+/* Respecte le réglage système « réduire les animations » : le miroitement
+   devient un aplat fixe, la structure reste lisible. */
+@media (prefers-reduced-motion: reduce) {
+  .squelette { animation: none; background: var(--surface2); }
+}
