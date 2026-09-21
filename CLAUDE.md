@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8e** | **Les cartes n'étaient pas blanches par choix, mais par écrêtage de gamut** : leur ton était demandé à 99,5 % de clarté, où le sRGB ne tient aucune couleur — 80 % du chroma était raboté en silence. Or c'est 43 % de l'écran. Relevé au pixel : 77 % de l'accueil clair était quasi incolore, désormais 6 %. Le fond descend d'autant pour que la carte se détache encore mieux qu'avant (1,14:1 → 1,20:1) | 603 900 o | 8226 |
 | **v8d** | **Le thème sombre était seize fois moins vif que le clair**, et personne ne pouvait le voir en lisant la palette : un hex à 8 chiffres (`#04332715`) mettait le hero à 8 % d'opacité, il se dissolvait dans la page. 1,1 % de pixels vifs contre 17,5 % en clair — désormais 17,1 % des deux côtés. La pastille de semaine repasse de 3,74:1 à 7,06:1 : un voile blanc sur un dégradé éclaircit le fond d'un texte blanc | 603 900 o | 8226 |
 | **v8c** | **L'éclat** : le dégradé d'origine revient sur le hero (mesuré conforme, mon refus reposait sur un contraste pris au mauvais endroit), la barre d'onglets repasse au sable, et les accents passent au turquoise du bouclier. Deux jetons d'accent au lieu d'un : vivacité 103 sur les chiffres et icônes contre 69 | 603 786 o | 8226 |
 | **v8b** | **La couleur** : palette « Vert d'ancrage » construite en OKLCH — le vert de marque passe de 1 % à la navigation et au hero, le sable gagne 34 points de profondeur, la progression quitte le vert pour turquoise/corail. Dégradé de clarté sur le hero ; grain essayé, mesuré invisible, retiré | 603 167 o | 8211 |
@@ -1288,6 +1289,31 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Un chroma demandé trop près du blanc est raboté EN SILENCE (trouvé le
+  21 septembre 2026, v8e).** Le fond des cartes — **43 % de l'écran, la plus
+  grande surface de l'app** — était demandé à `oklch(0.995, 0.022, 82)`. À un
+  cheveu du blanc, le sRGB ne sait pas tenir de couleur : le convertisseur
+  réduit le chroma jusqu'à ce que la teinte rentre dans l'espace affichable,
+  sans erreur et sans avertissement. Sur 0,022 demandés, **il en restait
+  0,0045 — 80 % perdus**. Les cartes n'étaient donc pas blanches par décision
+  de design, mais par écrêtage.
+
+  | clarté demandée | chroma qui survit |
+  |---|---|
+  | 0,995 | **20 %** |
+  | 0,985 | 61 % |
+  | 0,975 | **98 %** |
+
+  Deux réflexes. **Au-dessus de 0,98 de clarté, aucune couleur ne tient** :
+  écrire un jeton là revient à écrire du blanc. Et **on ne vérifie jamais une
+  couleur sur ce qu'on a demandé, toujours sur ce qui sort** — `hex_oklch()`
+  après `oklch_hex()` rend le chroma réel en une ligne.
+
+  Corollaire découvert en corrigeant : **réchauffer une carte la RAPPROCHE de
+  son fond.** La séparation tombait de 1,13:1 à 1,07:1, à un cheveu du seuil.
+  On descend donc le fond d'autant — c'est ce qui distingue la variante G,
+  déployée, de la variante E, écartée : G est meilleure sur les deux axes au
+  lieu d'échanger l'un contre l'autre.
 - **Un calque translucide POSÉ SUR un dégradé devient le vrai fond du texte
   (trouvé le 21 septembre 2026, v8d).** Suite directe du piège ci-dessous, et
   c'est moi qui y suis retombé. La pastille « S17 » du hero portait
@@ -1892,6 +1918,53 @@ contraire — beaucoup de surface, à intensité moyenne — et les deux se sont
 neutralisés. Le contraste entre le fond calme et l'accent saturé *est* l'attrait ;
 étaler la couleur le détruit.
 
+## Q.8 — Mesurer QUELLE surface on change, pas seulement la couleur
+
+Le 21 septembre 2026, Greg, après la v8d : « oui ça change ce que je ressentais,
+**mais j'utilisais l'app en mode clair** ». Ma correction du thème sombre était
+réelle et nécessaire — elle ne répondait simplement pas à sa question. J'avais
+construit une hypothèse et déployé dessus sans vérifier la prémisse.
+
+### Ce que le relevé a montré, et qui met en cause mon propre travail
+
+Accueil, thème clair, v8d, compté au pixel :
+
+| Surface | Part de l'écran | Chroma |
+|---|---|---|
+| **Les cartes** | **42,7 %** | **0,0045** — pratiquement blanches |
+| Le sable du fond | 33,6 % | 0,0221 — très pâle |
+| Le turquoise de marque | 22,7 % | — |
+
+**77 % de l'écran en surfaces quasi incolores**, et la plus grande est blanche.
+Pire, en comparant à la charte d'origine :
+
+| | avant la v8b | après |
+|---|---|---|
+| Fond de page (34 % de l'écran) | 0,0091 | **0,0221** ↑ |
+| **Cartes (43 % de l'écran)** | 0,0073 | **0,0045** ↓ |
+
+**J'avais approfondi la surface qui se voit le moins et blanchi celle qui se
+voit le plus.** Trois versions de travail sur la couleur, et l'objet principal
+allait dans le mauvais sens sans que rien ne le signale.
+
+### La règle qui en sort
+
+Q.3 disait déjà « la couleur ne se juge pas en nuancier, elle se juge en
+surface ». Ce n'était pas assez précis. La version utile :
+
+> **Avant de travailler une couleur, mesurer quelle PART DE L'ÉCRAN elle
+> occupe — et vérifier qu'on ne dégrade pas une plus grande surface en
+> améliorant une plus petite.** Un relevé de surface avant et après coûte dix
+> minutes ; il aurait évité trois versions de travail à côté.
+
+### Et la leçon de méthode, qui est la même qu'en Q.4 et en v7x
+
+Greg a dit « c'est terne » : signal juste sur le **symptôme**. J'ai supposé la
+cause (le thème sombre), déployé, et eu tort. **Une impression d'utilisateur ne
+se transforme en diagnostic qu'après une mesure — et la mesure doit porter sur
+ce que la personne regarde vraiment.** La question « quel thème utilises-tu ? »
+aurait dû être la PREMIÈRE, pas la quatrième.
+
 ## Q.5 — Les limites de ce qu'on a le droit de dire
 
 Elles s'ajoutent à celles du mode Coach (Partie P.4), et elles ne se négocient pas.
@@ -1948,9 +2021,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **21 septembre 2026** — v8d, 603 900 octets, 8226 lignes |
-| Contenu de ce build | Le thème sombre retrouve l'éclat du clair (1,1 % → 17,1 % de surface vive) ; la pastille du hero repasse au-dessus du seuil |
-| Build précédent | 21 septembre 2026 — v8c, 603 786 octets. Le dégradé d'origine sur le hero |
+| Dernier build déployé | **21 septembre 2026** — v8e, 603 900 octets, 8226 lignes |
+| Contenu de ce build | Les cartes portent enfin le sable (43 % de l'écran) ; le fond descend d'autant pour garder la profondeur |
+| Build précédent | 21 septembre 2026 — v8d, 603 900 octets. Le thème sombre retrouve son éclat |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

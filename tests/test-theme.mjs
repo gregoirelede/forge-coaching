@@ -48,9 +48,9 @@ console.log("\n─── Thème clair ───");
   const { ctx, p } = await ouvrir({ mode: "clair", systemeSombre: true });
   const t = await lire(p);
   ok(t.attr === "clair", `data-theme = ${t.attr}`);
-  ok(t.bg === "#F7EEDF", `--bg = ${t.bg} (sable approfondi, v8c)`);
-  ok(t.accent === "#08796F", `--accent = ${t.accent} (turquoise du bouclier)`);
-  ok(t.metaColor === "#F7EEDF", `barre d'état alignée : ${t.metaColor}`);
+  ok(t.bg === "#F0E7D6", `--bg = ${t.bg} (fond approfondi, v8e)`);
+  ok(t.accent === "#017369", `--accent = ${t.accent} (turquoise du bouclier)`);
+  ok(t.metaColor === "#F0E7D6", `barre d'état alignée : ${t.metaColor}`);
   // Depuis v8c les barres reviennent au sable : le vert plein en bas de
   // l'écran gênait à l'usage. La couleur de marque vit dans le hero et les
   // accents, pas dans le chrome.
@@ -125,7 +125,7 @@ console.log("\n─── Thème automatique ───");
 {
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: false });
   const t = await lire(p);
-  ok(t.bg === "#F7EEDF", `téléphone en clair → --bg = ${t.bg}`);
+  ok(t.bg === "#F0E7D6", `téléphone en clair → --bg = ${t.bg}`);
   await ctx.close();
 }
 
@@ -234,6 +234,33 @@ console.log("\n─── Un seul bouton principal, pas vingt-cinq ───");
      `aucun bouton ne le redessine à la main (${toutes - definition - heroFond})`);
   const via = (html.match(/var\(--btn-primaire\)/g) || []).length;
   ok(via >= 20, `les ${via} boutons principaux lisent la même variable`);
+}
+
+console.log("\n─── Les cartes portent le sable, elles ne sont pas blanches ───");
+{
+  // v8e. Le ton des cartes était demandé à 0,995 de clarté — à un cheveu du
+  // blanc, où le sRGB ne sait plus tenir de couleur. Le convertisseur rabotait
+  // 80 % du chroma SANS RIEN DIRE, et les cartes sortaient blanches : 43 % de
+  // l'écran, la plus grande surface de l'app. Ce n'était pas une décision.
+  const theme = readFileSync(import.meta.dirname + "/../src/theme.css", "utf8");
+  const val = (n) => (theme.match(new RegExp("\\" + n + ":\\s*(#[0-9A-Fa-f]{6})")) || [])[1];
+  // Chroma perçu, approché en HSL : suffisant pour distinguer « beige » de « blanc ».
+  const chroma = (h) => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), L = (mx + mn) / 2;
+    return mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * L - 1));
+  };
+  const carte = val("--surface");
+  ok(chroma(carte) > 0.25,
+     `la carte porte réellement le sable : ${carte}, saturation ${chroma(carte).toFixed(3)}`);
+  // Et elle doit rester DÉTACHÉE de son fond : réchauffer une carte la
+  // rapproche du fond, d'où le fond descendu d'autant.
+  const lum = (h) => { const c = [1,3,5].map(i => parseInt(h.slice(i,i+2),16)/255)
+      .map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; };
+  const fond = val("--bg");
+  const sep = (lum(carte) + 0.05) / (lum(fond) + 0.05);
+  ok(sep >= 1.10, `la carte se détache encore du fond : ${sep.toFixed(3)}:1 (seuil 1,06)`);
 }
 
 console.log("\n─── Les deux thèmes ont le même éclat ───");
