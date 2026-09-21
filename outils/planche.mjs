@@ -2,7 +2,7 @@
 // même écran. Trois fichiers séparés ne se comparent pas ; une planche, si.
 import { chromium } from "playwright";
 import { readFileSync, existsSync } from "node:fs";
-const SORTIE = "/tmp/maquettes";
+const SORTIE = process.env.SORTIE || "/tmp/maquettes";
 const VAR = process.env.VARIANTES
   ? JSON.parse(process.env.VARIANTES)
   : [["A-sable-approfondi", "A — Sable approfondi"],

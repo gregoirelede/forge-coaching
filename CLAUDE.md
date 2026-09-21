@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8c** | **L'éclat** : le dégradé d'origine revient sur le hero (mesuré conforme, mon refus reposait sur un contraste pris au mauvais endroit), la barre d'onglets repasse au sable, et les accents passent au turquoise du bouclier. Deux jetons d'accent au lieu d'un : vivacité 103 sur les chiffres et icônes contre 69 | 603 786 o | 8226 |
 | **v8b** | **La couleur** : palette « Vert d'ancrage » construite en OKLCH — le vert de marque passe de 1 % à la navigation et au hero, le sable gagne 34 points de profondeur, la progression quitte le vert pour turquoise/corail. Dégradé de clarté sur le hero ; grain essayé, mesuré invisible, retiré | 603 167 o | 8211 |
 | **v8a** | **Le plafond des 1 000 lignes** : `foods` n'en livrait que 1 000 sur 3 286 — le générateur de diète ne voyait que 56 féculents sur 313 — et chaque sauvegarde perdait 383 séries en silence. Toute lecture non bornée passe par `lireTout()` | 601 605 o | 8211 |
 | **v7z** | **Refonte des interfaces** : le système de style ne vit plus qu'à un endroit (`theme.css`), contrôle segmenté, listes groupées en encart, chrome des 14 feuilles mutualisé, bouton principal unique et enfin lisible (3,74:1 → 6,39:1). Trois défauts silencieux corrigés au passage | 601 253 o | 8160 |
@@ -887,6 +888,8 @@ que React démarre, et jamais écrasé par un `<style>` de composant (voir Parti
 | Rayons | `--r-xs` … `--r-xl`, `--r-pill`, `--r-sheet` | un `borderRadius` hors échelle |
 | Mouvement | `--ressort` `--sortie` | une courbe de Bézier recopiée |
 | Bouton principal | `--btn-primaire` | un dégradé écrit dans un `style={{}}` |
+| Accent, petit texte | `--accent` (4,5:1) | monter sa vivacité : elle est déjà au plafond |
+| Accent, chiffres et icônes | `--accent-vif` (3:1) | l'aligner sur `--accent`, ce serait le brider |
 | Barres | classe `.verre` (`.verre.dense`) | un `backdropFilter` + un fond à la main |
 | Feuilles | classes `.sheet` `.sheet-backdrop` `.poignee` | le chrome d'une feuille inline |
 | Rangées qui défilent | `.rail` (`.rail.cartes` pour l'accrochage) | un `overflowX` nu |
@@ -1283,6 +1286,18 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Le contraste d'un texte sur un DÉGRADÉ ne se mesure pas contre la borne du
+  dégradé (trouvé le 21 septembre 2026, v8c).** J'avais déconseillé à Greg son
+  dégradé d'origine en annonçant **3,74:1**, sous le seuil. C'était faux : ce
+  chiffre est le contraste contre `#0D9488`, la borne la plus claire — or le
+  dégradé est **diagonal** et cette borne se trouve dans l'angle bas-droite,
+  **où il n'y a que le bouton blanc**. Calculé aux positions réelles des cinq
+  textes du hero : 4 passaient déjà le seuil, le cinquième (« ~70 min », 4,19:1)
+  se règle en montant son opacité de 80 % à 88 %.
+  La règle : **un dégradé n'a pas UN contraste, il en a un par point.** On relève
+  la boîte de chaque texte, on calcule la couleur du dégradé à cet endroit, et on
+  mesure là. Déconseiller une direction sur une mesure prise au mauvais endroit
+  est plus coûteux qu'un bug : ça fait perdre une bonne idée.
 - **PostgREST plafonne toute requête non paginée à 1 000 lignes, sans le dire (trouvé le
   10 septembre 2026, v8a).** Pas d'erreur, pas d'avertissement : un tableau qui s'arrête. Trois
   lectures le dépassaient, dont deux **en production depuis des mois** :
@@ -1796,6 +1811,56 @@ La mesure est consignée ici pour que personne ne refasse l'expérience.
 > ni l'un ni l'autre — et le mesurer a pris dix minutes, contre des mois à traîner
 > du code décoratif.
 
+## Q.7 — La vivacité : ce qui fait qu'une couleur claque
+
+Greg, le 21 septembre 2026, après avoir vécu avec la v8b : « je trouve toujours
+les couleurs principales très ternes ». Il avait raison, et **j'avais confondu
+premium et désaturé** — une erreur de registre, pas de goût.
+
+### Vivacité = chroma × clarté, et c'est la clarté qui compte
+
+| | clarté | chroma | vivacité |
+|---|---|---|---|
+| Le dégradé d'origine, borne haute (`#0D9488`) | 0,600 | 0,104 | **87** |
+| Le bouclier (`#2DD4BF`) | 0,784 | 0,133 | **121** |
+| L'accent de la v8b (`#0C6E48`) | 0,477 | 0,104 | **69** |
+
+En passant de la v7z à la v8b, j'avais augmenté la **surface** du vert mais
+baissé sa **clarté** — et les deux se sont annulés. L'écart avec ce que Greg
+regrettait ne venait pas du chroma (1,3×) mais de la clarté (**1,6×**).
+
+> **Un ton sombre n'est jamais vif, quel que soit son chroma.** C'est la règle à
+> retenir : monter le chroma d'un vert forêt ne le rendra pas éclatant, il le
+> rendra seulement plus vert. L'éclat se gagne en clarté.
+
+### Le plafond de vivacité est fixé par le SEUIL DE CONTRASTE, pas par le goût
+
+C'est le point qui change la méthode. Un petit texte doit tenir 4,5:1, un gros
+chiffre ou une icône seulement 3:1. Sur le même fond sable, cela donne :
+
+| Usage | Seuil | Le plus vif possible | Vivacité |
+|---|---|---|---|
+| Petit texte | 4,5:1 | `#08796F` | 73 |
+| Gros chiffres, icônes, traits | 3:1 | `#05A598` | **103** |
+
+**Les confondre revient à brider tout l'écran au plafond du petit texte** — et
+c'est exactement ce qui rendait l'app terne. D'où deux jetons, `--accent` et
+`--accent-vif`, et non un seul.
+
+> **Le changement de méthode : on ne choisit plus une couleur puis on vérifie
+> son contraste. On CHERCHE le ton le plus vif que le seuil autorise**
+> (`le_plus_vif()` dans `outils/palettes.py`). Choisir puis vérifier laisse
+> systématiquement de l'éclat sur la table, sans qu'on s'en aperçoive.
+
+### La formule de l'attrait
+
+Ce que la recherche donne, et que la v8b appliquait à l'envers : *« hyper-saturated
+accents, used very intentionally, in otherwise minimal layouts »*. **Peu de
+surface, mais à pleine intensité, sur un fond calme.** La v8b faisait le
+contraire — beaucoup de surface, à intensité moyenne — et les deux se sont
+neutralisés. Le contraste entre le fond calme et l'accent saturé *est* l'attrait ;
+étaler la couleur le détruit.
+
 ## Q.5 — Les limites de ce qu'on a le droit de dire
 
 Elles s'ajoutent à celles du mode Coach (Partie P.4), et elles ne se négocient pas.
@@ -1852,9 +1917,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **10 septembre 2026** — v8b, 603 167 octets, 8211 lignes |
-| Contenu de ce build | La couleur : palette « Vert d'ancrage », progression en turquoise/corail, dégradé de clarté sur le hero |
-| Build précédent | 10 septembre 2026 — v8a, 601 605 octets. Pagination |
+| Dernier build déployé | **21 septembre 2026** — v8c, 603 786 octets, 8226 lignes |
+| Contenu de ce build | L'éclat : dégradé d'origine sur le hero, accents turquoise, barre d'onglets revenue au sable |
+| Build précédent | 10 septembre 2026 — v8b, 603 167 octets. Palette « Vert d'ancrage » |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

@@ -39,6 +39,32 @@ def plat(H, C, tons):
     return {n: oklch_hex(L, C, H) for n, L in tons.items()}
 
 VARIANTES = {
+    # ── LA VARIANTE RETENUE, 21 septembre 2026 ───────────────────────────────
+    #  Greg a tranché trois choses : la base sable de la variante A, SON dégradé
+    #  d'origine sur le hero, et le turquoise du bouclier pour les accents.
+    #
+    #  Le point de méthode : chaque accent est le ton LE PLUS VIF que son seuil
+    #  de contraste autorise, pas une couleur choisie puis vérifiée. D'où deux
+    #  jetons plutôt qu'un — un petit texte et un gros chiffre n'ont pas le même
+    #  seuil (4,5:1 contre 3:1), donc pas le même plafond de vivacité :
+    #    --accent      lisible en petit texte     vivacité  73
+    #    --accent-vif  chiffres, icônes, traits   vivacité 103
+    #  Les confondre reviendrait à brider les seconds au plafond des premiers,
+    #  ce qui est exactement ce qui rendait l'app terne.
+    "D-turquoise": {
+        "titre": "Turquoise du bouclier",
+        "resume": "Base sable de A, le dégradé d'origine sur le hero, accents turquoise.",
+        "sable_H": 82, "sable_C": 0.022,
+        "vert_H": 162, "vert_C": 0.105,
+        "accent_H": 184.7,                       # la teinte exacte de #0D9488
+        "neutre_H": 82, "neutre_C": 0.004,
+        "entete": "sable-50", "hero": "vert-700",
+        # Le dégradé que Greg regrettait, remis à l'identique. Mesuré aux
+        # positions réelles des textes : 4 sur 5 passaient déjà le seuil, le
+        # cinquième est réglé en remontant l'opacité du texte secondaire.
+        "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        "hero_fond_sombre": "linear-gradient(135deg, #04332715 0%, #0A6F66 100%)",
+    },
     "A-sable-approfondi": {
         "titre": "Sable approfondi",
         "resume": "Le sable devient une vraie couleur, le vert prend le bandeau et le hero.",
@@ -69,6 +95,28 @@ VARIANTES = {
 # chaud, loin du sable. Les deux à clarté proche, pour qu'aucun ne domine.
 PROG_H_UP, PROG_C_UP = 196, 0.105
 PROG_H_DOWN, PROG_C_DOWN = 28, 0.135
+
+def le_plus_vif(H, seuil, fond, lmin=0.30, lmax=0.80, cmax=0.20):
+    """Le ton LE PLUS VIF de cette teinte qui tienne encore le seuil de
+    contraste sur ce fond. C'est la seule façon d'avoir à la fois de l'éclat
+    et de la lisibilité : on ne choisit pas une couleur puis on vérifie, on
+    cherche le maximum que la contrainte autorise."""
+    best, best_viv = None, -1
+    L = lmin
+    while L <= lmax + 1e-9:
+        C, ok_c = 0.02, None
+        while C <= cmax + 1e-9:
+            cand = oklch_hex(L, C, H)
+            if contraste(cand, fond) >= seuil:
+                ok_c = cand
+            C += 0.004
+        if ok_c:
+            Lc, Cc, _ = hex_oklch(ok_c)
+            viv = Cc * (1 - abs(Lc - 0.72) / 0.72)
+            if viv > best_viv:
+                best, best_viv = ok_c, viv
+        L += 0.01
+    return best
 
 def construire(spec):
     s = plat(spec["sable_H"], spec["sable_C"], TONS_SABLE)
@@ -140,13 +188,26 @@ def emettre(nom, spec, source):
              else s[spec["entete"].split("-")[1]]
     entete_vert = spec["entete"].startswith("vert")
 
+    # Les quatre tons d'accent, chacun au plafond de vivacité que son usage
+    # autorise. On CHERCHE le maximum sous contrainte au lieu de choisir puis
+    # de vérifier — sinon on laisse systématiquement de l'éclat sur la table.
+    aH = spec.get("accent_H", spec["vert_H"])
+    acc_texte  = le_plus_vif(aH, 4.5, s["100"])          # petit texte sur le fond
+    acc_sombre = oklch_hex(max(0.02, hex_oklch(acc_texte)[0] - 0.12), 0.11, aH)
+    acc_vif    = le_plus_vif(aH, 3.0, s["0"])            # chiffres, icônes, traits
+    acc_bouton = le_plus_vif(aH, 4.5, "#FFFFFF", lmax=0.62)   # fond de bouton, texte blanc
+
     clair = {
         "--bg": s["100"], "--surface": s["0"], "--surface2": s["200"],
         "--input-bg": s["200"],
         "--border": _rgba(v["950"], "0.11"), "--border-strong": _rgba(v["950"], "0.22"),
         "--text": oklch_hex(0.262, 0.021, spec["vert_H"]), "--text-sub": oklch_hex(0.50, 0.012, spec["sable_H"]),
         "--text-muted": oklch_hex(0.635, 0.014, spec["sable_H"]),
-        "--accent": v["600"], "--accent-dark": v["800"],
+        "--accent": acc_texte, "--accent-dark": acc_sombre,
+        # Nouveau jeton : le turquoise FORT, réservé à ce qui n'est pas du
+        # petit texte — gros chiffres, icônes, traits. Son seuil est 3:1 et
+        # non 4,5:1, donc il peut monter bien plus haut en vivacité.
+        "--accent-vif": acc_vif,
         # Les TEINTES CLAIRES ne peuvent pas sortir de la même rampe que les
         # tons soutenus. La courbe en cloche donne beaucoup de chroma vers le
         # haut, ce qui est juste pour un aplat de 40 px et faux pour un fond de
@@ -156,9 +217,9 @@ def emettre(nom, spec, source):
         "--accent-light": oklch_hex(0.930, 0.030, spec["vert_H"]),
         "--accent-text": "#FFFFFF", "--danger": dn["600"],
         "--shadow": _rgba(v["950"], "0.10"),
-        "--btn-primaire": v["700"], "--btn-primaire-tx": "#FFFFFF",
-        "--accent-a10": _rgba(v["600"], "0.09"), "--accent-a20": _rgba(v["600"], "0.21"),
-        "--accent-a33": _rgba(v["600"], "0.33"), "--accent-a38": _rgba(v["600"], "0.38"),
+        "--btn-primaire": acc_bouton, "--btn-primaire-tx": "#FFFFFF",
+        "--accent-a10": _rgba(acc_texte, "0.09"), "--accent-a20": _rgba(acc_texte, "0.21"),
+        "--accent-a33": _rgba(acc_texte, "0.33"), "--accent-a38": _rgba(acc_texte, "0.38"),
         "--accent-light-a53": _rgba(oklch_hex(0.930, 0.030, spec["vert_H"]), "0.53"),
         "--cmp-up-bg": oklch_hex(0.930, 0.036, PROG_H_UP), "--cmp-up-border": up["600"], "--cmp-up-text": up["800"],
         "--cmp-down-bg": oklch_hex(0.930, 0.042, PROG_H_DOWN), "--cmp-down-border": dn["600"], "--cmp-down-text": dn["800"],
@@ -173,7 +234,7 @@ def emettre(nom, spec, source):
         # actif était vert foncé sur vert foncé — invisible. Trouvé en maquette,
         # ce qui est exactement à quoi sert une maquette.
         "--barre-tx": _rgba("#FFFFFF", "0.72") if entete_vert else oklch_hex(0.635, 0.014, spec["sable_H"]),
-        "--barre-tx-actif": "#FFFFFF" if entete_vert else v["700"],
+        "--barre-tx-actif": "#FFFFFF" if entete_vert else acc_texte,
         "--hero-bg": v[spec["hero"].split("-")[1]],
         # LE DÉGRADÉ DU HERO. Même teinte du haut au bas — seule la clarté
         # bouge, de ±0,045 en OKLCH. C'est de la lumière tombant du haut, et
@@ -183,11 +244,17 @@ def emettre(nom, spec, source):
         # À NE PAS CONFONDRE avec le dégradé retiré en v7z, qui traversait
         # 15,8° de teinte (#064E3B → #0D9488) : un écart de teinte se lit comme
         # un EFFET, un écart de clarté se lit comme du relief.
-        "--hero-fond": _degrade(v[spec["hero"].split("-")[1]]),
+        "--hero-fond": spec.get("hero_fond") or _degrade(v[spec["hero"].split("-")[1]]),
         "--hero-tx": "#FFFFFF",
-        "--hero-sub": _rgba("#FFFFFF", "0.72"),
+        "--hero-sub": _rgba("#FFFFFF", "0.88"),
     }
-    # En sombre, on garde l'esprit : fonds vert-charbon, jamais noirs.
+    # En sombre, le fond est très foncé : le turquoise peut donc monter bien
+    # plus haut en clarté, donc en vivacité, sans perdre en lisibilité.
+    fond_s = oklch_hex(0.175, 0.016, spec["vert_H"])
+    carte_s = oklch_hex(0.238, 0.019, spec["vert_H"])
+    acc_texte_s = le_plus_vif(aH, 4.5, fond_s, lmin=0.45, lmax=0.90)
+    acc_vif_s   = le_plus_vif(aH, 3.0, carte_s, lmin=0.45, lmax=0.90)
+
     sombre = {
         "--bg": oklch_hex(0.175, 0.016, spec["vert_H"]),
         "--surface": oklch_hex(0.238, 0.019, spec["vert_H"]),
@@ -197,14 +264,15 @@ def emettre(nom, spec, source):
         "--text": oklch_hex(0.955, 0.008, spec["sable_H"]),
         "--text-sub": oklch_hex(0.740, 0.013, spec["sable_H"]),
         "--text-muted": oklch_hex(0.605, 0.014, spec["sable_H"]),
-        "--accent": v["400"], "--accent-dark": v["300"],
+        "--accent": acc_texte_s, "--accent-dark": acc_vif_s,
+        "--accent-vif": acc_vif_s,
         "--accent-light": oklch_hex(0.315, 0.038, spec["vert_H"]),
         "--accent-text": "#FFFFFF", "--danger": dn["400"],
         "--shadow": "rgba(0, 0, 0, 0.55)",
-        "--btn-primaire": v["550"] if "550" in v else oklch_hex(0.520, spec["vert_C"] * cloche(0.52), spec["vert_H"]),
+        "--btn-primaire": le_plus_vif(aH, 4.5, "#FFFFFF", lmax=0.62),
         "--btn-primaire-tx": "#FFFFFF",
-        "--accent-a10": _rgba(v["400"], "0.12"), "--accent-a20": _rgba(v["400"], "0.24"),
-        "--accent-a33": _rgba(v["400"], "0.36"), "--accent-a38": _rgba(v["400"], "0.42"),
+        "--accent-a10": _rgba(acc_texte_s, "0.12"), "--accent-a20": _rgba(acc_texte_s, "0.24"),
+        "--accent-a33": _rgba(acc_texte_s, "0.36"), "--accent-a38": _rgba(acc_texte_s, "0.42"),
         "--accent-light-a53": _rgba(oklch_hex(0.315, 0.038, spec["vert_H"]), "0.53"),
         "--cmp-up-bg": oklch_hex(0.285, 0.045, PROG_H_UP), "--cmp-up-border": up["400"],
         "--cmp-up-text": up["300"],
@@ -216,10 +284,10 @@ def emettre(nom, spec, source):
         "--bar-bg-opaque": _rgba(oklch_hex(0.225, 0.022, spec["vert_H"]), "0.93"),
         "--entete-tx": oklch_hex(0.955, 0.008, spec["sable_H"]),
         "--barre-tx": oklch_hex(0.605, 0.014, spec["sable_H"]),
-        "--barre-tx-actif": v["400"],
+        "--barre-tx-actif": acc_texte_s,
         "--hero-bg": oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"]),
-        "--hero-fond": _degrade(oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"])),
-        "--hero-tx": "#FFFFFF", "--hero-sub": _rgba("#FFFFFF", "0.72"),
+        "--hero-fond": spec.get("hero_fond_sombre") or _degrade(oklch_hex(0.330, spec["vert_C"] * 0.85, spec["vert_H"])),
+        "--hero-tx": "#FFFFFF", "--hero-sub": _rgba("#FFFFFF", "0.88"),
     }
 
     css = source
@@ -252,7 +320,7 @@ def emettre(nom, spec, source):
         i = bloc.rindex("}")
         return bloc[:i] + f"  /* Surface de la marque ({spec['titre']}) */\n{ajout}\n" + bloc[i:]
 
-    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--hero-bg", "--hero-fond", "--hero-tx", "--hero-sub"]
+    neuves = ["--entete-tx", "--barre-tx", "--barre-tx-actif", "--accent-vif", "--hero-bg", "--hero-fond", "--hero-tx", "--hero-sub"]
     # Du dernier au premier, pour que les positions restent valides.
     cibles = [(":root {", clair), (':root[data-theme="sombre"]', sombre),
               ("@media (prefers-color-scheme: dark)", sombre)]

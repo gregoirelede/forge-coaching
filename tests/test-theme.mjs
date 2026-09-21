@@ -48,11 +48,13 @@ console.log("\n─── Thème clair ───");
   const { ctx, p } = await ouvrir({ mode: "clair", systemeSombre: true });
   const t = await lire(p);
   ok(t.attr === "clair", `data-theme = ${t.attr}`);
-  ok(t.bg === "#F6EEE0", `--bg = ${t.bg} (sable approfondi, v8b)`);
-  ok(t.accent === "#0C6E48", `--accent = ${t.accent}`);
-  ok(t.metaColor === "#F6EEE0", `barre d'état alignée : ${t.metaColor}`);
-  // En variante B, les barres portent le VERT de marque, pas le sable.
-  ok(/1,\s*60,\s*37/.test(t.barre), `bandeau et barre d'onglets en vert de marque : ${t.barre}`);
+  ok(t.bg === "#F7EEDF", `--bg = ${t.bg} (sable approfondi, v8c)`);
+  ok(t.accent === "#08796F", `--accent = ${t.accent} (turquoise du bouclier)`);
+  ok(t.metaColor === "#F7EEDF", `barre d'état alignée : ${t.metaColor}`);
+  // Depuis v8c les barres reviennent au sable : le vert plein en bas de
+  // l'écran gênait à l'usage. La couleur de marque vit dans le hero et les
+  // accents, pas dans le chrome.
+  ok(/254,\s*246,\s*231/.test(t.barre), `bandeau et barre d'onglets en sable : ${t.barre}`);
   await p.screenshot({ path: `${OUT}/theme-clair.png` });
   await ctx.close();
 }
@@ -64,12 +66,12 @@ console.log("\n─── Thème sombre ───");
   const t = await lire(p);
   ok(t.attr === "sombre", `data-theme = ${t.attr}`);
   ok(t.bg === "#0A130E", `--bg = ${t.bg}`);
-  ok(t.accent === "#4FA67B", `--accent = ${t.accent} (éclairci pour rester lisible)`);
+  ok(t.accent === "#01CCBC", `--accent = ${t.accent} (éclairci pour rester lisible)`);
   ok(t.corpsBg === "rgb(10, 19, 14)", `fond de page réellement sombre : ${t.corpsBg}`);
   ok(t.metaColor === "#0A130E", `barre d'état alignée : ${t.metaColor}`);
   // Le défaut signalé le 25 août 2026 : les deux barres restaient blanches.
-  ok(/19,\s*31,\s*24/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
-  ok(/19,\s*31,\s*24/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
+  ok(/18,\s*31,\s*25/.test(t.barre), `bandeau haut et barre d'onglets suivent le thème : ${t.barre}`);
+  ok(/18,\s*31,\s*25/.test(t.barreOpaque), `barre d'action des feuilles aussi : ${t.barreOpaque}`);
   await p.screenshot({ path: `${OUT}/theme-sombre.png` });
   await ctx.close();
 }
@@ -123,7 +125,7 @@ console.log("\n─── Thème automatique ───");
 {
   const { ctx, p } = await ouvrir({ mode: null, systemeSombre: false });
   const t = await lire(p);
-  ok(t.bg === "#F6EEE0", `téléphone en clair → --bg = ${t.bg}`);
+  ok(t.bg === "#F7EEDF", `téléphone en clair → --bg = ${t.bg}`);
   await ctx.close();
 }
 
@@ -179,15 +181,53 @@ for (const mode of ["clair", "sombre"]) {
 
 // Et il ne se redessine plus à la main à chaque écran : deux boutons
 // principaux doivent être la MÊME couleur d'un écran à l'autre.
+// ── Le turquoise fort, et pourquoi il existe ────────────────────────────────
+//  Un petit texte doit tenir 4,5:1, un gros chiffre seulement 3:1. Les faire
+//  partager une couleur bride les seconds au plafond des premiers — c'est
+//  exactement ce qui rendait l'app terne. Deux jetons, donc, et le second doit
+//  être RÉELLEMENT plus vif : sans ce contrôle, une retouche les réaligne sans
+//  que personne ne le voie.
+console.log("\n─── Le turquoise fort est bien plus vif que celui du texte ───");
+for (const mode of ["clair", "sombre"]) {
+  const { ctx, p } = await ouvrir({ mode, systemeSombre: mode === "sombre" });
+  const r = await p.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const lire = (n) => {
+      const d = document.createElement("div");
+      d.style.color = cs.getPropertyValue(n).trim();
+      document.body.appendChild(d);
+      const m = getComputedStyle(d).color.match(/\d+/g).map(Number);
+      d.remove();
+      return m;
+    };
+    // Vivacité : chroma perçu, pondéré par la proximité au pic de clarté.
+    const viv = ([r0, g0, b0]) => {
+      const mx = Math.max(r0, g0, b0) / 255, mn = Math.min(r0, g0, b0) / 255;
+      const L = (mx + mn) / 2, S = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * L - 1));
+      return Math.round(S * (1 - Math.abs(L - 0.62) / 0.62) * 1000);
+    };
+    return { accent: viv(lire("--accent")), vif: viv(lire("--accent-vif")) };
+  });
+  ok(r.vif >= r.accent,
+     `${mode} : --accent-vif (${r.vif}) au moins aussi vif que --accent (${r.accent})`);
+  await ctx.close();
+}
+
 console.log("\n─── Un seul bouton principal, pas vingt-cinq ───");
 {
   const html = readFileSync(import.meta.dirname + "/../index.html", "utf8");
   // La seule écriture légitime est la définition de la variable de marque, qui
   // sert au bandeau de mise à jour et aux avatars — pas aux boutons.
   const toutes = (html.match(/linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
+  // Deux écritures sont légitimes : la variable de marque, et le fond du hero
+  // qui la porte volontairement depuis v8c. Toute autre est un bouton qui la
+  // redessine à la main.
   const definition = (html.match(/--degrade-marque:\s*linear-gradient/g) || []).length;
+  const heroFond = (html.match(/--hero-fond:\s*linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
   ok(definition === 1, `le dégradé de marque est défini une fois (${definition})`);
-  ok(toutes - definition === 0, `plus aucun bouton ne le redessine à la main (${toutes - definition})`);
+  ok(heroFond === 1, `le hero le porte, une fois (${heroFond})`);
+  ok(toutes - definition - heroFond === 0,
+     `aucun bouton ne le redessine à la main (${toutes - definition - heroFond})`);
   const via = (html.match(/var\(--btn-primaire\)/g) || []).length;
   ok(via >= 20, `les ${via} boutons principaux lisent la même variable`);
 }
