@@ -39,7 +39,7 @@ def plat(H, C, tons):
     return {n: oklch_hex(L, C, H) for n, L in tons.items()}
 
 VARIANTES = {
-    # ── LA VARIANTE RETENUE, 21 septembre 2026 ───────────────────────────────
+    # ── ÉTAPE PRÉCÉDENTE, 21 septembre 2026 (remplacée par G) ────────────────
     #  Greg a tranché trois choses : la base sable de la variante A, SON dégradé
     #  d'origine sur le hero, et le turquoise du bouclier pour les accents.
     #
@@ -100,6 +100,19 @@ VARIANTES = {
         "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
         "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
     },
+    # ── LA VARIANTE DÉPLOYÉE, 21 septembre 2026 (v8e) ────────────────────────
+    #  Greg l'a retenue sur maquette. Elle corrige l'écrêtage de gamut qui
+    #  rendait les cartes blanches — 43 % de l'écran — et descend le fond
+    #  d'autant, parce que réchauffer une carte la RAPPROCHE de son fond.
+    #  Mesuré au pixel rendu, accueil clair :
+    #                      incolore   chroma moyen   séparation carte/fond
+    #    aujourd'hui         42,9 %         0,0280               1,140:1
+    #    E                    6,3 %         0,0341               1,120:1
+    #    G                    6,3 %         0,0350               1,200:1
+    #  G est la seule meilleure sur les DEUX axes au lieu d'échanger l'un
+    #  contre l'autre. Coût assumé : les accents perdent un peu de vivacité
+    #  (65 → 61 et 103 → 96), parce qu'ils sont cherchés au plafond de
+    #  contraste que leur fond autorise, et que le fond a foncé.
     "G-cartes-chaudes-profond": {
         "titre": "Cartes chaudes, fond approfondi",
         "resume": "La chaleur de E, sans perdre la profondeur : le fond descend autant que la carte monte.",
