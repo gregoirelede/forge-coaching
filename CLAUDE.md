@@ -2165,11 +2165,11 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **22 septembre 2026** — v8f, 605 808 octets |
-| Contenu de ce build | L'angle du dégradé lève le plafond d'éclat (+44 %) ; les chiffres de l'accueil montent à leur valeur |
-| Build précédent | 21 septembre 2026 — v8e, 603 900 octets. Les cartes portent le sable |
-| **En attente** | **Rien.** Le programme de Greg (`sql/2026-09-22-programme-greg-upper-lower.sql`) a été joué le 22 septembre : upper/lower 4 jours, séances **6 à 9** (hors de sa plage 1-5), lundi-mardi-jeudi-vendredi, 28 exercices **tous liés** à la bibliothèque, ses trois anciens programmes désactivés sans rien perdre. Quatre exercices sont entrés en bibliothèque au passage, dont trois utilisés depuis des mois par 3-4 coachés sans y avoir jamais existé. 22 tables en base, RLS active partout |
-| Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
+| Dernier build déployé | **22 septembre 2026** — v8g, 605 862 octets |
+| Contenu de ce build | « Abdos » entre dans la liste fermée des muscles (13ᵉ catégorie) ; `MUSCLE_OPTIONS` dérive de `muscleColors` au lieu d'être une seconde liste |
+| Build précédent | 22 septembre 2026 — v8f, 605 808 octets. L'angle du dégradé lève le plafond d'éclat (+44 %) |
+| **En attente** | **Rien.** Greg a essayé l'upper/lower 4 jours du matin et l'a refusé le jour même : `sql/2026-09-22-programme-greg-retour-5-jours.sql` a été joué le 22 septembre au soir et remet « Programme 5/7 focus bras/épaules » en service, séances **1 à 5 conservées** (ses 561 séries loguées y sont attachées, vérifiées intactes après coup), avec trois modifications — jambes 26 → 10 séries, abdos devenus 12 séries de vrais exercices logués, un seul dos unilatéral le jeudi. 34 exercices tous liés à la bibliothèque, deux exercices d'abdos entrés en bibliothèque. L'upper/lower est désactivé, pas supprimé. 22 tables en base, RLS active partout |
+| Vérification du déploiement | Faite le 22 septembre au soir : workflow `pages build and deployment` **success** sur `a692562`, et `index.html` sur `main` identique au build local **à l'octet près** — 605 862 o, empreinte `1bd4ecc9ae`. Côté base, le résultat en production est identique au résultat éprouvé en local **au hash près** (`b3c5724a0e` sur les 34 exercices, uuids de bibliothèque exclus puisqu'ils diffèrent forcément entre les deux bases) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
 > À mettre à jour à chaque déploiement : c'est ce qui te permet de savoir si le `index.html` du repo correspond bien à ce qui est en ligne.
