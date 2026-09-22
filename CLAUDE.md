@@ -1594,6 +1594,60 @@ objectif) se lit en base et ne se demande pas.
   renommé arrête tout **sans rien avoir modifié**. C'est ce qui a permis de livrer
   le programme de Meyssa alors que la production était injoignable.
 
+## P.5 — Repères chiffrés d'entraînement *(remis à jour le 22 septembre 2026)*
+
+> Le mode Coach avait des repères chiffrés détaillés pour la **diète** (P.4) et
+> **aucun** pour l'entraînement. C'était le trou le plus visible de cette
+> casquette. À revérifier à chaque demande de programme — la règle P.1 ne se
+> contourne pas, ce tableau n'est qu'un point de départ daté.
+
+### Ce qui est solide
+
+| Sujet | Repère | Degré de confiance |
+|---|---|---|
+| **Volume hebdomadaire** | **12 à 20 séries par groupe musculaire et par semaine** pour progresser. Relation dose-réponse à **rendements décroissants** : plus de séries → plus d'hypertrophie en moyenne, mais le gain par série marginale diminue | Solide, convergent |
+| **Fréquence** | **2× par semaine par muscle** est la référence pratique. Mais **à volume égal, la fréquence n'a pas d'effet propre** démontré : c'est un moyen de répartir le volume, pas un levier en soi | Solide — méta-analyse 2019 (*J Sports Sci*), confirmée depuis |
+| **Proximité de l'échec** | **1 à 3 répétitions en réserve** sur la majorité des séries d'hypertrophie. La relation est dose-réponse (plus près de l'échec = un peu plus de croissance), mais l'écart entre 1-3 RIR et l'échec réel est **petit** — taille d'effet 0,15 à 0,21 — pour une fatigue nettement plus élevée | Solide — méta-régression Refalo et coll., *Sports Medicine* 2024 (PMID 38970765) |
+| **Volume de MAINTIEN** | **≈ 6 séries par muscle et par semaine** suffisent à maintenir. Certains travaux descendent à 2-3 séries dures. L'arrêt **total** coûte cher : **−30 % de section musculaire sur 32 semaines** (Bickel et coll.) | Solide sur le principe, la valeur exacte dépend de l'individu |
+| **Position allongée (*lengthened*)** | Extension de coude **en overhead** contre bras le long du corps, 12 semaines : longue portion du triceps **+28,5 % contre +19,6 %** de volume (**×1,5**), et triceps entier **+19,9 % contre +13,9 %** | Solide — Maeo et coll., *Eur J Sport Sci* 2023 |
+| **Angle pour le haut des pectoraux** | **30 à 45°**. Un travail d'octobre 2025 mesure une activation **significativement plus basse à 20°** qu'à 32° et 43°, sans écart significatif entre ces deux derniers. Et un groupe **incliné seul** a pris plus d'épaisseur sur le faisceau claviculaire qu'un groupe couché seul | Bon, avec la réserve ci-dessous |
+
+### Les réserves à garder en tête, et elles comptent
+
+- **L'hypertrophie régionale est réelle mais modeste, et mal prédictible.** On
+  peut biaiser une région d'un muscle par le choix d'exercice ; on ne peut pas
+  la sculpter à volonté. Promettre « du haut de pec » en dix semaines serait
+  malhonnête — l'angle incliné est un **choix raisonné**, pas une garantie.
+- **L'EMG n'est pas l'hypertrophie.** Beaucoup de recommandations d'angle
+  reposent sur de l'activation électrique mesurée sur une séance. Ce n'est un
+  argument qu'accompagné d'une mesure d'épaisseur après plusieurs semaines —
+  c'est pour ça que l'étude « incliné seul contre couché seul » pèse plus lourd
+  que n'importe quel relevé EMG.
+- **Le volume est le levier principal, le reste est du réglage fin.** Quand un
+  muscle ne progresse pas, la première question est « combien de séries dures
+  par semaine ? », pas « quel angle ? ».
+
+### Ce que ça implique pour la conception d'un programme
+
+1. **Un muscle qu'on décide de ne plus prioriser ne se supprime pas : il passe
+   en maintien.** Six séries hebdomadaires coûtent une dizaine de minutes et
+   évitent de reconstruire plus tard.
+2. **Une priorité, ça se paie en séries, pas en intentions.** Faire passer un
+   muscle en focus veut dire lui donner le haut de la fourchette (16-20) et
+   descendre les autres vers le bas (8-12) — le temps de séance et la
+   récupération sont finis.
+3. **Placer l'exercice le plus exigeant en premier**, quand le muscle visé est
+   frais. Sur une priorité, c'est le levier gratuit le plus fort.
+4. **Au moins un mouvement en position allongée par muscle prioritaire** : c'est
+   l'effet le mieux documenté du lot (×1,5 sur la longue portion du triceps).
+
+> **Sources consultées le 22 septembre 2026** — Maeo et coll. (*Eur J Sport Sci*,
+> triceps overhead) ; Refalo et coll. (*Sports Medicine* 2024, proximité de
+> l'échec) ; Bickel et coll. (volume de maintien) ; Stronger by Science sur
+> l'hypertrophie régionale ; European Journal of Sport Sciences (angles
+> d'inclinaison, 2025). Les synthèses de blogs ont servi à repérer les travaux,
+> **jamais à fonder un chiffre**.
+
 ## P.4 — Casquette diététicien (règle du 14 août 2026)
 
 Une demande de **diète** s'aborde comme une demande de programme : recherche à
