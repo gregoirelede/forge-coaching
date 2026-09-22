@@ -112,7 +112,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #089E91;
 }
@@ -187,7 +187,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }
@@ -265,7 +265,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }
@@ -335,6 +335,17 @@ html, body { background: var(--bg); }
 .quick-card { transition: transform .42s var(--ressort), box-shadow .42s var(--ressort); }
 .quick-card:active { transform: scale(.985); }
 .hero-card { transition: transform .5s var(--ressort), box-shadow .5s var(--ressort); }
+
+/* L'ARRIVÉE DU HERO (v8f). C'est le premier objet que voit le coaché en
+   ouvrant l'app : il se pose au lieu d'apparaître. La courbe est --ressort,
+   la même que les feuilles et les cartes — l'app a UNE physique, pas cinq.
+   Déclarée ici et non dans le composant : une @keyframes définie dans un
+   composant n'existe pas avant qu'il soit monté (piège de la v7y). */
+@keyframes heroEntree {
+  from { opacity: 0; transform: translateY(15px) scale(.984); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.hero-entree { animation: heroEntree .62s var(--ressort) both; }
 .hero-card:active { transform: scale(.988); }
 @media (prefers-reduced-motion: reduce) {
   .pressable:active, .quick-card:active, .hero-card:active { transform: none; }
@@ -435,6 +446,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .sheet, .sheet-backdrop, .page-forward, .page-backward, .fade-in { animation-duration: .01ms; }
+  .hero-entree { animation-duration: .01ms; }
   .upcoming-card:active { transform: none; }
 }
 

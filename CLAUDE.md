@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8f** | **L'éclat et le mouvement.** L'angle du dégradé du hero passe de 135° à 118° : son point le plus clair quitte « ~70 min » pour la zone vide à droite, ce qui lève le plafond de vivacité de **86 à 124 (+44 %)** sans qu'aucun texte descende sous son seuil. Et les trois chiffres de l'accueil **montent jusqu'à leur valeur** au lieu d'apparaître — une fois par session, jamais si le téléphone demande de réduire les animations | 605 808 o | 8286 |
 | **v8e** | **Les cartes n'étaient pas blanches par choix, mais par écrêtage de gamut** : leur ton était demandé à 99,5 % de clarté, où le sRGB ne tient aucune couleur — 80 % du chroma était raboté en silence. Or c'est 43 % de l'écran. Relevé au pixel : 77 % de l'accueil clair était quasi incolore, désormais 6 %. Le fond descend d'autant pour que la carte se détache encore mieux qu'avant (1,14:1 → 1,20:1) | 603 900 o | 8226 |
 | **v8d** | **Le thème sombre était seize fois moins vif que le clair**, et personne ne pouvait le voir en lisant la palette : un hex à 8 chiffres (`#04332715`) mettait le hero à 8 % d'opacité, il se dissolvait dans la page. 1,1 % de pixels vifs contre 17,5 % en clair — désormais 17,1 % des deux côtés. La pastille de semaine repasse de 3,74:1 à 7,06:1 : un voile blanc sur un dégradé éclaircit le fond d'un texte blanc | 603 900 o | 8226 |
 | **v8c** | **L'éclat** : le dégradé d'origine revient sur le hero (mesuré conforme, mon refus reposait sur un contraste pris au mauvais endroit), la barre d'onglets repasse au sable, et les accents passent au turquoise du bouclier. Deux jetons d'accent au lieu d'un : vivacité 103 sur les chiffres et icônes contre 69 | 603 786 o | 8226 |
@@ -897,6 +898,7 @@ que React démarre, et jamais écrasé par un `<style>` de composant (voir Parti
 | Feuilles | classes `.sheet` `.sheet-backdrop` `.poignee` | le chrome d'une feuille inline |
 | Rangées qui défilent | `.rail` (`.rail.cartes` pour l'accrochage) | un `overflowX` nu |
 | Chargement | `.squelette` et ses `@keyframes` | une animation déclarée dans un composant |
+| Arrivée du hero | `.hero-entree` (`heroEntree`, `--ressort`) | une entrée animée en `style={{}}` |
 
 Trois composants portent les idiomes d'iOS et doivent être réutilisés plutôt que refaits :
 **`Segmente`** (choix exclusif entre 2 et 4 options, curseur qui glisse), **`Groupe`** (liste en
@@ -1289,6 +1291,15 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
   non. Tout son que le coaché doit entendre en salle passe donc par un élément `<audio>`, Web
   Audio n'étant qu'un second rideau. Deux causes indépendantes, un seul symptôme : c'est ce qui
   rend cette panne difficile: corriger la première ne révèle pas la seconde.
+- **Un test qui dépend du calendrier n'est pas un test (trouvé le
+  22 septembre 2026, v8f).** La nouvelle série sur le mouvement lisait le
+  programme du jeu d'essai tel quel. Or le programme de Meyssa tombe le
+  mercredi et le dimanche : lancée un mardi, la série ne trouvait aucune carte
+  du jour et échouait — sur une app parfaitement saine. Les scripts de maquette
+  faisaient déjà le bon geste, **replacer la séance sur le jour courant**, et
+  je ne l'avais pas repris. Tout jeu d'essai qui met en scène « la séance
+  d'aujourd'hui » doit la construire à partir de `new Date().getDay()`, jamais
+  la recopier du programme réel.
 - **Un chroma demandé trop près du blanc est raboté EN SILENCE (trouvé le
   21 septembre 2026, v8e).** Le fond des cartes — **43 % de l'écran, la plus
   grande surface de l'app** — était demandé à `oklch(0.995, 0.022, 82)`. À un
@@ -1851,6 +1862,38 @@ La mesure est consignée ici pour que personne ne refasse l'expérience.
 > Les deux mécanismes n'ont rien à voir. En revanche, **animer `baseFrequency`
 > ne marche pas sur iPhone** — un grain doit rester statique.
 
+### L'ANGLE décide de combien d'éclat on peut se permettre *(v8f)*
+
+C'est la suite directe de la leçon de la v8c — « un dégradé n'a pas un
+contraste, il en a un par point » — et c'est son versant offensif.
+
+Si le contraste dépend de l'endroit, alors **l'endroit où l'on place le point le
+plus clair décide du plafond d'éclat de tout le dégradé**. Tant qu'il tombait
+sur « ~70 min », à mi-carte, toute tentative d'éclaircir échouait sur ce texte-là
+et sur lui seul. En passant de 135° à **118°**, le pic bascule dans la zone
+vide à droite, entre la pastille et le bouton — et le plafond se lève d'un coup.
+
+Mesuré sur huit candidats rendus, contraste relevé au pixel aux cinq positions
+de texte réelles :
+
+| | pic de vivacité | pire contraste |
+|---|---|---|
+| Le dégradé d'origine (135°, deux bornes) | **86** | 5,04:1 |
+| Retenu en v8f (118°, trois bornes) | **124** | 5,35:1 |
+
+**+44 % d'éclat, et le point le plus serré est même meilleur qu'avant.** Ce
+n'est pas un arbitrage, c'est une place mieux choisie.
+
+Deux corollaires :
+
+- **Trois bornes, pas deux.** Avec deux bornes on ne choisit pas où le pic
+  tombe, il est forcément au bout. Une borne intermédiaire permet de garder la
+  zone des textes sombre ET de faire éclater la fin.
+- **Un voile assombri rend une zone disponible.** Depuis que la pastille de
+  semaine porte `--hero-pastille` (noir à 18 %), le dégradé peut être clair
+  sous elle sans que son texte souffre. Une contrainte levée ailleurs ouvre de
+  la place ici — ça ne se voit qu'en remesurant tout l'écran, pas l'élément.
+
 ### Les autres techniques examinées
 
 | Technique | Verdict |
@@ -2021,9 +2064,9 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 
 | Champ | Valeur |
 |---|---|
-| Dernier build déployé | **21 septembre 2026** — v8e, 603 900 octets, 8226 lignes |
-| Contenu de ce build | Les cartes portent enfin le sable (43 % de l'écran) ; le fond descend d'autant pour garder la profondeur |
-| Build précédent | 21 septembre 2026 — v8d, 603 900 octets. Le thème sombre retrouve son éclat |
+| Dernier build déployé | **22 septembre 2026** — v8f, 605 808 octets |
+| Contenu de ce build | L'angle du dégradé lève le plafond d'éclat (+44 %) ; les chiffres de l'accueil montent à leur valeur |
+| Build précédent | 21 septembre 2026 — v8e, 603 900 octets. Les cartes portent le sable |
 | **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |

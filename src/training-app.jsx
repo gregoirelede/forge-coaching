@@ -1585,9 +1585,69 @@ function ErrorScreen({ title, message, onLogout, actionLabel = "Se déconnecter"
 // ═══════════════════════════════════════════════════════════════════════════════
 //  PAGE : HOME
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/* LES CHIFFRES QUI MONTENT (v8f).
+
+   Trois décisions, et chacune répond à une façon de rater ce genre d'effet.
+
+   1. Ils ne partent QU'UNE FOIS PAR SESSION. Une animation qu'on revoit dix
+      fois par jour cesse d'être un plaisir et devient une attente : le coaché
+      qui revient sur l'accueil entre deux séries veut lire 156, pas le voir
+      se recompter. D'où le drapeau de module ci-dessous.
+   2. Ils respectent « réduire les animations ». Un chiffre qui défile est
+      exactement ce que ce réglage existe pour supprimer.
+   3. Ils s'arrêtent net si le composant est démonté — sans le nettoyage du
+      requestAnimationFrame, un aller-retour rapide entre deux onglets laisse
+      une boucle qui écrit dans un composant qui n'existe plus. */
+let _compteursDejaJoues = false;
+
+function mouvementReduit() {
+  return typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+}
+
+function useCompteur(cible, anime) {
+  const [valeur, setValeur] = useState(anime && cible > 0 ? 0 : cible);
+  useEffect(() => {
+    if (!anime || cible <= 0) { setValeur(cible); return; }
+    let id = 0;
+    const debut = performance.now();
+    const DUREE = 900;
+    const pas = (t) => {
+      const p = Math.min(1, (t - debut) / DUREE);
+      // Sortie cubique : vite au départ, ralenti à l'arrivée. C'est ce qui
+      // donne l'impression que le chiffre SE POSE au lieu de s'arrêter.
+      setValeur(Math.round(cible * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) id = requestAnimationFrame(pas);
+    };
+    id = requestAnimationFrame(pas);
+    return () => cancelAnimationFrame(id);
+  }, [cible, anime]);
+  return valeur;
+}
+
+/* Un composant à part, et pas un appel de hook dans un .map() : les règles de
+   React interdisent d'appeler un hook dans une boucle. */
+function StatChiffre({ valeur, anime }) {
+  const affiche = useCompteur(valeur, anime);
+  return (
+    <div style={{ fontWeight: 800, fontSize: 26, color: T.accentVif, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 }}>
+      {affiche}
+    </div>
+  );
+}
+
 function HomePage({ ctx }) {
   const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout } = ctx;
   const { client, week } = appData;
+
+  // Décidé UNE fois, au premier rendu : si on le relisait à chaque rendu, le
+  // premier compteur lèverait le drapeau et les deux autres ne partiraient pas.
+  const animeCompteurs = useRef(null);
+  if (animeCompteurs.current === null) {
+    animeCompteurs.current = !_compteursDejaJoues && !mouvementReduit();
+    if (animeCompteurs.current) _compteursDejaJoues = true;
+  }
 
   const stats = useMemo(() => {
     const completedSets = Object.values(allCompletedSets).filter(Boolean).length;
@@ -1613,7 +1673,7 @@ function HomePage({ ctx }) {
       </div>
       <div style={{ padding: "0 18px" }}>
         {todaySession ? (
-          <div className="hero-card" onClick={() => openWorkout(todaySession.id)} style={{ background: "var(--hero-fond)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
+          <div className="hero-card hero-entree" onClick={() => openWorkout(todaySession.id)} style={{ background: "var(--hero-fond)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" }}>
             {/* POURQUOI LE VERT REVIENT ICI, APRÈS AVOIR ÉTÉ RETIRÉ EN v7z.
                 En v7z, la carte avait été calmée parce qu'un bloc vert SATURÉ
                 remplissait 40 % de l'accueil pour ne rien dire de plus qu'un
@@ -1659,7 +1719,7 @@ function HomePage({ ctx }) {
         ].map((s, i) => (
           <div key={i} className="stat-card" style={{ background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` }}>
             <Icon name={s.icon} size={18} color={T.accentVif}/>
-            <div style={{ fontWeight: 800, fontSize: 26, color: T.accentVif, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 }}>{s.value}</div>
+            <StatChiffre valeur={s.value} anime={animeCompteurs.current}/>
             <div style={{ fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
