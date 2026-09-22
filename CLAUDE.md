@@ -195,6 +195,7 @@ forge-coaching/
 │   ├── 2026-08-15-diete-anais.sql       ← sa diète sans gluten, composée à la main
 │   ├── 2026-08-15-retour-reversible.sql ← le coaché peut annuler un signalement
 │   ├── 2026-08-25-programme-meyssa.sql  ← son full body fessier, mercredi + dimanche
+│   ├── 2026-09-22-programme-greg-upper-lower.sql ← son upper/lower 4 jours (v8f)
 │   ├── A-JOUER-15-AOUT.sql              ← les 3 ci-dessus réunies, pour Greg
 │   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
 │   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
@@ -2121,7 +2122,7 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 | Dernier build déployé | **22 septembre 2026** — v8f, 605 808 octets |
 | Contenu de ce build | L'angle du dégradé lève le plafond d'éclat (+44 %) ; les chiffres de l'accueil montent à leur valeur |
 | Build précédent | 21 septembre 2026 — v8e, 603 900 octets. Les cartes portent le sable |
-| **En attente** | **Rien.** Le programme de Meyssa (`sql/2026-08-25-programme-meyssa.sql`) a été joué le 25 août : séances 5 et 6, mercredi et dimanche, 17 exercices tous liés à la bibliothèque, ses deux anciens programmes désactivés sans rien perdre. 22 tables en base, RLS active partout |
+| **En attente** | **Rien.** Le programme de Greg (`sql/2026-09-22-programme-greg-upper-lower.sql`) a été joué le 22 septembre : upper/lower 4 jours, séances **6 à 9** (hors de sa plage 1-5), lundi-mardi-jeudi-vendredi, 28 exercices **tous liés** à la bibliothèque, ses trois anciens programmes désactivés sans rien perdre. Quatre exercices sont entrés en bibliothèque au passage, dont trois utilisés depuis des mois par 3-4 coachés sans y avoir jamais existé. 22 tables en base, RLS active partout |
 | Vérification du déploiement | Faite le 9 septembre : workflow `success` sur `2db2867`, et `index.html` sur `main` identique au build local à l'octet près (590 721 o, empreinte `8815e67a41`) — à refaire après le déploiement de la v7y |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
