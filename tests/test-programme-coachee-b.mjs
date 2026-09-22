@@ -134,7 +134,7 @@ for (const m of ["Quadriceps", "Ischios", "Pectoraux", "Grand dorsal",
 console.log("\n─── Les pastilles de muscle sont dans la liste fermée ───");
 const FERMEE = ["Triceps", "Pectoraux", "Deltoïde post", "Deltoïde lat", "Quadriceps",
                 "Ischios", "Mollets", "Grand dorsal", "Haut du dos", "Biceps",
-                "Fessier/Ischios", "Adducteurs"];
+                "Fessier/Ischios", "Adducteurs", "Abdos"];
 const hors = [...new Set(tous.map(e => e.muscle))].filter(m => !FERMEE.includes(m));
 ok(hors.length === 0, `aucun muscle hors liste (${hors.join(", ") || "aucun"})`);
 

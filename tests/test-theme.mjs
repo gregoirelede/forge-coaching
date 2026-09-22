@@ -325,6 +325,60 @@ console.log("\n─── Un voile sur fond soutenu se fait en noir, jamais en bl
      `le voile est noir dans les ${voiles.length} thèmes (${voiles.join(", ")})`);
 }
 
+console.log("\n─── Chaque muscle de la liste fermée a sa couleur, dans les deux thèmes ───");
+{
+  // Ajouter une catégorie musculaire sans son jeton ne plante pas : le badge
+  // sort avec un fond transparent et un texte noir, sur toutes les vues. Ce
+  // contrôle lit les noms de variables DANS muscleColors, donc il attrape aussi
+  // une faute de frappe dans un nom de jeton.
+  const src = readFileSync(import.meta.dirname + "/../src/training-app.jsx", "utf8");
+  const bloc = src.slice(src.indexOf("const muscleColors = {"));
+  const corps = bloc.slice(0, bloc.indexOf("\n};"));
+  const muscles = [...corps.matchAll(
+    /"([^"]+)":\s*\{\s*bg:"var\((--[\w-]+)\)",\s*text:"var\((--[\w-]+)\)"\s*\}/g)]
+    .map(m => ({ nom: m[1], bg: m[2], tx: m[3] }));
+  ok(muscles.length >= 12,
+     `${muscles.length} muscles lus dans muscleColors (liste fermée, Partie H)`);
+
+  for (const sombre of [false, true]) {
+    const { ctx, p } = await ouvrir({ mode: sombre ? "sombre" : "clair" });
+    const vus = await p.evaluate((ms) => {
+      const cs = getComputedStyle(document.documentElement);
+      const lum = (c) => {
+        const m = c.match(/\d+/g);
+        if (!m) return null;
+        const [r, g, b] = m.slice(0, 3).map(Number).map(v => {
+          v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const rgb = (n) => {
+        const v = cs.getPropertyValue(n).trim();
+        if (!v) return null;
+        const d = document.createElement("div");
+        d.style.color = v; document.body.appendChild(d);
+        const out = getComputedStyle(d).color; d.remove();
+        return out;
+      };
+      return ms.map(m => {
+        const a = rgb(m.bg), b = rgb(m.tx);
+        if (!a || !b) return { nom: m.nom, manque: !a ? m.bg : m.tx };
+        const [l1, l2] = [lum(a), lum(b)];
+        return { nom: m.nom, ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05) };
+      });
+    }, muscles);
+    const manquants = vus.filter(v => v.manque);
+    ok(manquants.length === 0,
+       `thème ${sombre ? "sombre" : "clair"} : les ${muscles.length} muscles ont leurs 2 jetons`
+       + (manquants.length ? ` — manque ${manquants.map(m => m.nom + " (" + m.manque + ")").join(", ")}` : ""));
+    const faibles = vus.filter(v => v.ratio !== undefined && v.ratio < 4.5);
+    ok(faibles.length === 0,
+       `thème ${sombre ? "sombre" : "clair"} : tous les badges passent 4,5:1`
+       + (faibles.length ? ` — ${faibles.map(f => f.nom + " " + f.ratio.toFixed(2)).join(", ")}` : ""));
+    await ctx.close();
+  }
+}
+
 await b.close();
 console.log(`\n${ko === 0 ? "TOUS LES CONTROLES SONT PASSES." : ko + " CONTROLE(S) EN ECHEC."}`);
 process.exit(ko === 0 ? 0 : 1);
