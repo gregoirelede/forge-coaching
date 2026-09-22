@@ -6,15 +6,22 @@
 //  garde-fous. Ce test remet le filet.
 //
 //  La fixture n'est pas écrite à la main : elle est le résultat EXACT de
-//  sql/2026-09-22-programme-greg-upper-lower.sql joué sur un Postgres local
-//  reproduisant le schéma, la bibliothèque réelle (38 exercices) et les trois
-//  anciens programmes qui occupent les séances 1 à 5. Si le SQL change, la
-//  fixture doit être régénérée — sinon le test ne prouve plus rien.
+//  sql/2026-09-22-programme-greg-retour-5-jours.sql joué sur un Postgres local
+//  reproduisant le schéma, la bibliothèque réelle et les quatre programmes de
+//  Greg. Si le SQL change, la fixture doit être régénérée — sinon le test ne
+//  prouve plus rien.
 //
-//  Ce qu'on vérifie au-delà du rendu : que le programme fait ce que Greg a
-//  demandé le 22 septembre 2026 — upper/lower 4 jours, lundi-mardi-jeudi-
-//  vendredi, priorité pectoraux (haut accentué) / épaules / triceps, jambes
-//  au volume de maintien.
+//  CE QUE CE PROGRAMME EST. Greg a essayé l'upper/lower 4 jours du 22 septembre
+//  et l'a refusé le jour même. On est revenu à son 5 jours, avec trois
+//  modifications et trois seulement :
+//    1. moins de jambes — 26 séries hebdomadaires deviennent 10 ;
+//    2. les abdos deviennent de VRAIS exercices logués, à la place du texte
+//       libre « Abdos / cardio » qui ne portait ni charge ni progression ;
+//    3. un seul exercice de dos unilatéral le jeudi au lieu de trois.
+//
+//  Ce test vérifie ces trois points, et surtout qu'AUCUN autre n'a bougé :
+//  une modification qui déborde de ce qui a été demandé est exactement ce
+//  qu'on veut attraper ici.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { chromium } from "playwright";
@@ -85,99 +92,126 @@ const seriesPar = (m) => toutes.filter(e => e.muscle === m).reduce((t, e) => t +
 console.log("─── L'app accepte le programme ───");
 {
   ok(erreurs.length === 0, `aucune erreur applicative (${erreurs.length})`);
-  const vu = await p.locator("text=/UPPER|LOWER/i").count();
-  ok(vu > 0, `les séances s'affichent (${vu} mentions UPPER/LOWER)`);
+  const vu = await p.locator("text=/PUSH|PULL|UPPER/i").count();
+  ok(vu > 0, `les séances s'affichent (${vu} mentions PUSH/PULL/UPPER)`);
   await p.screenshot({ path: CAPTURES + "greg-accueil.png" });
 }
 
-console.log("\n─── Quatre jours : lundi, mardi, jeudi, vendredi ───");
+console.log("\n─── Cinq jours, inchangés : lundi, mardi, jeudi, vendredi, dimanche ───");
 {
   const jours = SEM.filter(j => j.sessionId != null).map(j => j.day);
-  ok(jours.length === 4, `4 jours d'entraînement (${jours.length})`);
-  ok(JSON.stringify(jours) === JSON.stringify(["LUNDI","MARDI","JEUDI","VENDREDI"]),
-     `dans l'ordre demandé : ${jours.join(", ")}`);
+  ok(JSON.stringify(jours) === JSON.stringify(["LUNDI","MARDI","JEUDI","VENDREDI","DIMANCHE"]),
+     `le calendrier d'origine est repris : ${jours.join(", ")}`);
   const repos = SEM.filter(j => j.sessionId == null).map(j => j.day);
-  ok(repos.includes("MERCREDI") && repos.includes("SAMEDI") && repos.includes("DIMANCHE"),
-     `repos mercredi, samedi, dimanche (${repos.join(", ")})`);
+  ok(repos.includes("MERCREDI") && repos.includes("SAMEDI"),
+     `repos mercredi et samedi (${repos.join(", ")})`);
 }
 
-console.log("\n─── C'est bien un upper / lower ───");
+console.log("\n─── 1. Les jambes descendent à 10 séries, sans disparaître ───");
 {
-  const bas = ["Quadriceps","Ischios","Mollets","Fessier/Ischios","Adducteurs"];
-  for (const s of S) {
-    const muscles = [...new Set(s.exercises.map(e => e.muscle))];
-    const aDuBas = muscles.some(m => bas.includes(m));
-    const estUpper = /UPPER/.test(s.name);
-    ok(estUpper ? !aDuBas : aDuBas,
-       `${s.name} : ${estUpper ? "aucun muscle du bas" : "contient bien du bas du corps"}`);
+  const BAS = ["Quadriceps","Ischios","Mollets","Fessier/Ischios","Adducteurs"];
+  const detail = BAS.map(m => `${m} ${seriesPar(m)}`).join(" · ");
+  const total = BAS.reduce((t, m) => t + seriesPar(m), 0);
+  ok(total === 10, `10 séries de bas du corps par semaine — ${detail}`);
+  // Un muscle qu'on ne priorise plus ne se supprime pas : l'arrêt TOTAL coûte
+  // jusqu'à −30 % de section sur 32 semaines (Bickel). Les trois muscles que
+  // Greg garde restent donc présents, même à bas volume.
+  for (const m of ["Quadriceps","Ischios","Mollets"]) {
+    ok(seriesPar(m) > 0, `${m} : ${seriesPar(m)} séries — présent, pas supprimé`);
   }
-  // Le dos est sur les jours LOWER, jamais sur les UPPER : c'est le choix qui
-  // libère la place pour l'incliné et les épaules.
-  const dosSurUpper = S.filter(s => /UPPER/.test(s.name))
-    .flatMap(s => s.exercises).filter(e => /dorsal|Haut du dos/.test(e.muscle)).length;
-  ok(dosSurUpper === 0, `aucun exercice de dos sur les séances Upper (${dosSurUpper})`);
+  // Le leg curl gardé est l'ASSIS : hanche fléchie = ischio en position
+  // allongée. Quand il ne reste que 3 séries, autant qu'elles comptent.
+  const curls = toutes.filter(e => /leg curl/i.test(e.exercice)).map(e => e.exercice);
+  ok(curls.length === 1 && /assis/i.test(curls[0]),
+     `un seul leg curl, et c'est l'assis (${curls.join(", ") || "aucun"})`);
 }
 
-console.log("\n─── Les priorités reçoivent le volume des priorités ───");
+console.log("\n─── 2. Les abdos sont de VRAIS exercices, plus du texte libre ───");
 {
-  const pec = seriesPar("Pectoraux"), tri = seriesPar("Triceps");
+  const abdos = toutes.filter(e => e.muscle === "Abdos");
+  ok(abdos.length >= 4, `${abdos.length} emplacements d'abdos dans la semaine`);
+  ok(seriesPar("Abdos") === 12, `12 séries d'abdos par semaine (${seriesPar("Abdos")})`);
+
+  // Chacun des deux exercices revient 2× par semaine : la fréquence de
+  // référence (P.5). Un seul passage hebdomadaire n'aurait pas été « réel ».
+  const parNom = {};
+  abdos.forEach(e => { parNom[e.exercice] = (parNom[e.exercice] || 0) + 1; });
+  const noms = Object.keys(parNom);
+  ok(noms.length === 2, `deux exercices distincts : ${noms.join(" · ")}`);
+  ok(noms.every(n => parNom[n] === 2),
+     `chacun revient 2× par semaine (${noms.map(n => n + " ×" + parNom[n]).join(", ")})`);
+
+  // Ils sont en BIBLIOTHÈQUE, sinon ils ne peuvent porter ni vidéo ni note.
+  const enBiblio = FIXTURE.biblio.filter(x => x.muscle === "Abdos");
+  ok(enBiblio.length === 2,
+     `les 2 exercices existent en bibliothèque (${enBiblio.map(x => x.name).join(", ")})`);
+
+  // Et le champ texte est VIDE partout : le gainage y était encore, il aurait
+  // été compté une deuxième fois.
+  const resteDuTexte = S.filter(s => (s.abdosCardio || []).length > 0);
+  ok(resteDuTexte.length === 0,
+     `le champ « Abdos / cardio » est vide sur les ${S.length} séances (${resteDuTexte.map(s=>s.name).join(", ") || "aucun reste"})`);
+}
+
+console.log("\n─── 3. Le jeudi n'a plus qu'UN exercice de dos unilatéral ───");
+{
+  const DOS = ["Grand dorsal", "Haut du dos"];
+  const estUni = (e) => /\(uni\)|unilat/i.test(e.exercice);
+  const jeudi = S.find(s => s.name === "PULL");
+  ok(!!jeudi, "la séance du jeudi est bien PULL");
+
+  const dosJeudi = jeudi.exercises.filter(e => DOS.includes(e.muscle));
+  const uniJeudi = dosJeudi.filter(estUni);
+  ok(uniJeudi.length === 1,
+     `un seul dos unilatéral le jeudi sur ${dosJeudi.length} (${uniJeudi.map(e=>e.exercice).join(", ")})`);
+  ok(/pull over/i.test(uniJeudi[0]?.exercice || ""),
+     "et c'est le pull over — celui qui gagne le plus à être unilatéral");
+
+  // Les deux tirages du jeudi sont devenus bilatéraux, et ils existent déjà
+  // en bibliothèque : aucun exercice inventé pour l'occasion.
+  const tirages = dosJeudi.filter(e => /tirage/i.test(e.exercice));
+  ok(tirages.length >= 2 && tirages.every(e => !estUni(e)),
+     `les tirages du jeudi sont bilatéraux (${tirages.map(e=>e.exercice).join(" · ")})`);
+
+  // La charge de dos elle-même ne baisse pas : c'est la FATIGUE qui baisse,
+  // pas le volume. 10 séries unilatérales = 20 séries de travail réel.
+  const volDosJeudi = dosJeudi.reduce((t, e) => t + e.series, 0);
+  ok(volDosJeudi >= 10, `le volume de dos du jeudi est conservé (${volDosJeudi} séries)`);
+}
+
+console.log("\n─── Ce qui NE devait PAS bouger n'a pas bougé ───");
+{
+  // Le programme s'appelle « focus bras/épaules ». Trois modifications ont été
+  // demandées ; toucher aux bras ou aux épaules n'en faisait pas partie.
+  const tri = seriesPar("Triceps"), bi = seriesPar("Biceps");
   const dlat = seriesPar("Deltoïde lat"), dpost = seriesPar("Deltoïde post");
-  ok(pec >= 14 && pec <= 20, `pectoraux : ${pec} séries/semaine (fourchette utile 12-20)`);
-  ok(tri >= 12 && tri <= 20, `triceps : ${tri} séries/semaine`);
-  ok(dlat >= 10, `deltoïde latéral : ${dlat} séries/semaine`);
-  ok(dpost >= 4, `deltoïde postérieur : ${dpost} séries/semaine`);
-}
+  ok(tri === 14, `triceps : ${tri} séries/semaine (inchangé)`);
+  ok(bi === 14, `biceps : ${bi} séries/semaine (inchangé)`);
+  ok(dlat === 12, `deltoïde latéral : ${dlat} séries/semaine (inchangé)`);
+  ok(dpost === 8, `deltoïde postérieur : ${dpost} séries/semaine (inchangé)`);
+  ok(seriesPar("Pectoraux") === 13, `pectoraux : ${seriesPar("Pectoraux")} séries/semaine (inchangé)`);
 
-console.log("\n─── L'accentuation du HAUT des pectoraux est réelle ───");
-{
-  // Ce qui biaise le haut : les mouvements inclinés, et l'écarté poulie basse
-  // dont la trajectoire va du bas vers le haut.
-  const pecs = toutes.filter(e => e.muscle === "Pectoraux");
-  const haut = pecs.filter(e => /incliné/i.test(e.exercice) || /poulie basse/i.test(e.exercice))
-                   .reduce((t, e) => t + e.series, 0);
-  const total = pecs.reduce((t, e) => t + e.series, 0);
-  ok(haut / total > 0.5,
-     `${haut} des ${total} séries pectoraux biaisent le haut (${Math.round(100*haut/total)} %)`);
-  const inclines = new Set(pecs.filter(e => /incliné/i.test(e.exercice)).map(e => e.exercice));
-  ok(inclines.size >= 2, `deux schémas inclinés distincts : ${[...inclines].join(" · ")}`);
-  // Les dips biaisent le BAS du pectoral : leur présence contredirait l'objectif.
-  ok(!toutes.some(e => /dips/i.test(e.exercice)),
-     "aucun dip — ils biaisent le bas du pectoral, l'inverse de l'objectif");
-}
+  // La séance du lundi n'était concernée par aucune des trois demandes.
+  const lundi = S.find(s => s.name === "PUSH A");
+  ok(lundi.exercises.length === 7 && lundi.exercises.reduce((t,e)=>t+e.series,0) === 21,
+     `PUSH A du lundi : ${lundi.exercises.length} exos, ${lundi.exercises.reduce((t,e)=>t+e.series,0)} séries — intacte`);
 
-console.log("\n─── Le triceps est travaillé en position allongée ───");
-{
-  // L'effet le mieux documenté du programme : +28,5 % contre +19,6 % sur la
-  // longue portion en 12 semaines (Maeo et coll.).
-  const upper = S.filter(s => /UPPER/.test(s.name));
-  const avecOverhead = upper.filter(s => s.exercises.some(e => /overhead/i.test(e.exercice)));
-  ok(avecOverhead.length === upper.length,
-     `l'extension overhead est présente sur les ${upper.length} séances Upper`);
-}
-
-console.log("\n─── Les jambes sont au volume de MAINTIEN, assumé ───");
-{
-  const quad = seriesPar("Quadriceps"), isch = seriesPar("Ischios");
-  ok(quad >= 4 && quad <= 10, `quadriceps : ${quad} séries/semaine (maintien, pas progression)`);
-  ok(isch >= 2 && isch <= 8, `ischios : ${isch} séries/semaine`);
-  ok(quad > 0 && isch > 0, "les jambes ne sont pas supprimées — l'arrêt total coûte cher");
-  ok(quad < seriesPar("Pectoraux"), `moins de quadriceps que de pectoraux (${quad} < ${seriesPar("Pectoraux")})`);
-}
-
-console.log("\n─── Les biceps passent en maintien, pas à la poubelle ───");
-{
-  const bi = seriesPar("Biceps");
-  ok(bi >= 4 && bi <= 9, `biceps/brachial : ${bi} séries/semaine (volume de maintien ≈ 6)`);
-  ok(toutes.some(e => /marteau/i.test(e.exercice)),
-     "le curl marteau est là — c'est lui qui travaille le brachial, dans les focus");
+  // Les fourchettes utiles restent tenues sur les muscles prioritaires.
+  ok(tri >= 12 && tri <= 20, `le triceps reste dans la fourchette 12-20`);
+  ok(bi >= 12 && bi <= 20, `le biceps reste dans la fourchette 12-20`);
 }
 
 console.log("\n─── Les pastilles de muscle sont dans la liste fermée ───");
 {
+  // Abdos vient d'y entrer — un muscle hors liste casse le code couleur sur
+  // toutes les vues, et ne se voit sur aucun écran avant la mise en ligne.
   const LISTE = ["Triceps","Pectoraux","Deltoïde post","Deltoïde lat","Quadriceps","Ischios",
-                 "Mollets","Grand dorsal","Haut du dos","Biceps","Fessier/Ischios","Adducteurs"];
+                 "Mollets","Grand dorsal","Haut du dos","Biceps","Fessier/Ischios","Adducteurs",
+                 "Abdos"];
   const hors = [...new Set(toutes.map(e => e.muscle))].filter(m => !LISTE.includes(m));
   ok(hors.length === 0, `aucun muscle hors liste (${hors.join(", ") || "aucun"})`);
+  const horsBiblio = [...new Set(FIXTURE.biblio.map(x => x.muscle))].filter(m => !LISTE.includes(m));
+  ok(horsBiblio.length === 0, `la bibliothèque non plus (${horsBiblio.join(", ") || "aucun"})`);
 }
 
 console.log("\n─── Chaque série a son objectif de reps ───");
@@ -190,6 +224,7 @@ console.log("\n─── Chaque série a son objectif de reps ───");
 console.log("\n─── Tout est lié à la bibliothèque ───");
 {
   // Sans lien, le coaché ne peut pas suivre l'exercice jusqu'à sa vidéo.
+  // L'ancien programme n'en avait qu'UN sur 35 ; le SQL les relie tous.
   const sansLien = toutes.filter(e => !e.library_exercise_id);
   ok(sansLien.length === 0,
      `${toutes.length - sansLien.length}/${toutes.length} exercices liés (${sansLien.map(e=>e.exercice).join(", ") || "aucun manquant"})`);
@@ -214,10 +249,14 @@ console.log("\n─── Durée des séances ───");
 
 console.log("\n─── Numérotation des séances ───");
 {
-  // Greg a utilisé 1 à 5 sur ses trois programmes précédents. Réutiliser un id
-  // ferait apparaître ses anciennes charges sous les nouveaux exercices.
+  // Ici la règle s'applique À L'ENVERS de celle d'un programme NEUF. Ce
+  // programme est celui de Greg : ses 561 séries loguées sont indexées sur ses
+  // séances 1 à 5. Les changer orphelinerait son historique. Ce qu'interdit la
+  // règle P.3, c'est de RECYCLER l'id d'un AUTRE programme — pas de rester sur
+  // les siens.
   const ids = S.map(s => s.id).sort((a,b) => a-b);
-  ok(ids.every(i => i > 5), `tous les numéros sont au-delà de 5 (${ids.join(", ")})`);
+  ok(JSON.stringify(ids) === JSON.stringify([1,2,3,4,5]),
+     `les numéros d'origine sont conservés (${ids.join(", ")})`);
   ok(new Set(ids).size === ids.length, "aucun doublon");
   const refs = SEM.filter(j => j.sessionId != null).map(j => j.sessionId).sort((a,b)=>a-b);
   ok(JSON.stringify(refs) === JSON.stringify(ids), "la semaine pointe exactement sur les séances définies");
