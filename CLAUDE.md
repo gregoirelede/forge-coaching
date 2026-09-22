@@ -98,6 +98,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
 | **v7o** | Sprint 4 : **supervision des erreurs** — un plantage chez un coaché remonte au coach. Toutes les confirmations passent par le portail | 546 401 o | 6 517 |
 | **v7p** | **Diète personnalisée fixe** : refonte de l'onglet Nutrition à l'aliment près. Deux journées types (entraînement / repos), consentement donné par le coaché, base d'aliments Ciqual. L'onglet Recettes et le plan de la semaine sont retirés | 550 890 o | 6 866 |
 | **v7q** | **Praticité des diètes** : aliments habituels du coaché (le générateur y pioche en priorité), plafonds de budget et de temps de préparation | 557 657 o | 7010 |
+| **v8g** | **« Abdos » entre dans la liste fermée des muscles**, treizième catégorie. Elle manquait, et c'est ce qui faisait que les abdos de Greg vivaient depuis des mois dans le champ texte « Abdos / cardio » — donc jamais logués, jamais comparés, jamais progressés. `MUSCLE_OPTIONS` cesse d'être une seconde liste recopiée à côté de `muscleColors` : elle en dérive | 605 862 o | 8287 |
 | **v8f** | **L'éclat et le mouvement.** L'angle du dégradé du hero passe de 135° à 118° : son point le plus clair quitte « ~70 min » pour la zone vide à droite, ce qui lève le plafond de vivacité de **86 à 124 (+44 %)** sans qu'aucun texte descende sous son seuil. Et les trois chiffres de l'accueil **montent jusqu'à leur valeur** au lieu d'apparaître — une fois par session, jamais si le téléphone demande de réduire les animations | 605 808 o | 8286 |
 | **v8e** | **Les cartes n'étaient pas blanches par choix, mais par écrêtage de gamut** : leur ton était demandé à 99,5 % de clarté, où le sRGB ne tient aucune couleur — 80 % du chroma était raboté en silence. Or c'est 43 % de l'écran. Relevé au pixel : 77 % de l'accueil clair était quasi incolore, désormais 6 %. Le fond descend d'autant pour que la carte se détache encore mieux qu'avant (1,14:1 → 1,20:1) | 603 900 o | 8226 |
 | **v8d** | **Le thème sombre était seize fois moins vif que le clair**, et personne ne pouvait le voir en lisant la palette : un hex à 8 chiffres (`#04332715`) mettait le hero à 8 % d'opacité, il se dissolvait dans la page. 1,1 % de pixels vifs contre 17,5 % en clair — désormais 17,1 % des deux côtés. La pastille de semaine repasse de 3,74:1 à 7,06:1 : un voile blanc sur un dégradé éclaircit le fond d'un texte blanc | 603 900 o | 8226 |
@@ -196,6 +197,7 @@ forge-coaching/
 │   ├── 2026-08-15-retour-reversible.sql ← le coaché peut annuler un signalement
 │   ├── 2026-08-25-programme-meyssa.sql  ← son full body fessier, mercredi + dimanche
 │   ├── 2026-09-22-programme-greg-upper-lower.sql ← son upper/lower 4 jours (v8f)
+│   ├── 2026-09-22-programme-greg-retour-5-jours.sql ← retour à son 5 jours, modifié (v8g)
 │   ├── A-JOUER-15-AOUT.sql              ← les 3 ci-dessus réunies, pour Greg
 │   ├── 2026-08-14-aliments-ciqual.sql  ← 3 286 aliments, produit par le script
 │   ├── data/aliments-ciqual-2025.json  ← même contenu, lu par Postgres au chargement
@@ -938,7 +940,7 @@ raisons (Partie I.3).
 | `decharge` | Décharge | `#5B35B0` | `#EDE8FF` |
 
 ### Catégories musculaires (`muscleColors` — liste fermée)
-Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios · Mollets · Grand dorsal · Haut du dos · Biceps · Fessier/Ischios · Adducteurs
+Triceps · Pectoraux · Deltoide post · Deltoide lat · Quadriceps · Ischios · Mollets · Grand dorsal · Haut du dos · Biceps · Fessier/Ischios · Adducteurs · Abdos
 
 > La saisie du muscle se fait **par menu déroulant**, jamais en texte libre — sinon le code couleur casse. Ajouter une catégorie est une évolution à part entière (couleur + cohérence sur toutes les vues).
 
@@ -1594,6 +1596,50 @@ objectif) se lit en base et ne se demande pas.
   ce qui compte — qu'une relance ne crée pas un second programme, et qu'un exercice
   renommé arrête tout **sans rien avoir modifié**. C'est ce qui a permis de livrer
   le programme de Meyssa alors que la production était injoignable.
+
+  **Trois précisions apprises le 22 septembre 2026**, en éprouvant le retour au
+  programme 5 jours de Greg :
+
+  1. **Ne pas faire tourner le cluster dans le dossier temporaire de la session.**
+     Ses permissions sont réinitialisées en cours de route, et Postgres meurt sur
+     un `could not stat data directory` au milieu d'une série d'essais — en
+     laissant croire que le script a échoué. `/var/lib/postgresql/<projet>` tient.
+  2. **Un essai qui compare deux empreintes doit d'abord vérifier qu'il en a
+     obtenu une.** Deux `psql` qui échouent renvoient deux chaînes vides, égales :
+     l'essai annonce « intact » alors qu'il n'a rien mesuré. J'ai eu ce faux
+     négatif, puis un faux positif dans l'autre sens.
+  3. **« Renommer un exercice » n'est PAS le cas d'arrêt.** Le motif de repli est
+     justement là pour survivre à un renommage, et il le fait. Les vrais cas
+     d'arrêt sont l'exercice **introuvable** (0 correspondance) et le motif
+     **ambigu** (2 et plus) — ce sont ceux-là qu'il faut jouer, et le programme
+     doit ressortir à l'empreinte près.
+
+- **Restaurer un programme existant, ce n'est pas en créer un neuf.** Le 22
+  septembre 2026, Greg a essayé un upper/lower 4 jours et l'a refusé le jour même.
+  Revenir en arrière demande de **garder les `session_config_id` du programme
+  restauré** — ses 561 séries loguées y sont attachées, les changer les
+  orphelinerait. La règle « numéroter hors de la plage déjà utilisée » interdit de
+  **recycler l'id d'un AUTRE programme**, pas de rester sur les siens. Le script
+  écrit donc 1 à 5 en dur, et **vérifie d'abord** que c'est bien ce que le
+  programme utilise plutôt que de le supposer.
+  Deux points à contrôler avant : qu'aucune série n'ait été loguée sur le
+  programme qu'on abandonne (sinon on perd le contexte de ces séries), et — quand
+  plusieurs programmes portent le même nom, ce qui arrive — **lequel des deux
+  porte l'historique**. Chez Greg, deux programmes s'appelaient « Programme 5/7
+  focus bras/épaules » : on prend celui de `program_order` le plus élevé, pas un
+  identifiant recopié à la main.
+
+- **Un champ en texte libre n'est pas de l'entraînement.** `abdosCardio` portait
+  « 3x1 min GAINAGE · 3x échec relevé de jambes · 2x échec crunch à la poulie »
+  depuis des mois, sur trois séances. Rien de tout ça n'était **logué** : pas de
+  charge, pas de répétitions, pas de comparaison, pas de record, pas de couleur.
+  Autant dire que les abdos n'étaient pas dans le programme — ils étaient dans une
+  note. Un muscle qu'on veut réellement travailler passe par un exercice de la
+  bibliothèque, avec ses séries et ses reps. Le champ texte reste utile pour ce
+  qui ne se log pas (du cardio, un échauffement), et pour rien d'autre.
+  Corollaire : le jour où on transforme ce texte en exercices, **il faut vider le
+  champ** — sinon le volume est compté deux fois, sur le papier comme dans la tête
+  du coaché.
 
 ## P.5 — Repères chiffrés d'entraînement *(remis à jour le 22 septembre 2026)*
 

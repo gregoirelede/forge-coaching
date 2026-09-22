@@ -125,6 +125,7 @@ const muscleColors = {
   "Biceps":         { bg:"var(--m-biceps-bg)",     text:"var(--m-biceps-tx)" },
   "Fessier/Ischios":{ bg:"var(--m-fessier-bg)",    text:"var(--m-fessier-tx)" },
   "Adducteurs":     { bg:"var(--m-adducteurs-bg)", text:"var(--m-adducteurs-tx)" },
+  "Abdos":          { bg:"var(--m-abdos-bg)",      text:"var(--m-abdos-tx)" },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3288,11 +3289,8 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ESPACE COACH — Helpers Supabase
 // ═══════════════════════════════════════════════════════════════════════════════
-const MUSCLE_OPTIONS = [
-  "Triceps", "Pectoraux", "Deltoïde post", "Deltoïde lat", "Quadriceps",
-  "Ischios", "Mollets", "Grand dorsal", "Haut du dos", "Biceps",
-  "Fessier/Ischios", "Adducteurs",
-];
+// Dérivé de muscleColors : la liste fermée (Partie H) ne vit qu'à un seul endroit.
+const MUSCLE_OPTIONS = Object.keys(muscleColors);
 const OFFER_OPTIONS = ["essentiel", "premium"];
 const GOAL_OPTIONS  = ["Prise de masse", "Sèche", "Recomposition", "Maintien"];
 const TECHNIQUE_OPTIONS = [

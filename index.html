@@ -108,6 +108,7 @@
   --m-biceps-bg: #F0E0FF;     --m-biceps-tx: #5A1A90;
   --m-fessier-bg: #FFE8E8;    --m-fessier-tx: #902020;
   --m-adducteurs-bg: #E0FFE8; --m-adducteurs-tx: #1A7030;
+  --m-abdos-bg: #F2F7D9;      --m-abdos-tx: #616A0B;
 
   /* Phases de périodisation (Partie H) */
   --p-masse-bg: #FEF3DC;  --p-masse-tx: #C27A00;
@@ -184,6 +185,7 @@
   --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
   --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
   --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+  --m-abdos-bg: #282C13;      --m-abdos-tx: #B8C570;
 
   --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
   --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
@@ -261,6 +263,7 @@
     --m-biceps-bg: #281B38;     --m-biceps-tx: #C7A0EE;
     --m-fessier-bg: #351F1F;    --m-fessier-tx: #F0A3A3;
     --m-adducteurs-bg: #16301C; --m-adducteurs-tx: #7FD495;
+    --m-abdos-bg: #282C13;      --m-abdos-tx: #B8C570;
 
     --p-masse-bg: #33290F;  --p-masse-tx: #E8B451;
     --p-seche-bg: #16263A;  --p-seche-tx: #8FBEE8;
@@ -952,7 +955,8 @@ const muscleColors = {
   "Haut du dos": { bg: "var(--m-hautdos-bg)", text: "var(--m-hautdos-tx)" },
   "Biceps": { bg: "var(--m-biceps-bg)", text: "var(--m-biceps-tx)" },
   "Fessier/Ischios": { bg: "var(--m-fessier-bg)", text: "var(--m-fessier-tx)" },
-  "Adducteurs": { bg: "var(--m-adducteurs-bg)", text: "var(--m-adducteurs-tx)" }
+  "Adducteurs": { bg: "var(--m-adducteurs-bg)", text: "var(--m-adducteurs-tx)" },
+  "Abdos": { bg: "var(--m-abdos-bg)", text: "var(--m-abdos-tx)" }
 };
 let _supabase = null;
 async function getSupabase() {
@@ -2959,20 +2963,7 @@ function AuthenticatedApp({ session, supabase, isDemo, onLogout }) {
     }
   ), /* @__PURE__ */ React.createElement(FloatingBanner, { timers }), /* @__PURE__ */ React.createElement(BottomTabBar, { activePage: page, onNavigate: navigate, showNutrition: !isDemo && appData.client.offer === "premium", weighReminder: !isDemo && appData.client.offer === "premium" && !weighedToday }));
 }
-const MUSCLE_OPTIONS = [
-  "Triceps",
-  "Pectoraux",
-  "Delto\xEFde post",
-  "Delto\xEFde lat",
-  "Quadriceps",
-  "Ischios",
-  "Mollets",
-  "Grand dorsal",
-  "Haut du dos",
-  "Biceps",
-  "Fessier/Ischios",
-  "Adducteurs"
-];
+const MUSCLE_OPTIONS = Object.keys(muscleColors);
 const OFFER_OPTIONS = ["essentiel", "premium"];
 const GOAL_OPTIONS = ["Prise de masse", "S\xE8che", "Recomposition", "Maintien"];
 const TECHNIQUE_OPTIONS = [
