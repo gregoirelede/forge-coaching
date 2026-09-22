@@ -121,8 +121,16 @@ VARIANTES = {
         "sable_H": 82, "vert_H": 162, "vert_C": 0.105, "accent_H": 184.7,
         "neutre_H": 82, "neutre_C": 0.004,
         "entete": "sable-50", "hero": "vert-700",
-        "hero_fond": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
-        "hero_fond_sombre": "linear-gradient(135deg, #064E3B 0%, #0D9488 100%)",
+        # LE DÉGRADÉ DU HERO, v8f. Trois bornes au lieu de deux, et un angle
+        # de 118° au lieu de 135° : le point le plus clair tombe ainsi dans la
+        # zone SANS TEXTE, à droite entre la pastille et le bouton. C'est ce
+        # qui permet de monter à une vivacité de 124 (contre 86) sans que la
+        # lisibilité d'un seul texte descende sous son seuil — le point le plus
+        # serré tient encore 5,35:1 pour 4,5 exigés.
+        # Mesuré, pas estimé : huit candidats rendus, contraste relevé au pixel
+        # aux cinq positions de texte réelles, voir outils/README.md.
+        "hero_fond": "linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%)",
+        "hero_fond_sombre": "linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%)",
     },
     "A-sable-approfondi": {
         "titre": "Sable approfondi",

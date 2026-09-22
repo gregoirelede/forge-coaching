@@ -126,7 +126,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #089E91;
 }
@@ -201,7 +201,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }
@@ -279,7 +279,7 @@
   --hero-sub: rgba(255, 255, 255, 0.88);
   --hero-pastille: rgba(0, 0, 0, 0.18);
   /* Surface de la marque (Vert d'ancrage) */
-  --hero-fond: linear-gradient(135deg, #064E3B 0%, #0D9488 100%);
+  --hero-fond: linear-gradient(118deg, #04352A 0%, #0A7568 58%, #26C9B5 100%);
   /* Surface de la marque (Turquoise du bouclier) */
   --accent-vif: #01CCBC;
 }
@@ -349,6 +349,17 @@ html, body { background: var(--bg); }
 .quick-card { transition: transform .42s var(--ressort), box-shadow .42s var(--ressort); }
 .quick-card:active { transform: scale(.985); }
 .hero-card { transition: transform .5s var(--ressort), box-shadow .5s var(--ressort); }
+
+/* L'ARRIVÉE DU HERO (v8f). C'est le premier objet que voit le coaché en
+   ouvrant l'app : il se pose au lieu d'apparaître. La courbe est --ressort,
+   la même que les feuilles et les cartes — l'app a UNE physique, pas cinq.
+   Déclarée ici et non dans le composant : une @keyframes définie dans un
+   composant n'existe pas avant qu'il soit monté (piège de la v7y). */
+@keyframes heroEntree {
+  from { opacity: 0; transform: translateY(15px) scale(.984); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.hero-entree { animation: heroEntree .62s var(--ressort) both; }
 .hero-card:active { transform: scale(.988); }
 @media (prefers-reduced-motion: reduce) {
   .pressable:active, .quick-card:active, .hero-card:active { transform: none; }
@@ -449,6 +460,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .sheet, .sheet-backdrop, .page-forward, .page-backward, .fade-in { animation-duration: .01ms; }
+  .hero-entree { animation-duration: .01ms; }
   .upcoming-card:active { transform: none; }
 }
 
@@ -1981,9 +1993,42 @@ function LoadingScreen({ text = "Chargement..." }) {
 function ErrorScreen({ title, message, onLogout, actionLabel = "Se d\xE9connecter" }) {
   return /* @__PURE__ */ React.createElement("div", { style: { minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif", padding: 22, gap: 14 } }, /* @__PURE__ */ React.createElement(Icon, { name: "alert", size: 42, color: T.danger }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 22, color: T.text, letterSpacing: 1 } }, title), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, textAlign: "center", maxWidth: 340, lineHeight: 1.6 } }, message), onLogout && /* @__PURE__ */ React.createElement("button", { onClick: onLogout, style: { marginTop: 14, padding: "10px 22px", background: T.surface, boxShadow: "var(--e1)", borderRadius: 16, color: T.textSub, fontSize: 12, fontWeight: 700, letterSpacing: 0.8, cursor: "pointer" } }, actionLabel));
 }
+let _compteursDejaJoues = false;
+function mouvementReduit() {
+  return typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+}
+function useCompteur(cible, anime) {
+  const [valeur, setValeur] = useState(anime && cible > 0 ? 0 : cible);
+  useEffect(() => {
+    if (!anime || cible <= 0) {
+      setValeur(cible);
+      return;
+    }
+    let id = 0;
+    const debut = performance.now();
+    const DUREE = 900;
+    const pas = (t) => {
+      const p = Math.min(1, (t - debut) / DUREE);
+      setValeur(Math.round(cible * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) id = requestAnimationFrame(pas);
+    };
+    id = requestAnimationFrame(pas);
+    return () => cancelAnimationFrame(id);
+  }, [cible, anime]);
+  return valeur;
+}
+function StatChiffre({ valeur, anime }) {
+  const affiche = useCompteur(valeur, anime);
+  return /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 26, color: T.accentVif, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 } }, affiche);
+}
 function HomePage({ ctx }) {
   const { appData, todaySession, todayDay, currentWeek, allCompletedSets, navigate, openWorkout } = ctx;
   const { client, week } = appData;
+  const animeCompteurs = useRef(null);
+  if (animeCompteurs.current === null) {
+    animeCompteurs.current = !_compteursDejaJoues && !mouvementReduit();
+    if (animeCompteurs.current) _compteursDejaJoues = true;
+  }
   const stats = useMemo(() => {
     const completedSets = Object.values(allCompletedSets).filter(Boolean).length;
     const wT = /* @__PURE__ */ new Set(), tS = /* @__PURE__ */ new Set();
@@ -1997,11 +2042,11 @@ function HomePage({ ctx }) {
     return { completedSets, weeksTrained: wT.size, totalSessions: tS.size };
   }, [allCompletedSets]);
   const upcomingSessions = week.map((w, i) => __spreadProps(__spreadValues({}, w), { dayIdx: i, sess: appData.sessions.find((s) => s.id === w.sessionId) })).filter((w) => w.sess);
-  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 112 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, letterSpacing: 0.5, fontWeight: 600 } }, "BONJOUR"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 1, lineHeight: 1, marginTop: 4 } }, client.name.toUpperCase())), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, todaySession ? /* @__PURE__ */ React.createElement("div", { className: "hero-card", onClick: () => openWorkout(todaySession.id), style: { background: "var(--hero-fond)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, fontWeight: 600, color: "var(--hero-sub)", letterSpacing: 0 } }, "S\xE9ance du jour \xB7 ", todayDay.charAt(0) + todayDay.slice(1).toLowerCase()), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: "var(--hero-tx)" } }, todaySession.name)), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--hero-pastille)", color: "var(--hero-tx)", padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 } }, "S", currentWeek)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: "var(--hero-sub)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 15, color: "var(--hero-sub)" }), /* @__PURE__ */ React.createElement("span", null, todaySession.exercises.length, " exercices")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 15, color: "var(--hero-sub)" }), /* @__PURE__ */ React.createElement("span", null, "~", estimateSessionMinutes(todaySession), " min"))), /* @__PURE__ */ React.createElement("button", { className: "pressable", style: { background: "var(--hero-tx)", color: "var(--hero-bg)", border: "none", borderRadius: 16, padding: "15px 20px", fontSize: 14, fontWeight: 700, letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", fontFamily: "inherit" } }, /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 15, color: "var(--hero-bg)", filled: true }), " Commencer la s\xE9ance")) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, borderRadius: 26, padding: "30px 22px", textAlign: "center", boxShadow: "var(--e1)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.textMuted } }, todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 1.4, lineHeight: 1, marginTop: 6 } }, "JOUR DE REPOS"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, marginTop: 10, lineHeight: 1.6 } }, "Profite de cette journ\xE9e pour r\xE9cup\xE9rer.", /* @__PURE__ */ React.createElement("br", null), "La r\xE9cup\xE9ration fait partie du programme."))), /* @__PURE__ */ React.createElement("div", { style: { padding: "18px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 } }, [
+  return /* @__PURE__ */ React.createElement("div", { style: { paddingBottom: 112 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "22px 18px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textMuted, letterSpacing: 0.5, fontWeight: 600 } }, "BONJOUR"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.text, letterSpacing: 1, lineHeight: 1, marginTop: 4 } }, client.name.toUpperCase())), /* @__PURE__ */ React.createElement("div", { style: { padding: "0 18px" } }, todaySession ? /* @__PURE__ */ React.createElement("div", { className: "hero-card hero-entree", onClick: () => openWorkout(todaySession.id), style: { background: "var(--hero-fond)", borderRadius: 26, padding: "20px 20px 18px", cursor: "pointer", position: "relative", overflow: "hidden", boxShadow: "var(--e2)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, fontWeight: 600, color: "var(--hero-sub)", letterSpacing: 0 } }, "S\xE9ance du jour \xB7 ", todayDay.charAt(0) + todayDay.slice(1).toLowerCase()), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 38, letterSpacing: 1, lineHeight: 1.02, marginTop: 3, color: "var(--hero-tx)" } }, todaySession.name)), /* @__PURE__ */ React.createElement("div", { style: { background: "var(--hero-pastille)", color: "var(--hero-tx)", padding: "5px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, flexShrink: 0, marginLeft: 10 } }, "S", currentWeek)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 16, marginBottom: 16, fontSize: 12.5, color: "var(--hero-sub)" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 15, color: "var(--hero-sub)" }), /* @__PURE__ */ React.createElement("span", null, todaySession.exercises.length, " exercices")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement(Icon, { name: "clock", size: 15, color: "var(--hero-sub)" }), /* @__PURE__ */ React.createElement("span", null, "~", estimateSessionMinutes(todaySession), " min"))), /* @__PURE__ */ React.createElement("button", { className: "pressable", style: { background: "var(--hero-tx)", color: "var(--hero-bg)", border: "none", borderRadius: 16, padding: "15px 20px", fontSize: 14, fontWeight: 700, letterSpacing: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", width: "100%", fontFamily: "inherit" } }, /* @__PURE__ */ React.createElement(Icon, { name: "play", size: 15, color: "var(--hero-bg)", filled: true }), " Commencer la s\xE9ance")) : /* @__PURE__ */ React.createElement("div", { style: { background: T.surface, borderRadius: 26, padding: "30px 22px", textAlign: "center", boxShadow: "var(--e1)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.textMuted } }, todayDay), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "'Bebas Neue'", fontSize: 36, color: T.accent, letterSpacing: 1.4, lineHeight: 1, marginTop: 6 } }, "JOUR DE REPOS"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: T.textSub, marginTop: 10, lineHeight: 1.6 } }, "Profite de cette journ\xE9e pour r\xE9cup\xE9rer.", /* @__PURE__ */ React.createElement("br", null), "La r\xE9cup\xE9ration fait partie du programme."))), /* @__PURE__ */ React.createElement("div", { style: { padding: "18px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 } }, [
     { icon: "calendar", value: stats.weeksTrained, label: "SEMAINES" },
     { icon: "workout", value: stats.totalSessions, label: "S\xC9ANCES" },
     { icon: "trending", value: stats.completedSets, label: "S\xC9RIES" }
-  ].map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "stat-card", style: { background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` } }, /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 18, color: T.accentVif }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 26, color: T.accentVif, letterSpacing: -0.5, marginTop: 4, lineHeight: 1 } }, s.value), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginTop: 4 } }, s.label)))), /* @__PURE__ */ React.createElement(BilanCard, { ctx }), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 18px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 19, letterSpacing: -0.3, color: T.text } }, "Cette semaine"), /* @__PURE__ */ React.createElement("button", { onClick: () => navigate("workout"), style: { background: "transparent", border: "none", color: T.accent, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 } }, "Tout voir ", /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 14 }))), /* @__PURE__ */ React.createElement("div", { className: "rail cartes", style: { display: "flex", gap: 10, overflowX: "auto", margin: "0 -18px", padding: "2px 18px 6px" } }, upcomingSessions.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: w.dayIdx, className: "upcoming-card", onClick: () => openWorkout(w.sess.id), style: { flexShrink: 0, width: 156, background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "13px 14px 15px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" } }, w.day.slice(0, 3)), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15.5, color: T.accentVif, letterSpacing: -0.2, lineHeight: 1.15, marginTop: 7, minHeight: 36 } }, w.sess.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 9, fontSize: 10, color: T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 11, color: T.textMuted }), /* @__PURE__ */ React.createElement("span", null, w.sess.exercises.length, " exos")))))), /* @__PURE__ */ React.createElement(Groupe, { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Progression", subtitle: "Suis ton \xE9volution semaine par semaine", onClick: () => navigate("progress") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Lis les conventions de ton programme", onClick: () => navigate("profile", "consignes") })));
+  ].map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "stat-card", style: { background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "14px 10px", textAlign: "center", animation: `fadeUp .4s ease ${0.1 + i * 0.08}s both` } }, /* @__PURE__ */ React.createElement(Icon, { name: s.icon, size: 18, color: T.accentVif }), /* @__PURE__ */ React.createElement(StatChiffre, { valeur: s.value, anime: animeCompteurs.current }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 8, color: T.textMuted, letterSpacing: 0.5, fontWeight: 700, marginTop: 4 } }, s.label)))), /* @__PURE__ */ React.createElement(BilanCard, { ctx }), /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 18px 20px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 19, letterSpacing: -0.3, color: T.text } }, "Cette semaine"), /* @__PURE__ */ React.createElement("button", { onClick: () => navigate("workout"), style: { background: "transparent", border: "none", color: T.accent, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 } }, "Tout voir ", /* @__PURE__ */ React.createElement(Icon, { name: "chevronRight", size: 14 }))), /* @__PURE__ */ React.createElement("div", { className: "rail cartes", style: { display: "flex", gap: 10, overflowX: "auto", margin: "0 -18px", padding: "2px 18px 6px" } }, upcomingSessions.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: w.dayIdx, className: "upcoming-card", onClick: () => openWorkout(w.sess.id), style: { flexShrink: 0, width: 156, background: T.surface, boxShadow: "var(--e1)", borderRadius: 18, padding: "13px 14px 15px", cursor: "pointer", animation: `fadeUp .4s ease ${0.3 + i * 0.06}s both` } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: T.textMuted, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" } }, w.day.slice(0, 3)), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15.5, color: T.accentVif, letterSpacing: -0.2, lineHeight: 1.15, marginTop: 7, minHeight: 36 } }, w.sess.name), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 9, fontSize: 10, color: T.textMuted } }, /* @__PURE__ */ React.createElement(Icon, { name: "workout", size: 11, color: T.textMuted }), /* @__PURE__ */ React.createElement("span", null, w.sess.exercises.length, " exos")))))), /* @__PURE__ */ React.createElement(Groupe, { style: { padding: "0 18px" } }, /* @__PURE__ */ React.createElement(QuickCard, { icon: "trophy", title: "Progression", subtitle: "Suis ton \xE9volution semaine par semaine", onClick: () => navigate("progress") }), /* @__PURE__ */ React.createElement(QuickCard, { icon: "info", title: "Consignes coach", subtitle: "Lis les conventions de ton programme", onClick: () => navigate("profile", "consignes") })));
 }
 function WorkoutPage({ ctx }) {
   var _a, _b;

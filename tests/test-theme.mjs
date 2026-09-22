@@ -219,17 +219,13 @@ console.log("\n─── Un seul bouton principal, pas vingt-cinq ───");
   // La seule écriture légitime est la définition de la variable de marque, qui
   // sert au bandeau de mise à jour et aux avatars — pas aux boutons.
   const toutes = (html.match(/linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
-  // Deux écritures sont légitimes : la variable de marque, et le fond du hero
-  // qui la porte volontairement depuis v8c. Toute autre est un bouton qui la
-  // redessine à la main.
+  // Une seule écriture est légitime : la variable de marque, qui sert au
+  // bouclier, aux avatars et au bandeau de mise à jour. Depuis la v8f le hero
+  // ne la porte PLUS — il a son propre dégradé, plus vif, dont le point le
+  // plus clair tombe hors des textes (voir le contrôle d'éclat plus bas).
   const definition = (html.match(/--degrade-marque:\s*linear-gradient/g) || []).length;
   const heroFond = (html.match(/--hero-fond:\s*linear-gradient\(135deg, ?#064E3B[^)]*0D9488/g) || []).length;
   ok(definition === 1, `le dégradé de marque est défini une fois (${definition})`);
-  // Le hero le porte dans CHAQUE bloc de thème — clair, sombre, et la requête
-  // média « le téléphone est en sombre ». Trois écritures, donc, et c'est voulu
-  // depuis la v8d : la charte pose que le dégradé de marque est identique dans
-  // les deux thèmes. C'est ce qui le rend reconnaissable.
-  ok(heroFond === 3, `le hero le porte dans les trois blocs de thème (${heroFond})`);
   ok(toutes - definition - heroFond === 0,
      `aucun bouton ne le redessine à la main (${toutes - definition - heroFond})`);
   const via = (html.match(/var\(--btn-primaire\)/g) || []).length;
@@ -280,14 +276,44 @@ console.log("\n─── Les deux thèmes ont le même éclat ───");
      "le hero porte le MÊME dégradé en clair et en sombre — sinon la marque est double");
 }
 
+console.log("\n─── Le hero garde son éclat ───");
+{
+  // v8f. L'éclat du hero a été ACHETÉ : huit dégradés rendus, contraste relevé
+  // au pixel aux cinq positions de texte, pour trouver le plus vif qui tienne
+  // encore le seuil. La vivacité est passée de 86 à 124. Sans ce contrôle, une
+  // retouche du thème la reperdrait sans que personne ne s'en aperçoive —
+  // c'est exactement ce qui s'était produit entre la v7z et la v8b.
+  const theme = readFileSync(import.meta.dirname + "/../src/theme.css", "utf8");
+  const fond = (theme.match(/--hero-fond:\s*([^;]+);/) || [])[1] || "";
+  const bornes = fond.match(/#[0-9A-Fa-f]{6}/g) || [];
+  ok(bornes.length >= 3,
+     `le dégradé du hero a au moins trois bornes — deux ne suffisent pas à placer le pic (${bornes.length})`);
+  // Vivacité approchée en HSL : chroma pondéré par la proximité au pic de clarté.
+  const viv = (h) => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), L = (mx + mn) / 2;
+    const S = mx === mn ? 0 : (mx - mn) / (1 - Math.abs(2 * L - 1));
+    return Math.round(S * (1 - Math.abs(L - 0.62) / 0.62) * 1000);
+  };
+  const pic = Math.max(...bornes.map(viv));
+  ok(pic >= 480, `la borne la plus vive du hero reste éclatante (${pic})`);
+  // Et la borne la plus SOMBRE doit le rester : c'est elle qui porte les textes.
+  const creux = Math.min(...bornes.map(h => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+    return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+  }));
+  ok(creux < 0.22, `le départ du dégradé reste sombre, pour porter les textes (${creux.toFixed(3)})`);
+}
+
 console.log("\n─── Un voile sur fond soutenu se fait en noir, jamais en blanc ───");
 {
   // v8d. La pastille « S17 » portait rgba(255,255,255,0.18) : un voile blanc
   // ÉCLAIRCIT le dégradé sous un texte blanc. Mesuré au pixel rendu : 3,74:1,
   // sous le seuil. Le même voile en noir remonte à 7,06:1.
   const src = readFileSync(import.meta.dirname + "/../src/training-app.jsx", "utf8");
-  const hero = src.slice(src.indexOf('className="hero-card"'),
-                         src.indexOf('className="hero-card"') + 3000);
+  const debut = src.indexOf('className="hero-card');
+  ok(debut > 0, "la carte du jour est bien dans la source");
+  const hero = src.slice(debut, debut + 3000);
   const blancs = hero.match(/rgba\(255\s*,\s*255\s*,\s*255\s*,\s*0?\.\d+\)/g) || [];
   ok(blancs.length === 0,
      `aucun voile blanc écrit en dur dans le hero (${blancs.join(", ") || "aucun"})`);
