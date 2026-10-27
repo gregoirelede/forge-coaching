@@ -1580,6 +1580,41 @@ sauvegarde existe (v7n) ; et le modèle de données est déjà multi-coach par
 construction (`coach_id` partout, RLS par coach). Région d'hébergement de la
 base : **`eu-west-1`, Irlande** — vérifiée le 27 octobre.
 
+**Décisions de Greg, 27 octobre 2026 :**
+
+| Sujet | Décision |
+|---|---|
+| Périmètre avant le premier encaissement | **Le minimum légal**, pas le parcours automatique. Le coach crée lui-même le compte de chaque client après son paiement, comme aujourd'hui |
+| Paiement | **Stripe** |
+| Les coachés actuels | **Bêta-testeurs gratuits.** Le plan bêta part d'eux, il n'y a pas à en recruter cinq autres d'abord |
+| Prérequis légaux | **Aucun n'est fait** : ni micro-entreprise ni SIRET, ni carte professionnelle à jour, ni vérification de l'option musculation, ni assurance RC pro à distance |
+
+**Ce que ça implique, et c'est le point à ne pas perdre de vue :** le
+9 novembre devient la date où **l'app** est prête, pas celle du premier
+encaissement. Sans SIRET, ni compte Stripe ni mentions légales. Le chemin
+critique est dans les démarches de Greg, pas dans le code.
+
+**L'ordre des chantiers côté app :**
+
+1. **Le consentement aux données de santé.** Le seul qui s'applique **dès
+   maintenant**, encaissement ou non : la bêta gratuite collecte déjà poids,
+   taille, séances, bilans et notes de séance, et rien n'en recueille le
+   consentement explicite hors du module nutrition. Modèle : `diet_consents`.
+   Le retrait, tant que la question de l'effacement n'est pas tranchée,
+   s'enregistre et prévient le coach **sans rien détruire**.
+2. **CGV, mentions légales, politique de confidentialité** : brouillons
+   structurés, complétés quand le SIRET existe, relus par Greg avant mise en
+   ligne. Ce ne sont pas des avis d'avocat.
+3. **Avec Stripe** : résiliation par le portail client de Stripe ; fonction
+   « renoncer au contrat ici » avec accusé de réception par email (il faut un
+   service d'envoi, compte à créer par Greg) ; demande expresse d'exécution
+   immédiate, distincte des CGV, avant le paiement.
+
+**Bloquant depuis le 27 octobre :** la base refuse les requêtes du connecteur
+(`password authentication failed for user "postgres"`) alors que le projet est
+`ACTIVE_HEALTHY`. Aucune migration ne peut être jouée tant que ça dure — et la
+règle 9 met la migration avant le déploiement.
+
 ---
 
 # PARTIE P — MODE COACH : CRÉATION DE PROGRAMMES
@@ -2217,7 +2252,7 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 | Dernier build déployé | **22 septembre 2026** — v8g, 605 862 octets |
 | Contenu de ce build | « Abdos » entre dans la liste fermée des muscles (13ᵉ catégorie) ; `MUSCLE_OPTIONS` dérive de `muscleColors` au lieu d'être une seconde liste |
 | Build précédent | 22 septembre 2026 — v8f, 605 808 octets. L'angle du dégradé lève le plafond d'éclat (+44 %) |
-| **En attente** | **Rien.** Greg a essayé l'upper/lower 4 jours du matin et l'a refusé le jour même : `sql/2026-09-22-programme-greg-retour-5-jours.sql` a été joué le 22 septembre au soir et remet « Programme 5/7 focus bras/épaules » en service, séances **1 à 5 conservées** (ses 561 séries loguées y sont attachées, vérifiées intactes après coup), avec trois modifications — jambes 26 → 10 séries, abdos devenus 12 séries de vrais exercices logués, un seul dos unilatéral le jeudi. 34 exercices tous liés à la bibliothèque, deux exercices d'abdos entrés en bibliothèque. L'upper/lower est désactivé, pas supprimé. 22 tables en base, RLS active partout |
+| **En attente** | **Trois choses.** (1) La base refuse les requêtes du connecteur depuis le 27 octobre — aucune migration possible. (2) La diète de Greg composée le 1er octobre attend son feu vert et les valeurs réelles de ses étiquettes de skyr et de whey : rien n'est écrit en base. (3) Le dossier acquisition (M.2) : chantier n°1, le consentement aux données de santé, prêt à démarrer dès que la base répond. Le programme 5 jours de Greg, lui, est en place depuis le 22 septembre |
 | Vérification du déploiement | Faite le 22 septembre au soir : workflow `pages build and deployment` **success** sur `a692562`, et `index.html` sur `main` identique au build local **à l'octet près** — 605 862 o, empreinte `1bd4ecc9ae`. Côté base, le résultat en production est identique au résultat éprouvé en local **au hash près** (`b3c5724a0e` sur les 34 exercices, uuids de bibliothèque exclus puisqu'ils diffèrent forcément entre les deux bases) |
 | Ce que la session ne peut PAS vérifier | Charger `gregoirelede.github.io` : le proxy de la VM le bloque. Le contrôle par empreinte ci-dessus le remplace, il est même plus strict |
 
