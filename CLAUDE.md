@@ -212,6 +212,8 @@ forge-coaching/
 │   ├── send-push.ts                    ← v7h
 │   ├── _webpush.ts                     ← chiffrement RFC 8291/8292, sans dépendance
 │   └── _webpush.test.mjs               ← rejoue le protocole à l'envers
+├── docs/
+│   └── acquisition-clients.md          ← dossier acquisition du 27 oct. 2026 (voir M.2)
 ├── guides/
 │   ├── GUIDE-edge-function-windows.md
 │   └── README.md
@@ -1530,6 +1532,53 @@ Exemples sur des noms **fictifs** — les codes réels ne s'écrivent nulle part
 **Non fait, envisageable plus tard :** graphiques et analytics avancés côté coach · messagerie intégrée · publication sur les stores · ajout de catégories musculaires · paiement en ligne / gestion des abonnements.
 
 **Phase suivante du projet (hors code) :** acquisition clients — stratégie Instagram, recrutement des premiers bêta-testeurs. Cette partie se traite dans la conversation "Stratégie & Vision", pas ici.
+
+### Le dossier acquisition clients (27 octobre 2026)
+
+Produit dans la conversation « Stratégie & Vision » et rangé tel quel dans
+**`docs/acquisition-clients.md`** — copie fidèle, à ne pas réécrire. Objectif
+affiché : 10 abonnés payants au 25 janvier 2027, Forge prêt à encaisser le
+9 novembre. Sa section « Dans l'appli » est une **liste candidate, rien n'y est
+validé** : elle se priorise avec Greg. En cas de conflit, ce document-ci et les
+décisions de Greg priment — on signale l'écart, on n'écrase pas.
+
+**Écarts relevés le 27 octobre, en attente d'arbitrage de Greg :**
+
+1. **Les coachés n'ont pas d'adresse email réelle.** `codeToCredentials`
+   fabrique `<code>@coachee.forge.app`, jamais vérifiée. Le dossier suppose des
+   emails partout — accusé de réception de la rétractation et de la résiliation
+   « sur support durable », relances, parcours d'inscription. Il faudra un email
+   de **contact** distinct de l'email d'authentification, ajouté sans toucher à
+   la connexion par code d'accès (règle 3). Un paiement Stripe le collecte au
+   passage.
+2. **La profession de diététicien est absente du cadre légal du dossier**,
+   alors qu'il justifie le prix du Premium par la nutrition et que son message
+   type promet un « suivi nutrition ». Conflit direct avec P.4, J.10 et Q.5 :
+   plus la nutrition est un argument de vente, plus l'exposition au titre
+   protégé grandit. Les formulations commerciales restent du registre
+   « repères éducatifs ».
+3. **Droit à l'effacement contre « jamais de suppression d'historique »**
+   (I.2). Le RGPD donne au coaché le droit de faire effacer ses données ; la
+   règle de Greg protège l'historique contre les erreurs du coach. Les deux
+   peuvent coexister — suppression sur demande du coaché seulement — mais
+   c'est à Greg de trancher.
+4. **Les sauvegardes manquent au dossier.** M.1 et O.7 décident du passage au
+   plan Pro de Supabase (~25 $/mois) au premier client payant. Le calcul de
+   revenu du dossier ne compte que les cotisations.
+5. **Les prix du dossier sont hypothétiques** (45 € / 110 €). Ceux de Greg
+   (~49 € / ~89 €, B.2) tombent déjà dans les bandes de marché qu'il cite. Même
+   mélange de 6 + 4 abonnés : 650 € par mois, pas 710.
+6. **Les bêta-testeurs existent peut-être déjà.** Cinq coachés actifs hors Greg
+   au 22 septembre. Et au moins une est **mineure** — un abonnement payant
+   demande alors l'accord d'un parent, cas que le dossier ne prévoit pas.
+
+**Ce que Forge fait déjà et que le dossier ne pouvait pas savoir :** les
+consentements horodatés et versionnés (`diet_consents`, sans UPDATE ni DELETE)
+servent de modèle tout prêt ; l'onglet Suivi (v7j) et la notification du coach
+(v7i) couvrent la moitié de la « relance après 7 jours » ; l'export de
+sauvegarde existe (v7n) ; et le modèle de données est déjà multi-coach par
+construction (`coach_id` partout, RLS par coach). Région d'hébergement de la
+base : **`eu-west-1`, Irlande** — vérifiée le 27 octobre.
 
 ---
 
