@@ -25,6 +25,7 @@ Tu travailles sur **Forge Coaching**, une application web de coaching sportif en
     forcément — c'est à toi de reconnaître la demande.
 11. **Va au bout toi-même (règle du 5 août 2026).** Tout ce qui peut être fait depuis la session doit l'être : builder, fusionner dans `main`, vérifier que GitHub Pages a redéployé, contrôler la base. Ne me laisse que ce qui est réellement hors de ta portée — et dans ce cas, dis-le explicitement au lieu de me donner une consigne à exécuter. Le parcours de test se joue en entier avant de me rendre la main.
 12. **Vérifie toujours sur la dernière version (règle du 7 août 2026).** Avant d'affirmer l'état de quoi que ce soit — code, base, déploiement — repars du dépôt à jour (`git pull`) et d'un relevé frais. Une mesure prise avant un déploiement ne prouve rien sur l'état d'après : la citer comme preuve est une faute de méthode.
+13. **Aucune donnée de coaché dans le dépôt (règle du 17 novembre 2026).** Le dépôt est **public**, et GitHub Pages publie **tous** ses fichiers, pas seulement l'app. Donc jamais, pour un coaché réel : nom ou prénom, date de naissance, âge, taille, poids, pathologie, allergie, diète, programme nominatif, retour cité, code d'accès, capture d'écran. Ni dans un fichier, ni dans un jeu d'essai, ni dans un **message de commit**. Les jeux d'essai utilisent des profils fictifs (« Coachée A », « Marie Dupont »…). Un SQL propre à un coaché se joue depuis la session sans être committé, ou se committe avec un nom fictif à remplacer au moment de le jouer. Avant chaque commit, relire le diff **et** le message avec cette règle en tête. Le pourquoi est en N.4.
 
 ### Cycle de travail standard pour toute nouvelle fonctionnalité
 ```
@@ -2269,6 +2270,47 @@ Le mode de travail est donc **Claude Code sur le web** (`claude.ai/code` ou l'ap
 - **Clé API Anthropic** (`sk-ant-...`) : pas encore obtenue. Le jour où elle le sera, elle devra être stockée **hors du repo** et jamais committée.
 - ⚠️ **Clé `service_role` Supabase** : ne jamais la coller dans une conversation, ni dans le repo, ni dans un fichier de config. Elle reste uniquement dans les secrets des Edge Functions Supabase.
 - Avant chaque commit, vérifie qu'aucun secret ne s'est glissé dans les fichiers modifiés.
+
+## N.4 — Le nettoyage du 17 novembre 2026 : l'historique a été réécrit
+
+**Ce qui a été trouvé.** Depuis début août, le dépôt public exposait les noms complets de deux
+coachées réelles avec des données de santé (une diète liée à une pathologie, poids, taille,
+âge, dates de naissance dans les jeux d'essai, programmes et objectifs), le nom d'un compte de
+test, et des exemples de codes d'accès formés sur de vrais noms — dans les fichiers **et** dans
+les messages de commit. Le fichier `index.html` publie la formule qui transforme un code en
+identifiants : un code connu, ou deviné à partir d'un nom, ouvre le compte.
+
+**Ce qui a été fait, avec l'accord de Greg :**
+
+- Tout l'historique a été réécrit (`git filter-repo`) : dans chaque version de chaque fichier et
+  dans chaque message, les deux coachées sont devenues **« Coachée A »** et **« Coachée B »**, le
+  compte de test **« compte de test »**, les mensurations ont été retirées, les dates de naissance
+  et pesées des jeux d'essai remplacées par des valeurs fictives, les exemples de codes rendus
+  fictifs (`AEXEMPLE16`, `GLEDE000`). Les fichiers nominatifs ont été renommés
+  (`*-coachee-a.*`, `*-coachee-b.*`).
+- **Rien d'autre n'a bougé** : les 39 fichiers de l'app (`index.html`, `sw.js`, `src/`, `vendor/`,
+  `fonts/`, `icons/`, `edge-functions/`, données Ciqual) sont identiques à l'octet, le build
+  reproduit l'`index.html` en ligne (605 862 octets) et les 24 séries de `npm test` passent.
+- Les codes d'accès concernés sont à régénérer par Greg depuis l'espace coach (il s'en charge
+  le 17 novembre ; à confirmer avec lui).
+
+**Ce que ça change pour les sessions suivantes :**
+
+1. **Tous les identifiants de commit d'avant le 17 novembre ont changé.** Ceux qui sont cités
+   plus haut dans ce document (`a692562`, `7fd0b32`, `fe1cc66`…) désignent l'ancien historique et
+   n'existent plus sur GitHub. Les empreintes de **fichiers** (`1bd4ecc9ae` pour `index.html`),
+   elles, sont inchangées.
+2. **Ne jamais pousser depuis une copie antérieure au 17 novembre** (ancienne session Claude Code,
+   ancien clone) : elle contient encore l'ancien historique, et un push le remettrait en ligne.
+   Toujours partir d'une session neuve, clonée après cette date.
+3. `sql/2026-08-15-diete-coachee-a.sql` et `sql/2026-08-25-programme-coachee-b.sql` ne visent plus
+   aucun profil réel : rejoués tels quels, ils s'arrêtent sur leur `raise exception`, sans rien
+   modifier. Ils restent comme **modèles** (P.3). Pour les rejouer, remplacer le nom fictif par le
+   vrai **dans la session**, sans le committer (règle 13).
+4. **Point d'attention ouvert : la solidité des codes d'accès.** Un code vaut « initiale + nom +
+   2 chiffres », soit 100 possibilités dès qu'on connaît le nom, et la formule code →
+   identifiants est publique. Piste à trancher avec Greg : générer davantage de chiffres
+   aléatoires (6 au lieu de 2), ce qui touche `MIN_CODE_LENGTH` et le générateur.
 
 ---
 
